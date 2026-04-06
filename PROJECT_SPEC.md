@@ -131,7 +131,10 @@ Deliverables:
 - Python ingestion script with source metadata extraction
 - `ai_parse_document` integration and Bronze table writer
 - Bronze schema definition (Pydantic + JSON Schema)
-- Basic MLflow run tracking parse success rate and character yield
+- Separate Bronze evaluation script that computes parse quality metrics (success rate, character
+  yield) against Bronze artifacts or table snapshots. The pipeline run itself logs only
+  operational metadata (batch size, document count, pipeline run ID); parse quality metrics
+  are produced by an independent evaluation run in `src/evaluation/eval_bronze.py`.
 
 ### Phase A-2 — Silver: Extraction and Validation
 **Goal**: Extract structured fields from parsed text into a validated Silver layer.

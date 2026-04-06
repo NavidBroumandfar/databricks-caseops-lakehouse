@@ -1,0 +1,69 @@
+# catalog_config.yaml
+#
+# Unity Catalog resource naming and Bronze layer path configuration.
+# All values are placeholders — no credentials, tokens, or workspace URLs.
+# Safe to commit to version control.
+#
+# Authoritative design: ARCHITECTURE.md § Unity Catalog Governance Layout
+
+# ---------------------------------------------------------------------------
+# Unity Catalog identifiers
+# ---------------------------------------------------------------------------
+
+catalog_name: caseops                  # Replace with your Unity Catalog name
+
+schemas:
+  raw: raw                             # Schema holding the raw document Volume
+  bronze: bronze                       # Schema holding the Bronze Delta table
+  silver: silver                       # Schema holding the Silver Delta table (A-2)
+  gold: gold                           # Schema holding the Gold Delta table (A-3)
+
+volumes:
+  raw_documents: documents             # Raw Volume name (immutable source files)
+
+tables:
+  bronze: parsed_documents             # Bronze Delta table name
+  silver: extracted_records            # Silver Delta table name (A-2)
+  gold: ai_ready_assets                # Gold Delta table name (A-3)
+
+# ---------------------------------------------------------------------------
+# Fully-qualified Unity Catalog paths (assembled from the above)
+# Use these when constructing IDENTIFIER() or spark.table() references.
+# ---------------------------------------------------------------------------
+
+paths:
+  raw_volume: "/Volumes/caseops/raw/documents"
+  bronze_table: "caseops.bronze.parsed_documents"
+  silver_table: "caseops.silver.extracted_records"
+  gold_table: "caseops.gold.ai_ready_assets"
+
+# ---------------------------------------------------------------------------
+# Local development paths (used when running outside Databricks)
+# ---------------------------------------------------------------------------
+
+local:
+  example_input_path: "examples/fda_warning_letter_sample.md"
+  output_dir: "output/bronze"          # Local directory for Bronze JSON artifacts
+
+# ---------------------------------------------------------------------------
+# Pipeline metadata
+# ---------------------------------------------------------------------------
+
+schema_version: "v0.1.0"              # Must match SCHEMA_VERSION in bronze_schema.py
+document_domain: "fda_warning_letter"  # V1 single-domain. Do not add more domains here.
+
+# ---------------------------------------------------------------------------
+# Parser configuration
+# ---------------------------------------------------------------------------
+
+parsers:
+  local_text_parser:
+    model_id: "local_text_parser/v1"
+    supported_extensions: [".txt", ".md"]
+
+  # Placeholder for future Databricks ai_parse_document integration (A-1 / Databricks execution)
+  databricks_ai_parse:
+    model_id: "ai_parse_document/v1"
+    supported_extensions: [".pdf", ".docx", ".txt"]
+    # No credentials or endpoint URLs here. Configuration is injected at runtime by
+    # the Databricks runtime environment; this block is descriptive only.

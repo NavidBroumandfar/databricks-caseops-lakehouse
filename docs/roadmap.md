@@ -11,7 +11,7 @@
 | Phase | Name | Status | Goal |
 |---|---|---|---|
 | A-0 | Repo Foundation | ✅ Complete | Docs, scaffold, project identity |
-| A-1 | Bronze: Ingest and Parse | 🔲 Next | Raw file → parsed text in Bronze Delta table |
+| A-1 | Bronze: Ingest and Parse | 🔄 In Progress | Raw file → parsed text in Bronze Delta table |
 | A-2 | Silver: Extraction and Validation | 🔲 Planned | Parsed text → structured fields in Silver table |
 | A-3 | Gold: Classification and Routing | 🔲 Planned | Structured fields → classified, routed Gold records |
 | A-4 | Evaluation and Observability | 🔲 Planned | MLflow evaluation across all stages |
@@ -40,25 +40,28 @@
 
 ## Phase A-1 — Bronze: Ingest and Parse
 
-**Status**: Not started
+**Status**: In progress
 
-**Goal**: Build the ingestion and parsing pipeline. A document dropped into the Unity Catalog Volume should produce a Bronze Delta record with parsed text and provenance metadata.
+**Goal**: Build the ingestion and parsing pipeline. A document dropped into the Unity Catalog Volume should produce a Bronze Delta record with parsed text and provenance metadata. For local development and demonstration, a Bronze JSON artifact is written instead of a Delta table write.
 
 **Deliverables**:
 
-| Artifact | Path | Description |
-|---|---|---|
-| Unity Catalog config | `src/pipelines/catalog_config.yaml` | Catalog, schema, Volume definitions |
-| Ingestion script | `src/pipelines/ingest.py` | File detection, hash, metadata extraction |
-| Bronze writer | `src/pipelines/bronze_writer.py` | `ai_parse_document` call and Bronze table write |
-| Bronze schema | `src/schemas/bronze_schema.py` | Pydantic model for Bronze records |
-| Parse eval notebook | `notebooks/eval_bronze_parse.ipynb` | MLflow run for parse quality metrics |
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Unity Catalog config | `src/pipelines/catalog_config.yaml` | ✅ Complete | Catalog, schema, Volume definitions (placeholder values) |
+| Bronze ingestion script | `src/pipelines/ingest_bronze.py` | ✅ Complete | File validation, hash, metadata, parser abstraction, artifact writer |
+| Bronze schema | `src/schemas/bronze_schema.py` | ✅ Complete | Pydantic v2 model for Bronze records |
+| Bronze evaluation script | `src/evaluation/eval_bronze.py` | ✅ Complete | Separate parse quality evaluation; optional MLflow logging |
+| Sample fixture | `examples/fda_warning_letter_sample.md` | ✅ Complete | Synthetic FDA warning letter for local demonstration |
+| Delta table write | `src/pipelines/ingest_bronze.py` | 🔲 Deferred | Requires live Databricks runtime; local JSON artifact written instead |
 
 **Completion criteria**:
-- A real PDF can be dropped into the Volume and produces a valid Bronze record
-- Parse failures are captured as records with `parse_status = 'failed'`, not silent drops
-- MLflow run exists with parse success rate and character yield metrics
-- Bronze schema is validated against at least one real document
+- ✅ A local sample file can be processed into a Bronze JSON artifact
+- ✅ Parse failures are captured as records with `parse_status = 'failed'`, not silent drops
+- ✅ Bronze schema is validated against at least one real document
+- ✅ A separate evaluation script computes parse quality metrics from Bronze artifacts
+- 🔲 Delta table write validated on Databricks cluster (deferred to Databricks execution phase)
+- 🔲 MLflow evaluation run populated with real metrics on Databricks (deferred)
 
 ---
 

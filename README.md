@@ -89,7 +89,46 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
-Active development targets **Phase A-1 — Bronze ingestion and parsing pipeline**. See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
+**Phase A-1 — Bronze ingestion and parsing pipeline** is in progress. The local-safe implementation slice is complete:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Bronze schema (Pydantic v2) | `src/schemas/bronze_schema.py` | ✅ Complete |
+| Unity Catalog config | `src/pipelines/catalog_config.yaml` | ✅ Complete |
+| Bronze ingestion script | `src/pipelines/ingest_bronze.py` | ✅ Complete |
+| Bronze evaluation script | `src/evaluation/eval_bronze.py` | ✅ Complete |
+| Sample FDA warning letter fixture | `examples/fda_warning_letter_sample.md` | ✅ Complete |
+
+To run the local Bronze demo, see the [Running the Bronze Demo](#running-the-bronze-demo) section below.
+
+See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
+
+---
+
+## Running the Bronze Demo
+
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
+
+```bash
+# 1. Install the only required dependency
+pip install pydantic
+
+# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+python src/pipelines/ingest_bronze.py \
+  --input examples/fda_warning_letter_sample.md \
+  --document-class-hint fda_warning_letter \
+  --source-system local_dev
+
+# Artifact is written to output/bronze/<bronze_record_id>.json
+
+# 3. Run Bronze evaluation against all artifacts in the output directory
+python src/evaluation/eval_bronze.py --input-dir output/bronze
+
+# Optional: evaluate a single artifact
+python src/evaluation/eval_bronze.py --input output/bronze/<bronze_record_id>.json
+```
+
+The evaluation script prints a parse quality summary and writes a JSON evaluation artifact to `output/eval/`.
 
 ---
 

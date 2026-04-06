@@ -1,0 +1,17 @@
+{
+  "eval_run_id": "62cde0eb-9b1e-4d59-932c-5a03f486d993",
+  "experiment": "caseops/bronze/parse_quality",
+  "metrics": {
+    "evaluated_at": "2026-04-06T20:13:11.221021+00:00",
+    "total_records": 1,
+    "parse_success_rate": 1.0,
+    "parse_partial_rate": 0.0,
+    "parse_failure_rate": 0.0,
+    "median_char_count": 5131,
+    "p10_char_count": 5131,
+    "zero_char_count_rate": 0.0,
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "threshold_warnings": []
+}
