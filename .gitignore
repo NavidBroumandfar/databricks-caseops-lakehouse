@@ -1,0 +1,169 @@
+# ============================================================
+# Databricks CaseOps Lakehouse — .gitignore
+# ============================================================
+
+# ------------------------------------------------------------
+# Secrets, credentials, and sensitive config
+# NEVER commit these to version control
+# ------------------------------------------------------------
+.env
+.env.*
+.envrc
+secrets.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+credentials.json
+service_account.json
+databricks.cfg
+.databricks/
+databricks_host
+databricks_token
+pat_token*
+workspace_url*
+
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+*.whl
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.pyenv/
+.python-version
+
+# Type checking / linting
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.dmypy.json
+dmypy.json
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+nosetests.xml
+test-results/
+
+# ------------------------------------------------------------
+# Jupyter / Databricks Notebooks
+# ------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ------------------------------------------------------------
+# MLflow local artifacts
+# ------------------------------------------------------------
+mlruns/
+mlflow.db
+mlflow-artifacts/
+
+# ------------------------------------------------------------
+# Databricks local development artifacts
+# ------------------------------------------------------------
+.databricks/
+bundle.lock
+databricks_connect.cfg
+.databricks-connect
+spark-warehouse/
+derby.log
+metastore_db/
+
+# ------------------------------------------------------------
+# Prompt archive (managed separately, never public)
+# ------------------------------------------------------------
+docs/prompts/
+
+# ------------------------------------------------------------
+# macOS
+# ------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------
+# IDE and editor artifacts
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.cursor/
+
+# ------------------------------------------------------------
+# Local config and state files
+# ------------------------------------------------------------
+*.local
+*.local.*
+local_config.*
+local_settings.*
+
+# ------------------------------------------------------------
+# Data files (never commit raw or processed data)
+# ------------------------------------------------------------
+*.csv
+*.tsv
+*.parquet
+*.delta
+*.json.gz
+*.jsonl.gz
+
+# Exceptions: committed example / test fixtures go in examples/
+# Use: git add -f examples/some_fixture.json
+!examples/*.json
+!examples/*.txt
+!examples/*.md
+
+# ------------------------------------------------------------
+# Logs and temp files
+# ------------------------------------------------------------
+*.log
+*.log.*
+logs/
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# ------------------------------------------------------------
+# OS / archive artifacts
+# ------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z

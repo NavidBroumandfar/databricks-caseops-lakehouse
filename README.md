@@ -1,0 +1,134 @@
+# Databricks CaseOps Lakehouse
+
+A governed, Databricks-native document intelligence pipeline that converts unstructured enterprise documents into structured, traceable, evaluation-ready AI assets for downstream retrieval and agent workflows.
+
+---
+
+## What This Project Does
+
+Enterprise operations generate large volumes of unstructured documents — regulatory notices, incident reports, standard operating procedures, quality reviews, and technical advisories. These documents contain operationally significant information that is difficult to query, route, or reason over at scale without structured transformation.
+
+This project builds a **production-aware document intelligence pipeline** on Databricks that:
+
+1. **Ingests** unstructured documents into governed Unity Catalog Volumes
+2. **Parses** raw document content using `ai_parse_document` and normalizes it into a Bronze layer
+3. **Extracts** structured fields from parsed content using `ai_extract` into a Silver layer
+4. **Classifies and routes** documents using `ai_classify` into a Gold layer of AI-ready assets
+5. **Evaluates** every stage for extraction quality, schema validity, and traceability completeness using MLflow
+6. **Exports** Gold-tier structured assets to downstream Bedrock retrieval and agent systems
+
+---
+
+## Positioning
+
+This is the Databricks-native sibling of **Bedrock CaseOps**. Where Bedrock CaseOps handles retrieval augmentation and agent orchestration, this repo owns the **document transformation and structuring layer** upstream of it.
+
+| Concern | This Repo | Bedrock CaseOps |
+|---|---|---|
+| Raw document ingestion | Yes | No |
+| Parsing and extraction | Yes | No |
+| Structured schema output | Yes | Consumes |
+| Classification and routing | Yes | Consumes |
+| Agent orchestration | No | Yes |
+| Retrieval (RAG) | No | Yes |
+
+---
+
+## Default Document Domain
+
+The pipeline is designed for document-heavy operational and regulatory workflows:
+
+- FDA warning letters and safety notices
+- CISA advisories and cybersecurity bulletins
+- Incident reports and post-mortems
+- Standard operating procedures (SOPs)
+- Quality review and audit records
+- Technical support and case review documents
+
+---
+
+## Architecture Overview
+
+```
+Unity Catalog Volumes (raw)
+        │
+        ▼
+  Bronze Layer  ─── raw parsed text, source metadata, parse provenance
+        │
+        ▼
+  Silver Layer  ─── structured field extraction, schema-validated records
+        │
+        ▼
+  Gold Layer    ─── classified, routed, AI-ready assets
+        │
+        ▼
+  Downstream    ─── Bedrock retrieval index / agent context payloads
+```
+
+All layers are governed by Unity Catalog. All transformations are traceable via MLflow. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for full design detail.
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Platform | Databricks |
+| Storage governance | Unity Catalog, Volumes |
+| Parsing | `ai_parse_document` |
+| Extraction | `ai_extract` |
+| Classification | `ai_classify` |
+| Evaluation & tracing | MLflow |
+| Language (pipelines) | Python, SQL |
+| Config | YAML |
+| Docs | Markdown |
+
+---
+
+## Project Status
+
+**Phase A-0 — Repo foundation and core documentation** is complete.
+
+Active development targets **Phase A-1 — Bronze ingestion and parsing pipeline**. See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
+
+---
+
+## Repository Structure
+
+```
+databricks-caseops-lakehouse/
+├── README.md
+├── PROJECT_SPEC.md          # Scope and roadmap source of truth
+├── ARCHITECTURE.md          # Technical design source of truth
+├── docs/
+│   ├── CURSOR_CONTEXT.md    # Agent orientation guide
+│   ├── roadmap.md
+│   ├── data-contracts.md
+│   ├── evaluation-plan.md
+│   └── prompts/             # Excluded from version control
+├── src/
+│   ├── schemas/             # Pydantic / JSON Schema definitions
+│   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
+│   ├── evaluation/          # MLflow evaluation runners
+│   └── utils/               # Shared helpers
+├── notebooks/               # Databricks notebooks (exploration, demos)
+└── examples/                # Sample documents and expected outputs
+```
+
+---
+
+## Non-Goals
+
+This repo does **not** include:
+
+- A frontend or UI of any kind
+- A standalone chatbot or conversational interface
+- Generic Databricks demo notebooks
+- Scala code
+- Anything that requires production credentials to demonstrate
+
+---
+
+## Related
+
+- `bedrock-caseops` — downstream retrieval and agent orchestration layer
