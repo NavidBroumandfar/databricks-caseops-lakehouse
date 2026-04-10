@@ -87,12 +87,15 @@ mlflow-artifacts/
 # Databricks local development artifacts
 # ------------------------------------------------------------
 .databricks/
+.databrickscfg
 bundle.lock
 databricks_connect.cfg
 .databricks-connect
 spark-warehouse/
 derby.log
 metastore_db/
+*.local.yml
+*.local.yaml
 
 # ------------------------------------------------------------
 # Prompt archive (managed separately, never public)

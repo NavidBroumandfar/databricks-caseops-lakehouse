@@ -87,6 +87,8 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
+**Phases A-0 through A-3** (local-safe implementation) are complete. **Phase A-3B** (personal Databricks bootstrap consolidation) is the current integration milestone.
+
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
 **Phase A-1 — Bronze ingestion and parsing pipeline** is complete:
@@ -110,7 +112,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Silver evaluation script | `src/evaluation/eval_silver.py` | ✅ Complete |
 | Expected Silver fixture | `examples/expected_silver_fda_warning_letter.json` | ✅ Complete |
 
-**Phase A-3 — Gold classification and routing** is in progress. The local-safe implementation slice is delivered:
+**Phase A-3 — Gold classification and routing** is complete. The local-safe implementation slice is delivered:
 
 | Deliverable | Path | Status |
 |---|---|---|
@@ -120,6 +122,33 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Gold classification pipeline | `src/pipelines/classify_gold.py` | ✅ Complete |
 | Gold evaluation script | `src/evaluation/eval_gold.py` | ✅ Complete |
 | Expected Gold fixture | `examples/expected_gold_fda_warning_letter.json` | ✅ Complete |
+
+**Phase A-3B — Personal Databricks Bootstrap Consolidation** is in progress. This bridging phase captures a validated personal-workspace end-to-end SQL execution pass against real Databricks AI Functions and public FDA sample documents. It is non-production and does not imply enterprise deployment or MLflow automation.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Bronze parse smoke SQL | `notebooks/bootstrap/01_bronze_parse_smoke.sql` | ✅ Complete |
+| Bronze bootstrap v1 SQL | `notebooks/bootstrap/02_bronze_bootstrap_v1.sql` | ✅ Complete |
+| Silver extraction smoke SQL | `notebooks/bootstrap/03_silver_extract_smoke_v1.sql` | ✅ Complete |
+| Gold classification smoke SQL | `notebooks/bootstrap/04_gold_classify_route_smoke_v1.sql` | ✅ Complete |
+| Bootstrap evaluation SQL | `notebooks/bootstrap/05_bootstrap_evaluation_v1.sql` | ✅ Complete |
+| Bootstrap documentation | `docs/databricks-bootstrap.md` | ✅ Complete |
+| Resource layout example | `config/databricks.resources.example.yml` | ✅ Complete |
+
+**Validated bootstrap results** (4 public FDA sample PDFs, personal serverless SQL warehouse):
+
+| Metric | Value |
+|---|---|
+| Total documents | 4 |
+| Bronze parse success | 4 / 4 |
+| Silver extraction records | 4 / 4 |
+| Gold export-ready | 3 / 4 |
+| Quarantine | 1 / 4 |
+| Full lineage present | 4 / 4 |
+
+The quarantine record is a governance signal, not a failure — it confirms rule-based routing is functioning correctly. See [`docs/databricks-bootstrap.md`](./docs/databricks-bootstrap.md) for full details, constraints, and next steps.
+
+**Phase A-4 — Evaluation and Observability** is planned and not yet started.
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
 
@@ -242,18 +271,22 @@ databricks-caseops-lakehouse/
 ├── README.md
 ├── PROJECT_SPEC.md          # Scope and roadmap source of truth
 ├── ARCHITECTURE.md          # Technical design source of truth
+├── config/
+│   └── databricks.resources.example.yml   # Unity Catalog layout reference (no credentials)
 ├── docs/
 │   ├── CURSOR_CONTEXT.md    # Agent orientation guide
 │   ├── roadmap.md
 │   ├── data-contracts.md
 │   ├── evaluation-plan.md
+│   ├── databricks-bootstrap.md   # A-3B personal bootstrap validation record
 │   └── prompts/             # Excluded from version control
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   ├── evaluation/          # MLflow evaluation runners
 │   └── utils/               # Shared helpers
-├── notebooks/               # Databricks notebooks (exploration, demos)
+├── notebooks/
+│   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
 └── examples/                # Sample documents and expected outputs
 ```
 

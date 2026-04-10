@@ -115,7 +115,7 @@ V1 delivers a functional, evaluated, single-domain pipeline end-to-end. Specific
 
 ## Phased Roadmap
 
-### Phase A-0 — Repo Foundation (current)
+### Phase A-0 — Repo Foundation
 **Goal**: Establish repo identity, documentation, and project structure.
 
 Deliverables:
@@ -155,6 +155,26 @@ Deliverables:
 - Routing logic (rule-based in V1, model-based in V2)
 - Gold export format specification for Bedrock handoff
 - Classification evaluation: label precision, coverage, disagreement rate
+
+**Status**: Complete (local-safe implementation).
+
+### Phase A-3B — Personal Databricks Bootstrap Consolidation
+**Goal**: Capture and consolidate a validated personal-workspace end-to-end SQL execution pass using real Databricks AI Functions and public FDA sample documents. This is a bridging phase between local-safe A-3 and the formal evaluation phase A-4.
+
+**Scope**: Non-production. Personal Databricks Free Edition workspace. Public FDA warning letter PDFs only. No enterprise deployment, no service principals, no external locations, no MLflow automation.
+
+Deliverables:
+- Bootstrap SQL assets under `notebooks/bootstrap/` reflecting the validated Bronze → Silver → Gold SQL flow
+- `config/databricks.resources.example.yml` documenting the Unity Catalog resource layout
+- `docs/databricks-bootstrap.md` recording validated results, constraints, and next steps
+
+**Validated bootstrap results**:
+- 4 documents processed end-to-end from raw PDF to Gold routing record
+- Full `document_id`-based lineage confirmed across all three layers
+- 3 records export-ready; 1 record quarantined (correct governance behavior)
+- `classification_confidence` stored as NULL in this bootstrap implementation (documented; A-4 scope to resolve)
+
+**Status**: In progress (consolidation task).
 
 ### Phase A-4 — Evaluation and Observability Layer
 **Goal**: Formalize evaluation across all layers with MLflow experiments and traceable runs.

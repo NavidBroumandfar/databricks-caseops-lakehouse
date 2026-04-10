@@ -13,7 +13,8 @@
 | A-0 | Repo Foundation | ✅ Complete | Docs, scaffold, project identity |
 | A-1 | Bronze: Ingest and Parse | ✅ Complete | Raw file → parsed text in Bronze Delta table |
 | A-2 | Silver: Extraction and Validation | ✅ Complete | Parsed text → structured fields in Silver table |
-| A-3 | Gold: Classification and Routing | 🔄 In Progress | Structured fields → classified, routed Gold records |
+| A-3 | Gold: Classification and Routing | ✅ Complete | Structured fields → classified, routed Gold records (local-safe) |
+| A-3B | Personal Databricks Bootstrap Consolidation | 🔄 In Progress | Validated personal-workspace SQL execution; repo consolidation |
 | A-4 | Evaluation and Observability | 🔲 Planned | MLflow evaluation across all stages |
 | B | Bedrock Handoff Integration | 🔲 Future | Gold export → live Bedrock consumption |
 
@@ -96,7 +97,7 @@
 
 ## Phase A-3 — Gold: Classification and Routing
 
-**Status**: In Progress
+**Status**: Complete (local-safe implementation)
 
 **Goal**: Classify Silver records into document type labels and routing labels. Construct the export payload for downstream Bedrock consumption. Local-safe implementation uses a deterministic rule-based classifier; Databricks `ai_classify` integration is stubbed as an adapter for future enablement.
 
@@ -121,6 +122,54 @@
 - ✅ FDA warning letter is the sole V1 domain — no multi-domain execution
 - 🔲 Delta table write validated on Databricks cluster (deferred)
 - 🔲 MLflow evaluation run with real metrics on Databricks (deferred)
+
+---
+
+---
+
+## Phase A-3B — Personal Databricks Bootstrap Consolidation
+
+**Status**: In Progress
+
+**Goal**: Capture and consolidate a validated personal-workspace end-to-end SQL execution pass using real Databricks AI Functions (`ai_parse_document`, `ai_extract`, `ai_classify`) and public FDA sample documents. This is a bridging phase that reduces placeholder-only architecture, records the real platform validation that was completed, and prepares the repo cleanly for the formal A-4 evaluation phase.
+
+**Scope constraints**:
+- Personal Databricks Free Edition workspace only
+- Non-production; no enterprise deployment, Jobs, Workflows, or Asset Bundles
+- Public FDA warning letter PDFs only — no proprietary data
+- No MLflow automation (manual SQL evaluation proxy used)
+- No service principals, external locations, or organizational credentials
+
+**Deliverables**:
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Bronze parse smoke SQL | `notebooks/bootstrap/01_bronze_parse_smoke.sql` | ✅ Complete | Smoke test confirming ai_parse_document reads from managed volume |
+| Bronze bootstrap v1 SQL | `notebooks/bootstrap/02_bronze_bootstrap_v1.sql` | ✅ Complete | Full Bronze ingest with UUID, hash, provenance fields |
+| Silver extraction smoke SQL | `notebooks/bootstrap/03_silver_extract_smoke_v1.sql` | ✅ Complete | ai_extract with FDA warning letter prompt schema |
+| Gold classification smoke SQL | `notebooks/bootstrap/04_gold_classify_route_smoke_v1.sql` | ✅ Complete | ai_classify + rule-based routing; quarantine path confirmed |
+| Bootstrap evaluation SQL | `notebooks/bootstrap/05_bootstrap_evaluation_v1.sql` | ✅ Complete | Cross-layer lineage join and summary counts |
+| Bootstrap documentation | `docs/databricks-bootstrap.md` | ✅ Complete | Validated results, constraints, what this proves and does not prove |
+| Resource layout example | `config/databricks.resources.example.yml` | ✅ Complete | Unity Catalog layout reference (no credentials) |
+
+**Validated results**:
+
+| Metric | Value |
+|---|---|
+| total_documents | 4 |
+| bronze_success_count | 4 |
+| silver_record_count | 4 |
+| gold_export_ready_count | 3 |
+| quarantine_count | 1 |
+| full_lineage_count | 4 |
+
+**Known implementation detail**: `classification_confidence` is `NULL` in the A-3B Gold smoke table. The `ai_classify` response variant at this bootstrap stage does not expose a scalar confidence score via `try_variant_get`. This is documented explicitly. Resolving confidence extraction is A-4 scope.
+
+**Completion criteria**:
+- ✅ Five SQL bootstrap files committed under `notebooks/bootstrap/`
+- ✅ `config/databricks.resources.example.yml` committed
+- ✅ `docs/databricks-bootstrap.md` committed
+- ✅ `PROJECT_SPEC.md`, `ARCHITECTURE.md`, `README.md`, `docs/roadmap.md`, `docs/CURSOR_CONTEXT.md` updated to reflect A-3B
 
 ---
 

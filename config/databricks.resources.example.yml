@@ -1,0 +1,28 @@
+# ============================================================
+# databricks.resources.example.yml
+# Unity Catalog resource layout for the CaseOps Lakehouse pipeline.
+#
+# This is an example/reference configuration only.
+# It documents the governed object layout validated during the A-3B
+# personal Databricks bootstrap pass.
+#
+# Do NOT add workspace URLs, account IDs, tokens, or personal auth
+# values to this file. This file is safe to commit as-is.
+# ============================================================
+
+catalog: caseops
+
+schemas:
+  raw: raw
+  bronze: bronze
+  silver: silver
+  gold: gold
+
+volumes:
+  raw_documents: documents
+
+paths:
+  incoming_subdir: fda_warning_letters
+
+domain:
+  default_document_class: fda_warning_letter

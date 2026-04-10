@@ -47,6 +47,17 @@ Unity Catalog
 
 All tables are Delta format. All schemas are planned for implementation in `src/schemas/`. All lineage is captured at the row level via `document_id` and `pipeline_run_id` fields present in every table.
 
+### Validated Bootstrap State (A-3B)
+
+The above layout was validated in a personal Databricks workspace during Phase A-3B. The following objects were confirmed operational:
+
+- Catalog `caseops` with schemas `raw`, `bronze`, `silver`, `gold`
+- Managed volume `caseops.raw.documents` with subdirectory `fda_warning_letters/`
+- Tables `parsed_documents` (Bronze), `extracted_records_smoke` (Silver), `ai_ready_assets_smoke` (Gold) created and populated via SQL AI Functions
+- Full `document_id`-based lineage confirmed across all three layers for 4 documents
+
+This bootstrap used a personal Free Edition workspace with a serverless SQL warehouse. It does not represent enterprise deployment. See [`docs/databricks-bootstrap.md`](./docs/databricks-bootstrap.md) for full details.
+
 ---
 
 ## Bronze Layer — Parse and Provenance
@@ -144,6 +155,14 @@ Assign a verified document type label and routing label to each Silver record, a
 | `pipeline_run_id` | string | MLflow run ID for traceability |
 
 Planned implementation: `src/schemas/gold_schema.py`
+
+### Gold Bootstrap Implementation Notes (A-3B)
+
+The validated A-3B bootstrap SQL implements rule-based routing: the `routing_label` is derived directly from the `ai_classify` response label rather than from a confidence threshold. Records classified as `fda_warning_letter` are routed to `regulatory_review`; all other results are routed to `quarantine`.
+
+`classification_confidence` is stored as `CAST(NULL AS DOUBLE)` in the A-3B bootstrap implementation. The `ai_classify` SQL AI Function response variant at this bootstrap stage does not expose a scalar confidence score via `try_variant_get`. This is an explicitly documented implementation detail, not a hidden gap. Resolving confidence extraction is A-4 scope.
+
+The export quality threshold defined in `docs/data-contracts.md` (requiring `classification_confidence >= 0.7`) applies to the target-state pipeline, not to this bootstrap pass.
 
 ---
 

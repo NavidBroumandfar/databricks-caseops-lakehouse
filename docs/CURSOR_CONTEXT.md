@@ -49,8 +49,19 @@ When starting any task in this repository, always read files in this exact order
 
 ## Active Phase
 
-**Phase A-0 — Repo foundation** is complete.
-Next phase: **A-1 — Bronze ingestion and parsing pipeline**.
+**Phases A-0 through A-3** (local-safe implementation) are complete:
+- A-0: Repo foundation and documentation
+- A-1: Bronze ingestion and parsing pipeline (local-safe)
+- A-2: Silver extraction and validation (local-safe)
+- A-3: Gold classification and routing (local-safe)
+
+**Phase A-3B — Personal Databricks Bootstrap Consolidation** is the current integration task.
+This phase captures a validated personal-workspace Databricks SQL execution pass (Bronze → Silver → Gold)
+using real AI Functions and public FDA sample documents. It is non-production. See
+[`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) for full details.
+
+**Phase A-4 — Evaluation and Observability** is planned next after A-3B consolidation is complete.
+A-4 scope: MLflow experiment structure, per-document trace records, evaluation runner scripts.
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap.
 
