@@ -1,0 +1,76 @@
+# classification_config.yaml — Gold classification configuration (Phase A-3)
+#
+# This file is safe to commit. It contains no secrets, credentials,
+# workspace URLs, or environment-specific values.
+#
+# Authority: ARCHITECTURE.md § Gold Layer
+# Contract:  docs/data-contracts.md § Gold: AI-Ready Asset Contract
+
+# ---------------------------------------------------------------------------
+# Document domain
+# ---------------------------------------------------------------------------
+
+document_domain: fda_warning_letter
+
+# ---------------------------------------------------------------------------
+# Directory paths (relative to repo root)
+# ---------------------------------------------------------------------------
+
+# Silver artifacts produced by extract_silver.py are read from this directory.
+silver_input_dir: output/silver
+
+# Gold records written by classify_gold.py go here.
+gold_output_dir: output/gold
+
+# Export payloads for export-ready Gold records go here.
+# Sub-directory per routing label: output/gold/exports/<routing_label>/<document_id>.json
+gold_export_dir: output/gold/exports
+
+# ---------------------------------------------------------------------------
+# Contract version
+# ---------------------------------------------------------------------------
+
+schema_version: "v0.1.0"
+
+# ---------------------------------------------------------------------------
+# Classification model identifiers
+# ---------------------------------------------------------------------------
+
+# Model used for local deterministic classification (no LLM required).
+# This is the active model for local-safe execution.
+local_classification_model: local_rule_classifier/v1
+
+# Adapter label for future Databricks ai_classify integration.
+# Not active in local execution. Provided here for forward compatibility.
+# When Databricks execution is enabled, swap classification_model to this value.
+databricks_classification_model: ai_classify/v1
+
+# ---------------------------------------------------------------------------
+# Export readiness thresholds
+# ---------------------------------------------------------------------------
+# From docs/data-contracts.md § Downstream AI-Ready Asset Requirements
+
+# Minimum classification confidence for a record to be export-ready.
+export_confidence_threshold: 0.70
+
+# Minimum Silver field_coverage_pct for a record to be export-ready.
+export_silver_coverage_threshold: 0.50
+
+# ---------------------------------------------------------------------------
+# Export payload configuration
+# ---------------------------------------------------------------------------
+
+# Number of characters from Bronze parsed_text to include in export payload.
+parsed_text_excerpt_length: 2000
+
+# ---------------------------------------------------------------------------
+# V1 routing rules
+# ---------------------------------------------------------------------------
+# Maps document type labels to routing labels.
+# Only V1-active labels are listed here. Unknown or unmapped types route to quarantine.
+
+routing_rules:
+  fda_warning_letter: regulatory_review
+
+# Fallback routing label for unrecognized or low-confidence documents.
+quarantine_label: quarantine

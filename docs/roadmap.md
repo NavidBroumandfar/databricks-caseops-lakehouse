@@ -12,8 +12,8 @@
 |---|---|---|---|
 | A-0 | Repo Foundation | ✅ Complete | Docs, scaffold, project identity |
 | A-1 | Bronze: Ingest and Parse | ✅ Complete | Raw file → parsed text in Bronze Delta table |
-| A-2 | Silver: Extraction and Validation | 🔄 In Progress | Parsed text → structured fields in Silver table |
-| A-3 | Gold: Classification and Routing | 🔲 Planned | Structured fields → classified, routed Gold records |
+| A-2 | Silver: Extraction and Validation | ✅ Complete | Parsed text → structured fields in Silver table |
+| A-3 | Gold: Classification and Routing | 🔄 In Progress | Structured fields → classified, routed Gold records |
 | A-4 | Evaluation and Observability | 🔲 Planned | MLflow evaluation across all stages |
 | B | Bedrock Handoff Integration | 🔲 Future | Gold export → live Bedrock consumption |
 
@@ -67,7 +67,7 @@
 
 ## Phase A-2 — Silver: Extraction and Validation
 
-**Status**: In Progress
+**Status**: Complete
 
 **Goal**: Extract structured fields from Bronze parsed text. Validate all extracted records against the Silver schema. Surface validation failures as records, not silent drops. Local-safe implementation uses a deterministic rule-based extractor; Databricks `ai_extract` integration is stubbed as an adapter for future enablement.
 
@@ -96,25 +96,31 @@
 
 ## Phase A-3 — Gold: Classification and Routing
 
-**Status**: Not started
+**Status**: In Progress
 
-**Goal**: Classify Silver records into document type labels and routing labels. Construct the export payload for downstream Bedrock consumption.
+**Goal**: Classify Silver records into document type labels and routing labels. Construct the export payload for downstream Bedrock consumption. Local-safe implementation uses a deterministic rule-based classifier; Databricks `ai_classify` integration is stubbed as an adapter for future enablement.
 
 **Deliverables**:
 
-| Artifact | Path | Description |
-|---|---|---|
-| Classification pipeline | `src/pipelines/gold_classifier.py` | `ai_classify` call with label taxonomy |
-| Label taxonomy | `src/schemas/label_taxonomy.yaml` | Defined document type and routing labels |
-| Gold schema | `src/schemas/gold_schema.py` | Pydantic model for Gold records |
-| Export formatter | `src/utils/export_formatter.py` | Builds the Bedrock handoff payload |
-| Classification eval notebook | `notebooks/eval_gold_classification.ipynb` | MLflow run for classification quality |
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Gold schema | `src/schemas/gold_schema.py` | ✅ Complete | Pydantic v2 model; ExportPayload + ExportProvenance sub-structs; lineage fields |
+| Classification taxonomy | `src/utils/classification_taxonomy.py` | ✅ Complete | Closed label sets for document types and routing; V1 routing map; helpers |
+| Classification config | `src/pipelines/classification_config.yaml` | ✅ Complete | Domain, paths, thresholds, model identifiers — no secrets |
+| Gold classification pipeline | `src/pipelines/classify_gold.py` | ✅ Complete | Classifier abstraction; local rule-based FDA classifier; Databricks adapter stub; export artifact writer |
+| Gold evaluation script | `src/evaluation/eval_gold.py` | ✅ Complete | Separate evaluation; classification success rate, export-ready rate, confidence metrics, label distribution |
+| Expected Gold fixture | `examples/expected_gold_fda_warning_letter.json` | ✅ Complete | Reference Gold record for the sample FDA warning letter |
+| Delta table write | `src/pipelines/classify_gold.py` | 🔲 Deferred | Requires live Databricks runtime; local JSON artifact written instead |
 
 **Completion criteria**:
-- All Silver records with `validation_status != 'invalid'` are classified
-- Each Gold record has a `document_type_label`, `routing_label`, and `export_payload`
-- Export payloads are written as JSON to the Gold Volume path
-- MLflow run reports label distribution, confidence distribution, and export readiness rate
+- ✅ Silver JSON artifact can be processed into a Gold JSON artifact locally
+- ✅ Gold artifact conforms to the Gold schema (Pydantic-validated)
+- ✅ Gold pipeline preserves lineage fields (`document_id`, `bronze_record_id`, `extraction_id`, `pipeline_run_id`)
+- ✅ Export payload JSON artifact is materialized for export-ready records
+- ✅ A separate evaluation script computes required Gold metrics
+- ✅ FDA warning letter is the sole V1 domain — no multi-domain execution
+- 🔲 Delta table write validated on Databricks cluster (deferred)
+- 🔲 MLflow evaluation run with real metrics on Databricks (deferred)
 
 ---
 

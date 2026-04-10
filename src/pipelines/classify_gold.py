@@ -1,0 +1,766 @@
+"""
+classify_gold.py — Gold classification and routing pipeline (Phase A-3)
+
+Reads Silver JSON artifacts produced by extract_silver.py, classifies each
+record into a Gold record (document type label + routing label), assembles
+the export payload, and writes:
+  - one Gold JSON artifact per Silver input record  (output/gold/<gold_record_id>.json)
+  - one export JSON artifact per export-ready record (output/gold/exports/<routing_label>/<document_id>.json)
+
+Only Silver records with validation_status != 'invalid' are eligible for
+classification. All eligible records are classified and written — no silent
+drops. Records that do not meet export readiness criteria are still written
+as Gold records with export_ready=False.
+
+Classification uses a deterministic local baseline classifier (V1 single domain).
+A placeholder adapter for Databricks ai_classify is included as an explicit
+future boundary — it is not active in local execution.
+
+Usage:
+    # Process all Silver artifacts in the default directory
+    python src/pipelines/classify_gold.py --input-dir output/silver
+
+    # Process a single Silver artifact
+    python src/pipelines/classify_gold.py --input output/silver/<record>.json
+
+    # Specify output directory
+    python src/pipelines/classify_gold.py --input-dir output/silver --output-dir output/gold
+
+Outputs:
+    output/gold/<gold_record_id>.json                            — Gold record per Silver input
+    output/gold/exports/<routing_label>/<document_id>.json       — Export payload (if export-ready)
+
+Authoritative contract: docs/data-contracts.md § Gold: AI-Ready Asset Contract
+Architecture context: ARCHITECTURE.md § Gold Layer
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+# Allow running from the repo root without installing as a package.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from src.schemas.gold_schema import (
+    ExportPayload,
+    ExportProvenance,
+    GoldRecord,
+    SCHEMA_VERSION,
+)
+from src.utils.classification_taxonomy import (
+    DOCUMENT_TYPE_FDA_WARNING_LETTER,
+    DOCUMENT_TYPE_UNKNOWN,
+    ROUTING_LABEL_QUARANTINE,
+    resolve_routing_label,
+)
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+DEFAULT_INPUT_DIR = "output/silver"
+DEFAULT_OUTPUT_DIR = "output/gold"
+DEFAULT_EXPORT_DIR = "output/gold/exports"
+LOCAL_PIPELINE_RUN_PREFIX = "local-run"
+LOCAL_CLASSIFICATION_MODEL = "local_rule_classifier/v1"
+PARSED_TEXT_EXCERPT_LENGTH = 2000
+
+# Export readiness thresholds (from docs/data-contracts.md § Downstream AI-Ready Asset Requirements)
+EXPORT_CONFIDENCE_THRESHOLD = 0.70
+EXPORT_SILVER_COVERAGE_THRESHOLD = 0.50
+
+
+# ---------------------------------------------------------------------------
+# Silver artifact loader
+# ---------------------------------------------------------------------------
+
+
+def load_silver_artifact(path: Path) -> dict:
+    """Load and return a Silver record dict from a JSON file."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def collect_silver_paths(input_dir: Optional[Path], input_file: Optional[Path]) -> list[Path]:
+    """Resolve Silver artifact paths to process."""
+    if input_file is not None:
+        if not input_file.exists():
+            raise ValueError(f"Input file does not exist: {input_file}")
+        return [input_file]
+    if input_dir is not None:
+        if not input_dir.is_dir():
+            raise ValueError(f"Input directory does not exist: {input_dir}")
+        paths = sorted(input_dir.glob("*.json"))
+        if not paths:
+            raise ValueError(f"No JSON artifacts found in: {input_dir}")
+        return paths
+    raise ValueError("Provide --input or --input-dir.")
+
+
+def is_eligible_for_classification(silver: dict) -> bool:
+    """
+    Return True if the Silver record should proceed to Gold classification.
+
+    Eligibility: validation_status != 'invalid'.
+    Invalid records have no extractable fields and cannot produce a meaningful
+    classification output.
+    """
+    return silver.get("validation_status") != "invalid"
+
+
+# ---------------------------------------------------------------------------
+# Classifier abstraction
+# ---------------------------------------------------------------------------
+
+
+class DocumentClassifier(ABC):
+    """
+    Strategy interface for document classifiers.
+
+    Implementations return a classification result dict with:
+        - document_type_label: str
+        - classification_confidence: float (0.0–1.0)
+
+    The caller assembles the routing label and Gold record.
+    """
+
+    @abstractmethod
+    def classify(self, silver: dict) -> dict:
+        """
+        Classify a Silver record.
+
+        Returns a dict with keys:
+            document_type_label: str
+            classification_confidence: float
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def model_id(self) -> str:
+        """Stable model identifier written into the Gold record."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Local deterministic FDA classifier
+# ---------------------------------------------------------------------------
+
+
+class LocalFDAWarningLetterClassifier(DocumentClassifier):
+    """
+    Deterministic rule-based classifier for FDA warning letters.
+
+    Classification logic is based on explicit, readable heuristics:
+      1. document_class_hint field from Silver
+      2. Presence and shape of FDA-specific extracted fields
+      3. Silver validation_status
+      4. Silver field_coverage_pct
+
+    Confidence scoring:
+      - Base confidence: 0.60 if any positive signal is present
+      - +0.20 if document_class_hint == 'fda_warning_letter'
+      - +0.10 if validation_status is 'valid'
+      - +0.10 if field_coverage_pct >= 0.70
+      - Maximum: 1.0, minimum for a classified record: 0.60
+
+    This heuristic is intentionally simple, explicit, and stable across runs.
+    It is not statistically calibrated — it is a deterministic rule baseline.
+
+    The active V1 model for local-safe execution.
+    """
+
+    _MODEL_ID = LOCAL_CLASSIFICATION_MODEL
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def classify(self, silver: dict) -> dict:
+        extracted_fields = silver.get("extracted_fields") or {}
+        class_hint = silver.get("document_class_hint") or ""
+        validation_status = silver.get("validation_status") or ""
+        coverage = silver.get("field_coverage_pct") or 0.0
+
+        # --- FDA warning letter signal detection ---
+        # A record is classified as fda_warning_letter if at least two of the
+        # following signals are present. This avoids classifying a bare/empty
+        # Silver record as FDA when there is no evidence.
+
+        signals = []
+
+        if class_hint == "fda_warning_letter":
+            signals.append("class_hint_match")
+
+        # FDA-specific field presence checks
+        fda_fields = {
+            "issuing_office": extracted_fields.get("issuing_office"),
+            "recipient_company": extracted_fields.get("recipient_company"),
+            "violation_type": extracted_fields.get("violation_type"),
+            "corrective_action_requested": extracted_fields.get("corrective_action_requested"),
+            "issue_date": extracted_fields.get("issue_date"),
+        }
+        populated_fda_fields = [
+            k for k, v in fda_fields.items()
+            if v is not None and v != [] and v != ""
+        ]
+        if len(populated_fda_fields) >= 3:
+            signals.append("fda_fields_populated")
+
+        if validation_status in ("valid", "partial"):
+            signals.append("valid_or_partial_extraction")
+
+        if coverage >= 0.50:
+            signals.append("adequate_coverage")
+
+        # --- Classification decision ---
+        if len(signals) >= 2:
+            document_type_label = DOCUMENT_TYPE_FDA_WARNING_LETTER
+            confidence = self._compute_confidence(
+                class_hint=class_hint,
+                validation_status=validation_status,
+                coverage=coverage,
+            )
+        else:
+            document_type_label = DOCUMENT_TYPE_UNKNOWN
+            confidence = 0.0
+
+        return {
+            "document_type_label": document_type_label,
+            "classification_confidence": confidence,
+        }
+
+    def _compute_confidence(
+        self,
+        class_hint: str,
+        validation_status: str,
+        coverage: float,
+    ) -> float:
+        """
+        Compute a deterministic confidence score.
+
+        Base: 0.60 (minimum for a classified non-unknown record)
+        +0.20 if class_hint == 'fda_warning_letter'
+        +0.10 if validation_status == 'valid'
+        +0.10 if field_coverage_pct >= 0.70
+
+        Maximum: 1.0
+        """
+        score = 0.60
+        if class_hint == "fda_warning_letter":
+            score += 0.20
+        if validation_status == "valid":
+            score += 0.10
+        if coverage >= 0.70:
+            score += 0.10
+        return round(min(score, 1.0), 4)
+
+
+# ---------------------------------------------------------------------------
+# Databricks ai_classify adapter (placeholder)
+# ---------------------------------------------------------------------------
+
+
+class DatabricksAiClassifyAdapter(DocumentClassifier):
+    """
+    Adapter placeholder for Databricks ai_classify.
+
+    In a live Databricks execution environment this class would call:
+        spark.sql("SELECT ai_classify(parsed_text, :labels)", ...)
+
+    It is intentionally not implemented here because:
+    1. There is no Spark session available in a local run.
+    2. No credentials or workspace URLs should live in this file.
+
+    To enable Databricks execution, subclass this and inject a SparkSession
+    and the label taxonomy definition.
+    """
+
+    _MODEL_ID = "ai_classify/v1"
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def classify(self, silver: dict) -> dict:
+        raise NotImplementedError(
+            "DatabricksAiClassifyAdapter requires a live Databricks runtime. "
+            "Use LocalFDAWarningLetterClassifier for local execution, or inject "
+            "a SparkSession and override this method for Databricks cluster execution."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Classifier selection
+# ---------------------------------------------------------------------------
+
+
+def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
+    """
+    Return the appropriate classifier for the given document class.
+
+    Currently only FDA warning letters are supported (V1 single domain).
+    Extend this function when adding new document domains in V2+.
+    """
+    if document_class_hint == "fda_warning_letter" or document_class_hint is None:
+        return LocalFDAWarningLetterClassifier()
+    raise ValueError(
+        f"No classifier registered for document_class_hint '{document_class_hint}'. "
+        "V1 supports 'fda_warning_letter' only."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Routing
+# ---------------------------------------------------------------------------
+
+
+def compute_routing_label(
+    document_type_label: str,
+    classification_confidence: float,
+    silver_validation_status: str,
+    silver_coverage: float,
+) -> str:
+    """
+    Assign a routing label based on classification output and Silver quality signals.
+
+    Quarantine if:
+    - document_type_label == 'unknown'
+    - confidence < export threshold
+    - Silver validation_status == 'invalid'
+    - Silver field_coverage_pct < coverage threshold
+
+    Otherwise: route via taxonomy map.
+    """
+    if document_type_label == DOCUMENT_TYPE_UNKNOWN:
+        return ROUTING_LABEL_QUARANTINE
+    if classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
+        return ROUTING_LABEL_QUARANTINE
+    if silver_validation_status == "invalid":
+        return ROUTING_LABEL_QUARANTINE
+    if silver_coverage < EXPORT_SILVER_COVERAGE_THRESHOLD:
+        return ROUTING_LABEL_QUARANTINE
+    return resolve_routing_label(document_type_label)
+
+
+# ---------------------------------------------------------------------------
+# Export readiness
+# ---------------------------------------------------------------------------
+
+
+def compute_export_ready(
+    document_type_label: str,
+    routing_label: str,
+    classification_confidence: float,
+    silver_validation_status: str,
+    silver_coverage: float,
+    export_payload: ExportPayload,
+) -> bool:
+    """
+    Determine whether a Gold record meets all export readiness criteria.
+
+    From docs/data-contracts.md § Downstream AI-Ready Asset Requirements:
+      1. document_type_label != 'unknown'
+      2. routing_label != 'quarantine'
+      3. classification_confidence >= threshold
+      4. Silver validation_status in ('valid', 'partial')
+      5. Silver field_coverage_pct >= threshold
+      6. export_payload is structurally valid (all required fields present)
+    """
+    if document_type_label == DOCUMENT_TYPE_UNKNOWN:
+        return False
+    if routing_label == ROUTING_LABEL_QUARANTINE:
+        return False
+    if classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
+        return False
+    if silver_validation_status not in ("valid", "partial"):
+        return False
+    if silver_coverage < EXPORT_SILVER_COVERAGE_THRESHOLD:
+        return False
+    # Structural validity: required payload fields must be present and non-empty
+    if not export_payload.document_id:
+        return False
+    if not export_payload.document_type:
+        return False
+    if not export_payload.routing_label:
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Export payload builder
+# ---------------------------------------------------------------------------
+
+
+def build_export_payload(
+    silver: dict,
+    bronze_source_file: str,
+    bronze_ingested_at: str,
+    document_type_label: str,
+    routing_label: str,
+    classification_confidence: float,
+    classification_model: str,
+    pipeline_run_id: str,
+) -> ExportPayload:
+    """
+    Assemble the AI-ready export payload from Silver record fields and
+    classification outputs.
+
+    The parsed_text_excerpt is taken from the Silver record's bronze source
+    text if available, defaulting to empty string. In a live Databricks run
+    the Bronze parsed_text would be joined from the Delta table.
+    """
+    parsed_text = silver.get("parsed_text_excerpt") or silver.get("parsed_text") or ""
+    excerpt = parsed_text[:PARSED_TEXT_EXCERPT_LENGTH]
+
+    extracted_fields = silver.get("extracted_fields") or {}
+
+    provenance = ExportProvenance(
+        ingested_at=bronze_ingested_at,
+        pipeline_run_id=pipeline_run_id,
+        extraction_model=silver.get("extraction_model", "unknown"),
+        classification_model=classification_model,
+        classification_confidence=classification_confidence,
+        schema_version=SCHEMA_VERSION,
+    )
+
+    return ExportPayload(
+        document_id=silver["document_id"],
+        source_file=bronze_source_file,
+        document_type=document_type_label,
+        routing_label=routing_label,
+        extracted_fields=extracted_fields,
+        parsed_text_excerpt=excerpt,
+        provenance=provenance,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Gold record assembly
+# ---------------------------------------------------------------------------
+
+
+def assemble_gold_record(
+    silver: dict,
+    bronze_source_file: str,
+    bronze_ingested_at: str,
+    classification_result: dict,
+    classifier_model_id: str,
+    pipeline_run_id: str,
+) -> GoldRecord:
+    """
+    Build a GoldRecord from a Silver record dict and classification output.
+
+    Always produces a record — no silent drops.
+    """
+    gold_record_id = str(uuid.uuid4())
+    classified_at = datetime.now(tz=timezone.utc)
+
+    document_type_label = classification_result["document_type_label"]
+    classification_confidence = classification_result["classification_confidence"]
+
+    silver_validation_status = silver.get("validation_status", "invalid")
+    silver_coverage = silver.get("field_coverage_pct", 0.0)
+
+    routing_label = compute_routing_label(
+        document_type_label=document_type_label,
+        classification_confidence=classification_confidence,
+        silver_validation_status=silver_validation_status,
+        silver_coverage=silver_coverage,
+    )
+
+    export_payload = build_export_payload(
+        silver=silver,
+        bronze_source_file=bronze_source_file,
+        bronze_ingested_at=bronze_ingested_at,
+        document_type_label=document_type_label,
+        routing_label=routing_label,
+        classification_confidence=classification_confidence,
+        classification_model=classifier_model_id,
+        pipeline_run_id=pipeline_run_id,
+    )
+
+    export_ready = compute_export_ready(
+        document_type_label=document_type_label,
+        routing_label=routing_label,
+        classification_confidence=classification_confidence,
+        silver_validation_status=silver_validation_status,
+        silver_coverage=silver_coverage,
+        export_payload=export_payload,
+    )
+
+    return GoldRecord(
+        document_id=silver["document_id"],
+        bronze_record_id=silver["bronze_record_id"],
+        extraction_id=silver["extraction_id"],
+        gold_record_id=gold_record_id,
+        pipeline_run_id=pipeline_run_id,
+        classified_at=classified_at,
+        document_type_label=document_type_label,
+        routing_label=routing_label,
+        classification_confidence=classification_confidence,
+        classification_model=classifier_model_id,
+        export_payload=export_payload,
+        export_ready=export_ready,
+        export_path=None,  # Set after export artifact is written
+        schema_version=SCHEMA_VERSION,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Artifact writers
+# ---------------------------------------------------------------------------
+
+
+def write_gold_artifact(record: GoldRecord, output_dir: Path) -> Path:
+    """Write a Gold record as a JSON artifact named <gold_record_id>.json."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = output_dir / f"{record.gold_record_id}.json"
+    artifact_path.write_text(record.to_json_str(), encoding="utf-8")
+    return artifact_path
+
+
+def write_export_artifact(record: GoldRecord, export_base_dir: Path) -> Path:
+    """
+    Write the export payload as a standalone JSON artifact.
+
+    Path: <export_base_dir>/<routing_label>/<document_id>.json
+
+    This layout allows Bedrock consumers to subscribe to a specific routing
+    label sub-directory without reading the full Gold table.
+    """
+    export_dir = export_base_dir / record.routing_label
+    export_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = export_dir / f"{record.document_id}.json"
+    artifact_path.write_text(record.export_payload.to_json_str(), encoding="utf-8")
+    return artifact_path
+
+
+# ---------------------------------------------------------------------------
+# Bronze metadata resolution
+# ---------------------------------------------------------------------------
+
+
+def resolve_bronze_metadata(silver: dict, bronze_dir: Optional[Path]) -> tuple[str, str]:
+    """
+    Resolve the source_file and ingested_at values from the Bronze record.
+
+    In a live Databricks run these would be joined from the Bronze Delta table.
+    In local execution, we attempt to load the Bronze artifact from the output
+    directory. If not found, we return placeholder values so the pipeline does
+    not fail — the export payload will still be structurally valid.
+
+    Returns (source_file, ingested_at).
+    """
+    bronze_record_id = silver.get("bronze_record_id")
+    if bronze_dir and bronze_record_id:
+        bronze_path = bronze_dir / f"{bronze_record_id}.json"
+        if bronze_path.exists():
+            try:
+                bronze = json.loads(bronze_path.read_text(encoding="utf-8"))
+                return (
+                    bronze.get("file_name") or bronze.get("source_path") or "unknown",
+                    bronze.get("ingested_at") or "",
+                )
+            except Exception:  # noqa: BLE001
+                pass
+    # Fallback — still writes a valid record
+    return "unknown", ""
+
+
+# ---------------------------------------------------------------------------
+# Pipeline run ID
+# ---------------------------------------------------------------------------
+
+
+def generate_pipeline_run_id() -> str:
+    """Generate a local pipeline run ID. Replaced by MLflow run ID in Databricks."""
+    return f"{LOCAL_PIPELINE_RUN_PREFIX}-{uuid.uuid4()}"
+
+
+# ---------------------------------------------------------------------------
+# Top-level pipeline function
+# ---------------------------------------------------------------------------
+
+
+def run_classify_gold(
+    input_dir: Optional[str] = None,
+    input_file: Optional[str] = None,
+    output_dir: str = DEFAULT_OUTPUT_DIR,
+    export_dir: str = DEFAULT_EXPORT_DIR,
+    bronze_dir: Optional[str] = None,
+    pipeline_run_id: Optional[str] = None,
+) -> list[dict]:
+    """
+    Run the Gold classification and routing pipeline.
+
+    Reads Silver JSON artifacts, classifies each eligible record, assembles
+    export payloads, and writes Gold and export artifacts.
+
+    Returns a list of summary dicts (one per processed Silver record).
+    """
+    input_dir_path = Path(input_dir) if input_dir else None
+    input_file_path = Path(input_file) if input_file else None
+    output_dir_path = Path(output_dir)
+    export_dir_path = Path(export_dir)
+    bronze_dir_path = Path(bronze_dir) if bronze_dir else None
+    run_id = pipeline_run_id or generate_pipeline_run_id()
+
+    silver_paths = collect_silver_paths(input_dir_path, input_file_path)
+    print(f"[classify_gold] Found {len(silver_paths)} Silver artifact(s). Run ID: {run_id}")
+
+    summaries = []
+
+    for silver_path in silver_paths:
+        silver = load_silver_artifact(silver_path)
+
+        if not is_eligible_for_classification(silver):
+            print(
+                f"[classify_gold] Skipping {silver_path.name} "
+                f"(validation_status={silver.get('validation_status')})"
+            )
+            continue
+
+        document_class_hint = silver.get("document_class_hint")
+        classifier = select_classifier(document_class_hint)
+
+        try:
+            classification_result = classifier.classify(silver)
+        except NotImplementedError as exc:
+            print(f"[classify_gold] Classifier not available: {exc}", file=sys.stderr)
+            classification_result = {
+                "document_type_label": DOCUMENT_TYPE_UNKNOWN,
+                "classification_confidence": 0.0,
+            }
+        except Exception as exc:  # noqa: BLE001
+            print(f"[classify_gold] Classification error for {silver_path.name}: {exc}", file=sys.stderr)
+            classification_result = {
+                "document_type_label": DOCUMENT_TYPE_UNKNOWN,
+                "classification_confidence": 0.0,
+            }
+
+        source_file, ingested_at = resolve_bronze_metadata(silver, bronze_dir_path)
+
+        gold_record = assemble_gold_record(
+            silver=silver,
+            bronze_source_file=source_file,
+            bronze_ingested_at=ingested_at,
+            classification_result=classification_result,
+            classifier_model_id=classifier.model_id,
+            pipeline_run_id=run_id,
+        )
+
+        gold_artifact_path = write_gold_artifact(gold_record, output_dir_path)
+
+        export_artifact_path = None
+        if gold_record.export_ready:
+            export_artifact_path = write_export_artifact(gold_record, export_dir_path)
+            # Update export_path in the Gold artifact now that we know the path
+            gold_record = gold_record.model_copy(update={"export_path": str(export_artifact_path)})
+            gold_artifact_path.write_text(gold_record.to_json_str(), encoding="utf-8")
+
+        summary = {
+            "document_id": gold_record.document_id,
+            "bronze_record_id": gold_record.bronze_record_id,
+            "extraction_id": gold_record.extraction_id,
+            "gold_record_id": gold_record.gold_record_id,
+            "document_type_label": gold_record.document_type_label,
+            "routing_label": gold_record.routing_label,
+            "classification_confidence": gold_record.classification_confidence,
+            "export_ready": gold_record.export_ready,
+            "pipeline_run_id": run_id,
+            "gold_artifact_path": str(gold_artifact_path),
+            "export_artifact_path": str(export_artifact_path) if export_artifact_path else None,
+        }
+        summaries.append(summary)
+
+        status_tag = "EXPORT-READY" if gold_record.export_ready else "quarantine"
+        print(
+            f"[classify_gold] Gold artifact written → {gold_artifact_path} "
+            f"(label={gold_record.document_type_label}, "
+            f"routing={gold_record.routing_label}, "
+            f"confidence={gold_record.classification_confidence:.2f}, "
+            f"status={status_tag})"
+        )
+        if export_artifact_path:
+            print(f"[classify_gold] Export artifact written → {export_artifact_path}")
+
+    print(f"[classify_gold] Done. {len(summaries)} Gold artifact(s) written.")
+    return summaries
+
+
+# ---------------------------------------------------------------------------
+# CLI entrypoint
+# ---------------------------------------------------------------------------
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="classify_gold",
+        description=(
+            "Classify Silver JSON artifacts into Gold records with document type labels, "
+            "routing labels, and export payloads. Processes FDA warning letters using "
+            "local rule-based classification. Only records with validation_status != 'invalid' "
+            "are processed."
+        ),
+    )
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--input-dir",
+        metavar="DIR",
+        help="Directory containing Silver JSON artifacts to process.",
+    )
+    group.add_argument(
+        "--input",
+        metavar="FILE",
+        help="Single Silver JSON artifact file to process.",
+    )
+    p.add_argument(
+        "--output-dir",
+        default=DEFAULT_OUTPUT_DIR,
+        metavar="DIR",
+        help=f"Directory to write Gold JSON artifacts. Default: {DEFAULT_OUTPUT_DIR}",
+    )
+    p.add_argument(
+        "--export-dir",
+        default=DEFAULT_EXPORT_DIR,
+        metavar="DIR",
+        help=f"Directory to write export payload artifacts. Default: {DEFAULT_EXPORT_DIR}",
+    )
+    p.add_argument(
+        "--bronze-dir",
+        default="output/bronze",
+        metavar="DIR",
+        help="Directory containing Bronze JSON artifacts (for source_file and ingested_at lookup). "
+             "Default: output/bronze",
+    )
+    p.add_argument(
+        "--pipeline-run-id",
+        default=None,
+        metavar="RUN_ID",
+        help="Optional pipeline run ID. Auto-generated if not provided.",
+    )
+    return p
+
+
+def main() -> None:
+    args = _build_arg_parser().parse_args()
+    run_classify_gold(
+        input_dir=args.input_dir,
+        input_file=args.input,
+        output_dir=args.output_dir,
+        export_dir=args.export_dir,
+        bronze_dir=args.bronze_dir,
+        pipeline_run_id=args.pipeline_run_id,
+    )
+
+
+if __name__ == "__main__":
+    main()

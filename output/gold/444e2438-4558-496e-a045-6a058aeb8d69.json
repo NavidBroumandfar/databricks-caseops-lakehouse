@@ -1,0 +1,51 @@
+{
+  "document_id": "27e492cb-f98a-466b-8a07-9ac3e33b3ffa",
+  "bronze_record_id": "980e7949-ba3f-4809-899f-df34f304b8a3",
+  "extraction_id": "9d6277cb-817b-42fb-b414-7443e5c7686c",
+  "gold_record_id": "444e2438-4558-496e-a045-6a058aeb8d69",
+  "pipeline_run_id": "local-run-2dac5ce7-5774-4608-89bc-3cfb5b0c441d",
+  "classified_at": "2026-04-10T14:40:31.591828Z",
+  "document_type_label": "fda_warning_letter",
+  "routing_label": "regulatory_review",
+  "classification_confidence": 1.0,
+  "classification_model": "local_rule_classifier/v1",
+  "export_payload": {
+    "document_id": "27e492cb-f98a-466b-8a07-9ac3e33b3ffa",
+    "source_file": "fda_warning_letter_sample.md",
+    "document_type": "fda_warning_letter",
+    "routing_label": "regulatory_review",
+    "extracted_fields": {
+      "issuing_office": "Central Region \u2014 Chicago District",
+      "recipient_company": "Meridian Pharmaceutical Solutions, Inc",
+      "issue_date": "2025-03-14",
+      "violation_type": [
+        "Failure to Establish Adequate Laboratory Controls (21 CFR \u00a7 211.160(b))",
+        "Inadequate Investigation of Out-of-Specification (OOS) Results (21 CFR \u00a7 211.192)",
+        "Failure to Maintain Adequate Equipment Qualification Records (21 CFR \u00a7 211.68)"
+      ],
+      "corrective_action_requested": true,
+      "recipient_name": "Marcus J. Holloway",
+      "cited_regulations": [
+        "21 CFR Part 210",
+        "21 CFR \u00a7 211.160(b)",
+        "21 CFR \u00a7 211.192",
+        "21 CFR \u00a7 211.68"
+      ],
+      "response_deadline_days": 15,
+      "product_involved": "Amoxicillin Trihydrate Capsules, 500 mg",
+      "summary": "The United States Food and Drug Administration (FDA) inspected your drug manufacturing\nfacility at 4800 Industrial Parkway, Suite 200, Springfield, IL 62704 during the period of\nJanuary 8 through January 22, 2025. This inspection was conducted by investigators from\nthe FDA Chicago District Office."
+    },
+    "parsed_text_excerpt": "",
+    "provenance": {
+      "ingested_at": "2026-04-06T20:13:08.623296+00:00",
+      "pipeline_run_id": "local-run-2dac5ce7-5774-4608-89bc-3cfb5b0c441d",
+      "extraction_model": "local_rule_extractor/v1",
+      "classification_model": "local_rule_classifier/v1",
+      "classification_confidence": 1.0,
+      "schema_version": "v0.1.0"
+    }
+  },
+  "export_ready": true,
+  "export_path": "output/gold/exports/regulatory_review/27e492cb-f98a-466b-8a07-9ac3e33b3ffa.json",
+  "schema_version": "v0.1.0"
+}

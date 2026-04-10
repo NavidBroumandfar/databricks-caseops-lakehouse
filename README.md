@@ -99,7 +99,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Bronze evaluation script | `src/evaluation/eval_bronze.py` | ✅ Complete |
 | Sample FDA warning letter fixture | `examples/fda_warning_letter_sample.md` | ✅ Complete |
 
-**Phase A-2 — Silver extraction and validation** is in progress. The local-safe implementation slice is complete:
+**Phase A-2 — Silver extraction and validation** is complete. The local-safe implementation slice is delivered:
 
 | Deliverable | Path | Status |
 |---|---|---|
@@ -110,7 +110,18 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Silver evaluation script | `src/evaluation/eval_silver.py` | ✅ Complete |
 | Expected Silver fixture | `examples/expected_silver_fda_warning_letter.json` | ✅ Complete |
 
-To run the local Silver demo, see the [Running the Silver Demo](#running-the-silver-demo) section below.
+**Phase A-3 — Gold classification and routing** is in progress. The local-safe implementation slice is delivered:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Gold schema (Pydantic v2) | `src/schemas/gold_schema.py` | ✅ Complete |
+| Classification taxonomy | `src/utils/classification_taxonomy.py` | ✅ Complete |
+| Classification config | `src/pipelines/classification_config.yaml` | ✅ Complete |
+| Gold classification pipeline | `src/pipelines/classify_gold.py` | ✅ Complete |
+| Gold evaluation script | `src/evaluation/eval_gold.py` | ✅ Complete |
+| Expected Gold fixture | `examples/expected_gold_fda_warning_letter.json` | ✅ Complete |
+
+To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -176,6 +187,51 @@ The evaluation script prints an extraction quality summary (validity rate, field
 coverage, required-field null rate) and writes a JSON evaluation artifact to
 `output/eval/`. See `examples/expected_silver_fda_warning_letter.json` for a
 reference fixture showing a successful extraction result.
+
+---
+
+## Running the Gold Demo
+
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
+If you have already run the Bronze and Silver demos, skip steps 2–3.
+
+```bash
+# 1. Install the only required dependency
+pip install pydantic
+
+# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+python src/pipelines/ingest_bronze.py \
+  --input examples/fda_warning_letter_sample.md \
+  --document-class-hint fda_warning_letter \
+  --source-system local_dev
+
+# Artifact is written to output/bronze/<bronze_record_id>.json
+
+# 3. Extract structured fields from Bronze → produces a Silver JSON artifact
+python src/pipelines/extract_silver.py --input-dir output/bronze
+
+# Artifact is written to output/silver/<extraction_id>.json
+
+# 4. Classify Silver records → produces Gold artifacts and export payloads
+python src/pipelines/classify_gold.py \
+  --input-dir output/silver \
+  --bronze-dir output/bronze
+
+# Gold record: output/gold/<gold_record_id>.json
+# Export payload (if export-ready): output/gold/exports/regulatory_review/<document_id>.json
+
+# 5. Run Gold evaluation against all artifacts in the output directory
+python src/evaluation/eval_gold.py --input-dir output/gold
+
+# Optional: evaluate a single artifact
+python src/evaluation/eval_gold.py --input output/gold/<gold_record_id>.json
+```
+
+The evaluation script prints a classification quality summary (success rate,
+export-ready rate, confidence distribution, label distribution) and writes a
+JSON evaluation artifact to `output/eval/`. See
+`examples/expected_gold_fda_warning_letter.json` for a reference fixture showing
+a successful classification and export-ready result.
 
 ---
 
