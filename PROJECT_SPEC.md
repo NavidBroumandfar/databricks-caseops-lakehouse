@@ -172,18 +172,30 @@ Deliverables:
 - 4 documents processed end-to-end from raw PDF to Gold routing record
 - Full `document_id`-based lineage confirmed across all three layers
 - 3 records export-ready; 1 record quarantined (correct governance behavior)
-- `classification_confidence` stored as NULL in this bootstrap implementation (documented; A-4 scope to resolve)
+- `classification_confidence` stored as NULL in this bootstrap implementation (documented; A-4 evaluation layer handles this explicitly)
 
-**Status**: In progress (consolidation task).
+**Status**: Complete.
 
 ### Phase A-4 — Evaluation and Observability Layer
-**Goal**: Formalize evaluation across all layers with MLflow experiments and traceable runs.
+**Goal**: Formalize evaluation across all layers as explicit, rerunnable evaluation passes with structured artifact output and optional MLflow logging.
+
+**Status**: Implemented (this phase).
 
 Deliverables:
-- MLflow experiment structure (one experiment per pipeline stage)
-- Per-document trace records linking Bronze → Silver → Gold
-- Evaluation runner scripts for batch re-evaluation
-- Evaluation summary report template
+- `src/evaluation/eval_bronze.py` — Bronze parse quality evaluation ✅
+- `src/evaluation/eval_silver.py` — Silver extraction quality evaluation ✅
+- `src/evaluation/eval_gold.py` — Gold classification evaluation (null-confidence safe) ✅ Updated A-4
+- `src/evaluation/eval_traceability.py` — Cross-layer traceability evaluation ✅ New A-4
+- `src/evaluation/run_evaluation.py` — Full-pipeline evaluation orchestrator ✅ New A-4
+- `src/evaluation/report_models.py` — Structured evaluation report dataclasses ✅ New A-4
+- `src/evaluation/report_writer.py` — JSON + text report writer ✅ New A-4
+- `tests/` — 84 focused tests covering all evaluators ✅ New A-4
+- `examples/evaluation/README.md` — Usage documentation ✅ New A-4
+- Honest resolution of A-3B tensions: null confidence, placeholder run IDs, bootstrap vs. target-state distinction ✅
+
+**A-4 scope boundaries** (what this phase is and is not):
+- Is: first formal evaluation hardening; explicit metrics; structured artifact output; honest accounting of bootstrap-origin records
+- Is not: full MLflow automation; production orchestration; live Databricks experiment population; confidence extraction fix
 
 ### Phase B (future) — Bedrock Handoff Integration
 **Goal**: Deliver structured Gold assets to a live Bedrock retrieval index or agent workflow.

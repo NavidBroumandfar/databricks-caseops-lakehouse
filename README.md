@@ -87,7 +87,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through A-3** (local-safe implementation) are complete. **Phase A-3B** (personal Databricks bootstrap consolidation) is the current integration milestone.
+**Phases A-0 through A-4** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B) and a full evaluation and observability layer (A-4). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -123,7 +123,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Gold evaluation script | `src/evaluation/eval_gold.py` | ✅ Complete |
 | Expected Gold fixture | `examples/expected_gold_fda_warning_letter.json` | ✅ Complete |
 
-**Phase A-3B — Personal Databricks Bootstrap Consolidation** is in progress. This bridging phase captures a validated personal-workspace end-to-end SQL execution pass against real Databricks AI Functions and public FDA sample documents. It is non-production and does not imply enterprise deployment or MLflow automation.
+**Phase A-3B — Personal Databricks Bootstrap Consolidation** is complete. This bridging phase captured a validated personal-workspace end-to-end SQL execution pass against real Databricks AI Functions and public FDA sample documents. It is non-production and does not imply enterprise deployment or MLflow automation.
 
 | Deliverable | Path | Status |
 |---|---|---|
@@ -148,7 +148,18 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 The quarantine record is a governance signal, not a failure — it confirms rule-based routing is functioning correctly. See [`docs/databricks-bootstrap.md`](./docs/databricks-bootstrap.md) for full details, constraints, and next steps.
 
-**Phase A-4 — Evaluation and Observability** is planned and not yet started.
+**Phase A-4 — Evaluation and Observability** is complete. This phase implements the formal evaluation layer across all pipeline stages:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Traceability evaluator | `src/evaluation/eval_traceability.py` | ✅ Complete |
+| Full-pipeline orchestrator | `src/evaluation/run_evaluation.py` | ✅ Complete |
+| Report models | `src/evaluation/report_models.py` | ✅ Complete |
+| Report writer | `src/evaluation/report_writer.py` | ✅ Complete |
+| A-4 test suite | `tests/` (84 tests) | ✅ Complete |
+| Evaluation usage guide | `examples/evaluation/README.md` | ✅ Complete |
+
+The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
 
@@ -264,6 +275,55 @@ a successful classification and export-ready result.
 
 ---
 
+## Running the A-4 Evaluation Layer
+
+Requires Python 3.9+ and `pydantic` (v2). Run the pipeline demos first to generate artifacts.
+
+```bash
+# Run the full evaluation pass across all three layers
+python src/evaluation/run_evaluation.py \
+  --bronze-dir output/bronze \
+  --silver-dir output/silver \
+  --gold-dir output/gold
+
+# Reports are written to output/eval/:
+#   report_<id>.json  — machine-readable full report
+#   report_<id>.txt   — human-readable summary
+```
+
+Or run individual evaluators:
+
+```bash
+# Bronze: parse quality
+python src/evaluation/eval_bronze.py --input-dir output/bronze
+
+# Silver: extraction quality
+python src/evaluation/eval_silver.py --input-dir output/silver
+
+# Gold: classification quality (null-confidence safe)
+python src/evaluation/eval_gold.py --input-dir output/gold
+
+# Cross-layer traceability
+python src/evaluation/eval_traceability.py \
+  --bronze-dir output/bronze \
+  --silver-dir output/silver \
+  --gold-dir output/gold
+```
+
+Optional MLflow logging (requires `mlflow` installed):
+
+```bash
+python src/evaluation/run_evaluation.py \
+  --bronze-dir output/bronze \
+  --silver-dir output/silver \
+  --gold-dir output/gold \
+  --mlflow
+```
+
+See [`examples/evaluation/README.md`](./examples/evaluation/README.md) for the full evaluation usage guide, including bootstrap-path context (null confidence, placeholder run IDs).
+
+---
+
 ## Repository Structure
 
 ```
@@ -283,11 +343,21 @@ databricks-caseops-lakehouse/
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
-│   ├── evaluation/          # MLflow evaluation runners
+│   ├── evaluation/          # A-4 evaluation runners and report infrastructure
+│   │   ├── eval_bronze.py
+│   │   ├── eval_silver.py
+│   │   ├── eval_gold.py          # Null-confidence safe (A-3B / A-4)
+│   │   ├── eval_traceability.py  # Cross-layer traceability (A-4)
+│   │   ├── run_evaluation.py     # Full-pipeline orchestrator (A-4)
+│   │   ├── report_models.py      # Structured report dataclasses (A-4)
+│   │   └── report_writer.py      # JSON + text report writer (A-4)
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-└── examples/                # Sample documents and expected outputs
+├── tests/                   # A-4 unit tests (84 tests across all evaluators)
+└── examples/
+    ├── evaluation/          # A-4 usage guide
+    └── ...                  # Sample documents and expected outputs
 ```
 
 ---

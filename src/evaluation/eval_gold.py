@@ -1,5 +1,5 @@
 """
-eval_gold.py — Gold classification quality evaluation (Phase A-3)
+eval_gold.py — Gold classification quality evaluation (Phase A-3 / A-4)
 
 Reads one or more Gold JSON artifacts produced by classify_gold.py,
 computes classification quality metrics, prints a readable summary, and writes
@@ -12,6 +12,24 @@ re-evaluation against any Gold snapshot without re-running classification.
 Evaluation metrics align with docs/evaluation-plan.md § 3. Classification Quality (Gold).
 MLflow logging hooks are included but optional; they are no-ops when MLflow
 is not installed or not configured.
+
+## A-3B Bootstrap Path Note
+
+In the validated A-3B Databricks bootstrap, `classification_confidence` is stored as NULL
+because the `ai_classify` SQL AI Function response variant does not expose a scalar
+confidence score via `try_variant_get` at that bootstrap stage.
+
+This evaluator handles null confidence explicitly:
+  - `confidence_null_rate` reports the fraction of records with null confidence.
+  - Confidence-based metrics (mean, low_confidence_rate) are computed only over records
+    with non-null confidence and are reported as None when all records have null confidence.
+  - A threshold warning is emitted when confidence_null_rate > 0 so the condition is
+    visible in every evaluation run, not silently absorbed.
+  - The `export_ready` field is evaluated independently of confidence (rule-based routing
+    in the bootstrap path uses document_type_label, not confidence threshold).
+
+This is not a bug — it is a documented implementation detail of the bootstrap path.
+Resolving confidence extraction from the ai_classify variant is future work.
 
 Usage:
     # Evaluate all Gold artifacts in a directory
@@ -27,7 +45,7 @@ Usage:
     python src/evaluation/eval_gold.py --input-dir output/gold --mlflow
 
 Authoritative evaluation plan: docs/evaluation-plan.md § Classification Quality (Gold)
-Architecture context: ARCHITECTURE.md § Evaluation and Observability Layer
+Architecture context: ARCHITECTURE.md § Gold Bootstrap Implementation Notes (A-3B)
 """
 
 from __future__ import annotations
@@ -128,10 +146,17 @@ def compute_metrics(records: list[dict]) -> dict:
         - unknown_label_rate
         - quarantine_rate
         - export_ready_rate
-        - mean_classification_confidence
-        - low_confidence_rate
+        - confidence_null_rate        (A-4: fraction of records with null confidence)
+        - mean_classification_confidence  (None when all confidence values are null)
+        - low_confidence_rate             (None when all confidence values are null)
         - label_distribution
         - flagged_records
+        - observations                (list of notable non-error conditions, e.g. bootstrap path)
+
+    Null confidence handling (A-3B bootstrap path):
+        When classification_confidence is NULL for all records (as occurs in the validated
+        A-3B Databricks bootstrap), confidence-based metrics are reported as None rather
+        than falsely computed. An observation entry is added to document this condition.
     """
     total = len(records)
     if total == 0:
@@ -148,24 +173,42 @@ def compute_metrics(records: list[dict]) -> dict:
     )
     export_ready_count = sum(1 for r in records if r.get("export_ready") is True)
 
-    # Confidence values
+    # Confidence values — null-safe
+    null_confidence_count = sum(
+        1 for r in records if r.get("classification_confidence") is None
+    )
     confidence_values = [
         r["classification_confidence"]
         for r in records
         if r.get("classification_confidence") is not None
     ]
-    mean_confidence = (
-        round(statistics.mean(confidence_values), 4) if confidence_values else None
-    )
-    low_confidence_count = sum(
-        1 for v in confidence_values if v < LOW_CONFIDENCE_THRESHOLD
-    )
+    confidence_null_rate = round(null_confidence_count / total, 4)
+
+    mean_confidence: Optional[float]
+    low_confidence_rate_val: Optional[float]
+
+    if confidence_values:
+        mean_confidence = round(statistics.mean(confidence_values), 4)
+        low_confidence_count = sum(
+            1 for v in confidence_values if v < LOW_CONFIDENCE_THRESHOLD
+        )
+        # Denominator is records with non-null confidence (not total), to avoid
+        # artificially inflating the rate for bootstrap-path records.
+        low_confidence_rate_val = round(
+            low_confidence_count / len(confidence_values), 4
+        )
+    else:
+        mean_confidence = None
+        low_confidence_rate_val = None
 
     # Label distribution
     label_dist = _compute_label_distribution(records)
 
     # Flagged records
     flagged = _identify_flagged_records(records)
+
+    # Observations — non-error conditions worth surfacing
+    observations = _build_observations(records, confidence_null_rate)
 
     return {
         "evaluated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -174,11 +217,13 @@ def compute_metrics(records: list[dict]) -> dict:
         "unknown_label_rate": round(unknown_count / total, 4),
         "quarantine_rate": round(quarantine_count / total, 4),
         "export_ready_rate": round(export_ready_count / total, 4),
+        "confidence_null_rate": confidence_null_rate,
         "mean_classification_confidence": mean_confidence,
-        "low_confidence_rate": round(low_confidence_count / total, 4) if total else None,
+        "low_confidence_rate": low_confidence_rate_val,
         "label_distribution": label_dist,
         "flagged_record_count": len(flagged),
         "flagged_records": flagged,
+        "observations": observations,
     }
 
 
@@ -198,6 +243,40 @@ def _compute_label_distribution(records: list[dict]) -> list[dict]:
         }
         for label, count in counter.most_common()
     ]
+
+
+def _build_observations(records: list[dict], confidence_null_rate: float) -> list[str]:
+    """
+    Build a list of notable non-error observations for this evaluation run.
+
+    Observations are informational — they do not trigger threshold failures but
+    surface implementation details that affect metric interpretation.
+    """
+    observations = []
+
+    if confidence_null_rate > 0.0:
+        observations.append(
+            f"confidence_null_rate={confidence_null_rate:.2%}: "
+            f"{int(confidence_null_rate * len(records))} of {len(records)} records have "
+            "null classification_confidence. This is expected for records produced by "
+            "the A-3B Databricks bootstrap SQL path (ai_classify variant does not expose "
+            "a scalar confidence score). Confidence-based metrics are computed only over "
+            "records with non-null confidence values."
+        )
+
+    placeholder_run_ids = [
+        r.get("pipeline_run_id", "")
+        for r in records
+        if r.get("pipeline_run_id") == "bootstrap_sql_v1"
+    ]
+    if placeholder_run_ids:
+        observations.append(
+            f"{len(placeholder_run_ids)} record(s) carry pipeline_run_id='bootstrap_sql_v1' "
+            "(placeholder, not a real MLflow run ID). These records originated from the "
+            "A-3B bootstrap SQL execution, not from a tracked MLflow pipeline run."
+        )
+
+    return observations
 
 
 def _identify_flagged_records(records: list[dict]) -> list[dict]:
@@ -255,6 +334,7 @@ def check_thresholds(metrics: dict) -> list[str]:
     err = metrics.get("export_ready_rate")
     mc = metrics.get("mean_classification_confidence")
     lcr = metrics.get("low_confidence_rate")
+    cnr = metrics.get("confidence_null_rate")
 
     if csr is not None and csr < TARGET_CLASSIFICATION_SUCCESS_RATE:
         warnings.append(
@@ -287,6 +367,12 @@ def check_thresholds(metrics: dict) -> list[str]:
         warnings.append(
             f"low_confidence_rate {lcr:.2%} exceeds target {TARGET_LOW_CONFIDENCE_RATE:.2%}"
         )
+    if cnr is not None and cnr > 0.0:
+        warnings.append(
+            f"confidence_null_rate={cnr:.2%}: classification_confidence is null for "
+            f"{cnr:.0%} of records. Confidence-based thresholds not evaluated for those "
+            "records. See observations for context (likely bootstrap SQL path)."
+        )
     return warnings
 
 
@@ -311,16 +397,28 @@ def print_evaluation_summary(metrics: dict, warnings: list[str]) -> None:
     print()
     mc = metrics.get("mean_classification_confidence")
     lcr = metrics.get("low_confidence_rate")
+    cnr = metrics.get("confidence_null_rate")
+    print(
+        f"  Confidence null rate      : {cnr:.2%}" if cnr is not None
+        else "  Confidence null rate      : N/A"
+    )
     print(
         f"  Mean confidence           : {mc:.2%}" if mc is not None
-        else "  Mean confidence           : N/A"
+        else "  Mean confidence           : N/A (all null — bootstrap path)"
     )
     print(
         f"  Low confidence rate       : {lcr:.2%}" if lcr is not None
-        else "  Low confidence rate       : N/A"
+        else "  Low confidence rate       : N/A (all null — bootstrap path)"
     )
     print()
     print(f"  Flagged records           : {metrics.get('flagged_record_count', 0)}")
+
+    observations = metrics.get("observations", [])
+    if observations:
+        print()
+        print("  Observations:")
+        for obs in observations:
+            print(f"    [note] {obs}")
 
     label_dist = metrics.get("label_distribution", [])
     if label_dist:
@@ -385,6 +483,7 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
             "unknown_label_rate",
             "quarantine_rate",
             "export_ready_rate",
+            "confidence_null_rate",
             "mean_classification_confidence",
             "low_confidence_rate",
         ]

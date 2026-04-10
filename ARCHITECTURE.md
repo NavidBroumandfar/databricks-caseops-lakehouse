@@ -172,9 +172,25 @@ The export quality threshold defined in `docs/data-contracts.md` (requiring `cla
 Pipeline runs and evaluation runs are distinct MLflow runs with separate concerns:
 
 - **Pipeline runs** log operational metadata (batch size, document counts, run ID) and write `pipeline_run_id` to every output record.
-- **Evaluation runs** consume Delta table snapshots and compute quality metrics (parse success rate, field coverage, classification confidence, traceability completeness). Evaluation is never performed inline during pipeline execution.
+- **Evaluation runs** consume artifact snapshots and compute quality metrics (parse success rate, field coverage, classification confidence, traceability completeness). Evaluation is never performed inline during pipeline execution.
 
 Metrics are recorded at the **run level** (batch summary) and linked at the **record level** via `pipeline_run_id`.
+
+### A-4 Implementation Status
+
+Phase A-4 is implemented. The following evaluation assets are now first-class repo components:
+
+| Script | Purpose | Status |
+|---|---|---|
+| `src/evaluation/eval_bronze.py` | Bronze parse quality | ✅ Implemented |
+| `src/evaluation/eval_silver.py` | Silver extraction quality | ✅ Implemented |
+| `src/evaluation/eval_gold.py` | Gold classification quality (null-confidence safe) | ✅ Updated A-4 |
+| `src/evaluation/eval_traceability.py` | Cross-layer traceability | ✅ Implemented A-4 |
+| `src/evaluation/run_evaluation.py` | Full-pipeline orchestrator | ✅ Implemented A-4 |
+| `src/evaluation/report_models.py` | Structured report dataclasses | ✅ Implemented A-4 |
+| `src/evaluation/report_writer.py` | JSON + text report writer | ✅ Implemented A-4 |
+
+All evaluators are locally executable. MLflow logging is optional and does not require a live Databricks workspace.
 
 ### MLflow Experiment Structure
 
@@ -183,19 +199,30 @@ Metrics are recorded at the **run level** (batch summary) and linked at the **re
 | `caseops/bronze/parse_quality` | Bronze | parse success rate, char yield, parse latency |
 | `caseops/silver/extraction_quality` | Silver | field coverage %, schema validity rate, extraction model used |
 | `caseops/gold/classification_quality` | Gold | label distribution, confidence distribution, export readiness rate |
-| `caseops/pipeline/end_to_end` | All | document drop rate by stage, total pipeline latency |
+| `caseops/pipeline/traceability` | All | link rates, orphan counts, placeholder run ID count |
+| `caseops/pipeline/end_to_end` | All | document drop rate by stage, cross-layer summary |
 
 ### Traceability
 
 Every Bronze, Silver, and Gold record carries:
 - `document_id` — stable identifier from ingest
-- `pipeline_run_id` — MLflow run ID of the batch that produced this record
+- `pipeline_run_id` — MLflow run ID of the batch that produced this record (or a placeholder for bootstrap-origin records)
 
 This enables full lineage reconstruction: given any Gold record, the Silver extraction, Bronze parse, and source file can be retrieved deterministically.
 
 ### Evaluation Runs
 
-Evaluation is performed as **explicit MLflow runs**, not inline during pipeline execution. Evaluation scripts in `src/evaluation/` consume Delta table snapshots and emit evaluation metrics to the appropriate experiment. This keeps the pipeline logic clean and allows re-evaluation without re-running the pipeline.
+Evaluation is performed as **explicit, rerunnable passes**, not inline during pipeline execution. Evaluation scripts in `src/evaluation/` consume local JSON artifact snapshots and emit evaluation metrics. MLflow logging is available when configured. This keeps the pipeline logic clean and allows re-evaluation without re-running the pipeline.
+
+### A-3B Bootstrap Evaluation Context
+
+The validated A-3B Databricks bootstrap execution is tracked as an explicit context in the evaluation layer:
+
+- **`classification_confidence` is NULL in bootstrap Gold records.** The evaluator surfaces this via `confidence_null_rate` and `observations` rather than hiding it. Confidence-based thresholds are not fired when confidence is null.
+- **`pipeline_run_id = 'bootstrap_sql_v1'` in bootstrap records.** This is a placeholder, not a real MLflow run ID. The traceability evaluator reports `placeholder_run_id_count` explicitly. Document lineage via `document_id` remains intact.
+- **Evaluation still produces meaningful signals from bootstrap records:** classification success rate, export-ready rate, quarantine rate, and cross-layer link completeness are all computable even when confidence is null.
+
+See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details.
 
 ---
 

@@ -211,8 +211,53 @@ All evaluation runs log:
 
 | Evaluator | Implementation Path | Status |
 |---|---|---|
-| Bronze parse quality | `src/evaluation/eval_bronze.py` | Planned (Phase A-1) |
-| Silver extraction quality | `src/evaluation/eval_silver.py` | Planned (Phase A-2) |
-| Gold classification quality | `src/evaluation/eval_gold.py` | Planned (Phase A-3) |
-| Traceability completeness | `src/evaluation/eval_traceability.py` | Planned (Phase A-4) |
-| End-to-end summary | `src/evaluation/run_evaluation.py` | Planned (Phase A-4) |
+| Bronze parse quality | `src/evaluation/eval_bronze.py` | ✅ Implemented (A-4) |
+| Silver extraction quality | `src/evaluation/eval_silver.py` | ✅ Implemented (A-4) |
+| Gold classification quality | `src/evaluation/eval_gold.py` | ✅ Implemented (A-4, null-confidence safe) |
+| Traceability completeness | `src/evaluation/eval_traceability.py` | ✅ Implemented (A-4) |
+| End-to-end orchestrator | `src/evaluation/run_evaluation.py` | ✅ Implemented (A-4) |
+| Report models | `src/evaluation/report_models.py` | ✅ Implemented (A-4) |
+| Report writer | `src/evaluation/report_writer.py` | ✅ Implemented (A-4) |
+
+All evaluators are locally executable against JSON artifacts with no Databricks workspace required. MLflow logging is supported but optional.
+
+---
+
+## A-3B Bootstrap Path — Evaluation Handling
+
+Records produced by the A-3B Databricks bootstrap SQL execution have two documented implementation details that affect evaluation:
+
+### 1. Null `classification_confidence`
+
+`classification_confidence` is stored as `NULL` in the A-3B bootstrap Gold records. The `ai_classify` SQL AI Function response variant does not expose a scalar confidence score via `try_variant_get` at this bootstrap stage.
+
+**How the evaluator handles this:**
+- `confidence_null_rate` metric reports the fraction of records with null confidence.
+- `mean_classification_confidence` and `low_confidence_rate` are computed only over records with non-null confidence, and reported as `None` when all confidence values are null.
+- A threshold warning is emitted when `confidence_null_rate > 0` so the condition is always visible.
+- Confidence-based threshold checks (`mean_classification_confidence < 0.75`, `low_confidence_rate > 0.20`) are **not fired** when confidence is null — they are simply skipped, with the null rate warning taking their place.
+- An `observations` entry is added to the evaluation artifact explaining the bootstrap path origin.
+
+**What Gold evaluation still measures for bootstrap records:**
+- `classification_success_rate` (document_type_label != 'unknown')
+- `export_ready_rate`
+- `quarantine_rate`
+- `unknown_label_rate`
+- `label_distribution`
+- Flagged records: `export_ready=False`, `document_type_label='unknown'`
+
+These signal that routing logic functioned correctly even without scalar confidence.
+
+### 2. Placeholder `pipeline_run_id`
+
+The A-3B bootstrap uses `pipeline_run_id = 'bootstrap_sql_v1'` as a placeholder string, not a real MLflow run ID.
+
+**How the evaluator handles this:**
+- `placeholder_run_id_count` metric in `eval_traceability.py` explicitly counts these records.
+- They are NOT treated as broken provenance (`pipeline_run_id_coverage` stays 1.0 — the field is present, just not an MLflow ID).
+- An observation entry documents the distinction.
+- Orphan detection still works: `document_id`-based lineage across Bronze → Silver → Gold is intact regardless of the placeholder run ID.
+
+### 3. `_smoke` table naming
+
+The A-3B bootstrap produced `extracted_records_smoke` and `ai_ready_assets_smoke` tables, not the target-state `extracted_records` and `ai_ready_assets` names. Local evaluation artifacts use the target-state naming throughout (via the Python pipeline). The `_smoke` suffix is Databricks-only and bootstrap-specific; it does not affect local evaluation correctness.

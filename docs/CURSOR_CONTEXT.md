@@ -55,15 +55,29 @@ When starting any task in this repository, always read files in this exact order
 - A-2: Silver extraction and validation (local-safe)
 - A-3: Gold classification and routing (local-safe)
 
-**Phase A-3B — Personal Databricks Bootstrap Consolidation** is the current integration task.
-This phase captures a validated personal-workspace Databricks SQL execution pass (Bronze → Silver → Gold)
-using real AI Functions and public FDA sample documents. It is non-production. See
-[`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) for full details.
+**Phase A-3B — Personal Databricks Bootstrap Consolidation** is complete.
+This phase captured a validated personal-workspace Databricks SQL execution pass (Bronze → Silver → Gold)
+using real AI Functions (`ai_parse_document`, `ai_extract`, `ai_classify`) and public FDA sample documents.
+Key outcome: 4 documents processed end-to-end, full document_id lineage confirmed, 3 export-ready,
+1 quarantined. Known implementation detail: `classification_confidence` is NULL in the bootstrap SQL path.
+See [`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) for full details.
 
-**Phase A-4 — Evaluation and Observability** is planned next after A-3B consolidation is complete.
-A-4 scope: MLflow experiment structure, per-document trace records, evaluation runner scripts.
+**Phase A-4 — Evaluation and Observability** is the current active phase and is implemented.
+Deliverables include: evaluation runners for all four quality dimensions (Bronze, Silver, Gold,
+Traceability), a full-pipeline orchestrator, structured report models, JSON + text report writer,
+84 focused tests, and explicit handling of the A-3B bootstrap tensions (null confidence, placeholder
+run IDs, bootstrap vs. target-state contract distinction).
 
-See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap.
+See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
+
+## Known A-3B / A-4 Tensions (Resolved in A-4)
+
+| Tension | Resolution |
+|---|---|
+| `classification_confidence` NULL in bootstrap Gold | Evaluator surfaces `confidence_null_rate`, skips confidence thresholds when null, adds observations |
+| `pipeline_run_id = 'bootstrap_sql_v1'` (placeholder) | Traceability evaluator reports `placeholder_run_id_count`; not treated as broken provenance |
+| `_smoke` table naming in Databricks | Documented as bootstrap-specific; local evaluation artifacts use target-state naming |
+| `export_ready` threshold includes `confidence >= 0.7` | Target-state only; bootstrap path uses rule-based routing without confidence threshold |
 
 ---
 

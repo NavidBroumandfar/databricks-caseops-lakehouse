@@ -166,22 +166,39 @@ Routing labels determine which Bedrock downstream system receives the Gold expor
 
 Written after classification and routing are complete.
 
+> **Two states of this contract are in effect.** The target-state contract below reflects the full intended schema including scalar confidence. The A-3B bootstrap-stage implementation note below documents where the current validated Databricks execution deviates from this target. Both are explicit and honest.
+
+### Target-State Contract
+
 | Field | Type | Required | Constraints | Description |
 |---|---|---|---|---|
 | `document_id` | string (UUID v4) | Yes | FK to Bronze | Matches source document |
 | `bronze_record_id` | string (UUID v4) | Yes | FK to Bronze record | Matches the parse record that fed this document through the pipeline |
 | `extraction_id` | string (UUID v4) | Yes | FK to Silver | Matches the extraction record |
 | `gold_record_id` | string (UUID v4) | Yes | Unique | Unique identifier for this Gold record |
-| `pipeline_run_id` | string | Yes | MLflow run ID | Traceability |
+| `pipeline_run_id` | string | Yes | MLflow run ID | Traceability to the pipeline batch that produced this record |
 | `classified_at` | timestamp | Yes | UTC | Time classification completed |
 | `document_type_label` | string | Yes | From defined taxonomy | Primary classification label |
 | `routing_label` | string | Yes | From defined taxonomy | Target downstream system |
-| `classification_confidence` | float | Yes | 0.0 – 1.0 | `ai_classify` confidence score |
+| `classification_confidence` | float | **Target: Yes** | 0.0 – 1.0 | `ai_classify` confidence score. **Nullable in bootstrap stage — see note below.** |
 | `classification_model` | string | Yes | | Model used for classification |
 | `export_payload` | struct | Yes | | Full AI-ready payload (see below) |
 | `export_ready` | boolean | Yes | | True if record meets export quality threshold |
 | `export_path` | string | If export_ready | Volume path | Path to the materialized JSON export file |
 | `schema_version` | string | Yes | Semantic version | Contract version |
+
+### A-3B Bootstrap-Stage Implementation Note
+
+The validated A-3B Databricks bootstrap implementation deviates from the target-state contract in two documented ways:
+
+**`classification_confidence` is NULL:**
+The `ai_classify` SQL AI Function response variant at the A-3B bootstrap stage does not expose a scalar confidence score via `try_variant_get`. `classification_confidence` is stored as `CAST(NULL AS DOUBLE)`. This is a known implementation gap in the bootstrap SQL path, not a hidden defect. Evaluation logic in `src/evaluation/eval_gold.py` handles null confidence explicitly (see `docs/evaluation-plan.md` § A-3B Bootstrap Path for details).
+
+**`pipeline_run_id = 'bootstrap_sql_v1'`:**
+The A-3B bootstrap uses a static placeholder string rather than a real MLflow run ID. Lineage via `document_id` is intact. Traceability evaluation surfaces these records explicitly via `placeholder_run_id_count` rather than treating them as orphans.
+
+**Export quality threshold in the bootstrap path:**
+The export-ready determination in the A-3B bootstrap SQL uses rule-based routing (`document_type_label = 'fda_warning_letter'` → `regulatory_review`), not the confidence threshold defined below. The confidence-based threshold is the target-state standard.
 
 ### Export Payload Structure
 
@@ -226,7 +243,9 @@ Given any `document_id`, the full Bronze → Silver → Gold lineage is reconstr
 
 ## 7. Downstream AI-Ready Asset Requirements
 
-For a Gold record to be marked `export_ready = true`, it must satisfy all of the following:
+### Target-State Export Quality Threshold
+
+For a Gold record to be marked `export_ready = true` in the target-state pipeline, it must satisfy all of the following:
 
 - `document_type_label != 'unknown'`
 - `routing_label != 'quarantine'`
@@ -236,3 +255,12 @@ For a Gold record to be marked `export_ready = true`, it must satisfy all of the
 - `export_payload` is structurally valid (all required payload fields present)
 
 Records that fail these criteria are written to Gold with `export_ready = false` and `routing_label = 'quarantine'`.
+
+### Bootstrap-Stage Export Quality (A-3B)
+
+The A-3B bootstrap SQL does not apply the `classification_confidence >= 0.7` threshold because `classification_confidence` is NULL in the bootstrap implementation (see § 5 above). Export readiness in the bootstrap path is determined by rule-based routing:
+
+- Records classified as `fda_warning_letter` → `routing_label = 'regulatory_review'` → `export_ready = true`
+- All other classification results → `routing_label = 'quarantine'` → `export_ready = false`
+
+This is a documented implementation constraint of the bootstrap stage, not the intended long-term behavior. The confidence-based threshold is the target for when `ai_classify` confidence extraction is resolved.
