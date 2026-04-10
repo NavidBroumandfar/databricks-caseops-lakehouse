@@ -179,7 +179,7 @@ Deliverables:
 ### Phase A-4 — Evaluation and Observability Layer
 **Goal**: Formalize evaluation across all layers as explicit, rerunnable evaluation passes with structured artifact output and optional MLflow logging.
 
-**Status**: Implemented (this phase).
+**Status**: Complete.
 
 Deliverables:
 - `src/evaluation/eval_bronze.py` — Bronze parse quality evaluation ✅
@@ -197,10 +197,24 @@ Deliverables:
 - Is: first formal evaluation hardening; explicit metrics; structured artifact output; honest accounting of bootstrap-origin records
 - Is not: full MLflow automation; production orchestration; live Databricks experiment population; confidence extraction fix
 
-### Phase B (future) — Bedrock Handoff Integration
-**Goal**: Deliver structured Gold assets to a live Bedrock retrieval index or agent workflow.
+### Phase A-4.1 — Runtime Validation Checkpoint
+**Goal**: Direct runtime inspection of the A-3B bootstrap tables in the personal Databricks workspace to confirm evaluator assumptions and close the loop between platform behavior and repo documentation.
 
-Scope to be defined when Bedrock CaseOps interface is stabilized.
+**Status**: Complete (documented validation sub-step following A-4).
+
+Key findings:
+- `ai_classify` output variant confirmed to contain only `error_message` and `response` — no scalar confidence key at any tested extraction path
+- Gold routing confirmed: 3 records `fda_warning_letter` → `regulatory_review` (`export_ready = true`); 1 record `unknown` → `quarantine` (`export_ready = false`)
+- Null-confidence handling in `eval_gold.py` confirmed correct for this bootstrap path
+
+This is not a separate major phase. It is a runtime validation checkpoint that closes the A-4 evaluation loop. Full findings are recorded in `docs/databricks-bootstrap.md` § A-4.1 and `ARCHITECTURE.md` § A-4.1 Runtime Inspection Findings.
+
+### Phase B-0 — Bedrock Handoff Contract Preparation
+**Goal**: Define and deliver the formal handoff contract between this pipeline's Gold export and a live Bedrock retrieval index or agent workflow. Includes export schema finalization, delivery mechanism specification, and interface agreement with Bedrock CaseOps.
+
+**Status**: Not started. Scope to be defined when Bedrock CaseOps interface is stabilized.
+
+This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). It does not include live integration — that is Phase B proper.
 
 ---
 

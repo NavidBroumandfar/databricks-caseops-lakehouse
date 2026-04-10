@@ -89,7 +89,7 @@ Capture the full parse output of each source document along with provenance meta
 | `char_count` | int | Character count of parsed text |
 | `pipeline_run_id` | string | MLflow run ID for traceability |
 
-Planned implementation: `src/schemas/bronze_schema.py`
+Implementation: `src/schemas/bronze_schema.py`
 
 ---
 
@@ -121,9 +121,9 @@ Transform parsed text into a validated, schema-conformant record of structured f
 | `extraction_model` | string | Model identifier used by `ai_extract` |
 | `pipeline_run_id` | string | MLflow run ID for traceability |
 
-Domain-specific field sets (e.g., `fda_warning_letter_fields`) are planned for implementation in `src/schemas/`. V1 implements the FDA warning letter field set only.
+Domain-specific field sets (e.g., `fda_warning_letter_fields`) are implemented in `src/schemas/`. V1 implements the FDA warning letter field set only.
 
-Planned implementation: `src/schemas/silver_schema.py`
+Implementation: `src/schemas/silver_schema.py`
 
 ---
 
@@ -154,13 +154,13 @@ Assign a verified document type label and routing label to each Silver record, a
 | `export_ready` | boolean | Whether record meets export quality threshold |
 | `pipeline_run_id` | string | MLflow run ID for traceability |
 
-Planned implementation: `src/schemas/gold_schema.py`
+Implementation: `src/schemas/gold_schema.py`
 
 ### Gold Bootstrap Implementation Notes (A-3B)
 
 The validated A-3B bootstrap SQL implements rule-based routing: the `routing_label` is derived directly from the `ai_classify` response label rather than from a confidence threshold. Records classified as `fda_warning_letter` are routed to `regulatory_review`; all other results are routed to `quarantine`.
 
-`classification_confidence` is stored as `CAST(NULL AS DOUBLE)` in the A-3B bootstrap implementation. The `ai_classify` SQL AI Function response variant at this bootstrap stage does not expose a scalar confidence score via `try_variant_get`. This is an explicitly documented implementation detail, not a hidden gap. Resolving confidence extraction is A-4 scope.
+`classification_confidence` is stored as `CAST(NULL AS DOUBLE)` in the A-3B bootstrap implementation. The `ai_classify` SQL AI Function response variant at this bootstrap stage does not expose a scalar confidence score via `try_variant_get`. This is an explicitly documented implementation detail, not a hidden gap. Phase A-4.1 runtime inspection confirmed that scalar confidence is not available from this bootstrap SQL path; see A-4.1 Runtime Inspection Findings below.
 
 The export quality threshold defined in `docs/data-contracts.md` (requiring `classification_confidence >= 0.7`) applies to the target-state pipeline, not to this bootstrap pass.
 

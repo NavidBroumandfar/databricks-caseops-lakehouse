@@ -124,10 +124,7 @@ This is an intended governance signal, not a pipeline failure. It confirms the r
 
 The `classification_confidence` field is stored as `CAST(NULL AS DOUBLE)` in the Gold smoke table. The `ai_classify` SQL AI Function, as called in this bootstrap implementation, does not return a scalar confidence score in the response variant at this stage. This is a known, explicitly documented bootstrap-stage implementation detail.
 
-This does not indicate a bug or hidden failure. The A-4 evaluation phase will address:
-- Whether a confidence score is extractable from the `document_type_result` variant
-- How to instrument classification quality evaluation in MLflow without a scalar confidence value
-- Whether to use a proxy confidence measure or a different evaluation approach
+This does not indicate a bug or hidden failure. Phase A-4.1 runtime inspection confirmed that no scalar confidence score is extractable from the `document_type_result` variant in this bootstrap SQL path (see § A-4.1 Runtime Validation Findings below). The A-4 evaluation layer handles this explicitly via `confidence_null_rate` observability and null-safe confidence metrics — see `src/evaluation/eval_gold.py` and `docs/evaluation-plan.md` § A-3B Bootstrap Path.
 
 ---
 
@@ -222,11 +219,15 @@ The only Databricks-specific artifact committed to this repo is the example reso
 
 ## Next Steps
 
-A-3B consolidation is complete when:
+A-3B consolidation is complete:
 
-- [ ] All five SQL bootstrap files are committed under `notebooks/bootstrap/`
-- [ ] `config/databricks.resources.example.yml` is committed
-- [ ] This documentation file is committed
-- [ ] `PROJECT_SPEC.md`, `ARCHITECTURE.md`, `README.md`, `docs/roadmap.md`, and `docs/CURSOR_CONTEXT.md` are updated to reflect A-3B
+- [x] All five SQL bootstrap files are committed under `notebooks/bootstrap/`
+- [x] `config/databricks.resources.example.yml` is committed
+- [x] This documentation file is committed
+- [x] `PROJECT_SPEC.md`, `ARCHITECTURE.md`, `README.md`, `docs/roadmap.md`, and `docs/CURSOR_CONTEXT.md` are updated to reflect A-3B
 
-A-4 begins after this consolidation. A-4 scope: MLflow experiment structure, per-document trace records, evaluation runner scripts, and evaluation summary reporting across all three layers.
+Phase A-4 (Evaluation and Observability) is complete. Evaluation runners for all four quality dimensions are implemented in `src/evaluation/`. MLflow logging is optional and available.
+
+Phase A-4.1 (Runtime Validation Checkpoint) is complete. Findings are recorded above. Null-confidence evaluator handling is confirmed correct for this bootstrap path.
+
+Phase B-0 (Bedrock Handoff Contract Preparation) is the next phase and has not started.

@@ -47,9 +47,11 @@ When starting any task in this repository, always read files in this exact order
 
 ---
 
-## Active Phase
+## Current Status
 
-**Phases A-0 through A-3** (local-safe implementation) are complete:
+**Phases A-0 through A-4 are complete.** The repo is in a post-A-4.1 documentation alignment state, positioned for Phase B-0.
+
+**A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
 - A-1: Bronze ingestion and parsing pipeline (local-safe)
 - A-2: Silver extraction and validation (local-safe)
@@ -62,11 +64,22 @@ Key outcome: 4 documents processed end-to-end, full document_id lineage confirme
 1 quarantined. Known implementation detail: `classification_confidence` is NULL in the bootstrap SQL path.
 See [`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) for full details.
 
-**Phase A-4 — Evaluation and Observability** is the current active phase and is implemented.
-Deliverables include: evaluation runners for all four quality dimensions (Bronze, Silver, Gold,
-Traceability), a full-pipeline orchestrator, structured report models, JSON + text report writer,
-84 focused tests, and explicit handling of the A-3B bootstrap tensions (null confidence, placeholder
-run IDs, bootstrap vs. target-state contract distinction).
+**Phase A-4 — Evaluation and Observability** is complete.
+Deliverables: evaluation runners for all four quality dimensions (Bronze, Silver, Gold, Traceability),
+a full-pipeline orchestrator, structured report models, JSON + text report writer, 84 focused tests,
+and explicit handling of A-3B bootstrap tensions (null confidence, placeholder run IDs,
+bootstrap vs. target-state contract distinction).
+
+**Phase A-4.1 — Runtime Validation Checkpoint** is complete.
+A direct runtime inspection of the A-3B bootstrap tables confirmed: scalar `classification_confidence`
+is not available from the validated `ai_classify` bootstrap SQL path (no confidence key present in the
+response variant at any tested path); Gold routing behavior matched expectations (3 export-ready,
+1 quarantined). This is a validation sub-step, not a separate major phase.
+See [`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) § A-4.1 for full findings.
+
+**Phase B-0 — Bedrock Handoff Contract Preparation** is the next phase and has not started.
+Do not treat B-0 as active or underway. Scope will be defined when the Bedrock CaseOps interface
+is stabilized.
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

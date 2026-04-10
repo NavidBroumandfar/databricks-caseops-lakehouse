@@ -15,8 +15,9 @@
 | A-2 | Silver: Extraction and Validation | ✅ Complete | Parsed text → structured fields in Silver table |
 | A-3 | Gold: Classification and Routing | ✅ Complete | Structured fields → classified, routed Gold records (local-safe) |
 | A-3B | Personal Databricks Bootstrap Consolidation | ✅ Complete | Validated personal-workspace SQL execution; repo consolidation |
-| A-4 | Evaluation and Observability | ✅ Implemented | Formal evaluation layer across all stages; structured reports; 84 tests |
-| B | Bedrock Handoff Integration | 🔲 Future | Gold export → live Bedrock consumption |
+| A-4 | Evaluation and Observability | ✅ Complete | Formal evaluation layer across all stages; structured reports; 84 tests |
+| A-4.1 | Runtime Validation Checkpoint | ✅ Complete | Runtime inspection of A-3B bootstrap tables; confirmed null confidence and routing behavior |
+| B-0 | Bedrock Handoff Contract Preparation | 🔲 Not started | Define and agree the Gold → Bedrock handoff contract before live integration |
 
 ---
 
@@ -175,7 +176,7 @@
 
 ## Phase A-4 — Evaluation and Observability Layer
 
-**Status**: Implemented
+**Status**: Complete
 
 **Goal**: Formalize evaluation as explicit, rerunnable evaluation passes across all pipeline stages. Enable per-document traceability from Gold back to source. Resolve A-3B architectural tensions honestly in code and docs.
 
@@ -205,18 +206,35 @@
 - ✅ Gold evaluation handles missing/null confidence without breaking
 - ✅ Traceability evaluation detects missing links / orphaned records
 - ✅ Docs no longer contain a misleading contradiction about Gold confidence
-- ✅ Roadmap/docs reflect A-3B complete and A-4 implemented
+- ✅ Roadmap/docs reflect A-3B complete and A-4 complete
 - ✅ No secrets, workspace identifiers, or fake production claims introduced
 
 ---
 
-## Phase B — Bedrock Handoff Integration
+## Phase A-4.1 — Runtime Validation Checkpoint
 
-**Status**: Future (scope pending)
+**Status**: Complete
 
-**Goal**: Replace the V1 file-based export with a live integration that delivers Gold payloads to a Bedrock retrieval index or agent workflow.
+**Goal**: Perform a direct runtime inspection of the A-3B bootstrap tables in the personal Databricks workspace to confirm evaluator assumptions and close the loop between platform behavior and repo documentation. This is not a separate major implementation phase; it is a validation sub-step that follows A-4.
+
+**Findings**:
+- The `ai_classify` output variant observed at runtime contained only `error_message` and `response`. No scalar confidence or score key was present at any tested extraction path (`$.confidence`, `$.score`, `$.response[0].confidence`, etc.).
+- Gold routing confirmed: 3 records `fda_warning_letter` → `regulatory_review` (`export_ready = true`); 1 record `unknown` → `quarantine` (`export_ready = false`). Matched expected behavior.
+- Null-confidence handling in `eval_gold.py` is correct for this bootstrap path.
+
+**Documented in**: `docs/databricks-bootstrap.md` § A-4.1 and `ARCHITECTURE.md` § A-4.1 Runtime Inspection Findings.
+
+---
+
+## Phase B-0 — Bedrock Handoff Contract Preparation
+
+**Status**: Not started (next phase)
+
+**Goal**: Define and deliver the formal handoff contract between this pipeline's Gold export layer and a live Bedrock retrieval index or agent workflow. Agree the export schema, delivery mechanism, and interface boundary with Bedrock CaseOps before any live integration work begins.
 
 **Scope**: To be defined when Bedrock CaseOps interface is stabilized. This phase depends on the export contract defined in `ARCHITECTURE.md` being accepted by the consuming system.
+
+This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). It does not include live endpoint work.
 
 ---
 
@@ -231,4 +249,6 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] A-3B: End-to-end validated in a real personal Databricks workspace with 4 FDA documents
 - [x] A-4: Full lineage trace evaluator implemented (eval_traceability.py)
 - [x] A-4: Evaluation runners implemented for all four quality dimensions
-- [ ] A-4: MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)
+- [x] A-4.1: Runtime inspection confirmed null confidence and routing behavior for bootstrap path
+- [ ] B-0: Gold → Bedrock handoff contract agreed (not started)
+- [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)
