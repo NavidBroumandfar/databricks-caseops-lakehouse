@@ -222,7 +222,20 @@ The validated A-3B Databricks bootstrap execution is tracked as an explicit cont
 - **`pipeline_run_id = 'bootstrap_sql_v1'` in bootstrap records.** This is a placeholder, not a real MLflow run ID. The traceability evaluator reports `placeholder_run_id_count` explicitly. Document lineage via `document_id` remains intact.
 - **Evaluation still produces meaningful signals from bootstrap records:** classification success rate, export-ready rate, quarantine rate, and cross-layer link completeness are all computable even when confidence is null.
 
-See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details.
+### A-4.1 Runtime Inspection Findings
+
+The validated A-3B bootstrap path was directly runtime-inspected in the personal Databricks workspace during Phase A-4.1:
+
+- The `ai_classify` output variant observed at runtime contained only `error_message` and `response`. No scalar confidence or score key was present at any tested extraction path.
+- Gold routing and quarantine behavior were confirmed against real workspace tables: 3 records classified as `fda_warning_letter` routed to `regulatory_review` (`export_ready = true`); 1 record classified as `unknown` routed to `quarantine` (`export_ready = false`).
+- This confirms the null-confidence handling in `eval_gold.py` is correct for this bootstrap path.
+- The distinction between **target-state contract aspirations** (which include a `classification_confidence` field) and **current validated bootstrap behavior** (where that field is null) is intentional and explicitly tracked.
+
+This observation is specific to the validated personal workspace bootstrap SQL implementation. It does not assert that scalar confidence is unavailable in all Databricks `ai_classify` contexts.
+
+See `docs/databricks-bootstrap.md` § A-4.1 Runtime Validation Findings for full detail.
+
+See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details on evaluator handling.
 
 ---
 

@@ -154,6 +154,56 @@ This does not indicate a bug or hidden failure. The A-4 evaluation phase will ad
 
 ---
 
+## A-4.1 Runtime Validation Findings
+
+A direct runtime inspection of the A-3B bootstrap tables was performed in the personal Databricks workspace as part of Phase A-4.1. The following findings are factual observations from that inspection and are recorded here to close the loop between platform behavior and repo documentation.
+
+### `ai_classify` output shape confirmed
+
+The `document_type_result` variant column in the Gold smoke table was inspected at runtime. The observed output shape contained exactly two keys:
+
+- `error_message`
+- `response`
+
+No additional top-level keys were present.
+
+### Scalar confidence/score paths confirmed absent
+
+The following `try_variant_get` extraction paths were tested against runtime data and all returned `NULL`:
+
+- `$.confidence`
+- `$.score`
+- `$.response[0].confidence`
+- `$.response[0].score`
+- `$.metadata.confidence`
+- `$.metadata.score`
+
+This confirms that the A-4 null-confidence handling in `eval_gold.py` is correct for this bootstrap path. Scalar classification confidence is not available from `ai_classify` in the validated personal workspace bootstrap SQL. This observation applies to this specific bootstrap implementation path and does not make a claim about all possible Databricks `ai_classify` call patterns.
+
+### Gold routing behavior confirmed
+
+Runtime inspection of the Gold smoke table produced the following results, matching expectations:
+
+| Label | Routing | `export_ready` | Count |
+|---|---|---|---|
+| `fda_warning_letter` | `regulatory_review` | `true` | 3 |
+| `unknown` | `quarantine` | `false` | 1 |
+
+### Quarantine record identity
+
+The quarantined record was `fda_warning_letter_sample_04_daewoo.pdf`. Its runtime Gold values were:
+
+| Field | Observed Value |
+|---|---|
+| `document_type_result` | `{"error_message": null, "response": ["unknown"]}` |
+| `document_type_label` | `unknown` |
+| `routing_label` | `quarantine` |
+| `export_ready` | `false` |
+
+The Gold export payload for this record still contained extracted structured fields from the Silver layer. The quarantine outcome was a conservative classification/governance decision, not an upstream parse or extraction failure. The routing logic functioned as designed: classifying `unknown` triggers quarantine regardless of extraction quality.
+
+---
+
 ## Security and Public-Repo Boundary
 
 This repository does not contain and will never contain:

@@ -159,7 +159,7 @@ The quarantine record is a governance signal, not a failure — it confirms rule
 | A-4 test suite | `tests/` (84 tests) | ✅ Complete |
 | Evaluation usage guide | `examples/evaluation/README.md` | ✅ Complete |
 
-The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
+The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. A-4.1 runtime inspection confirmed that scalar confidence is not available from `ai_classify` in the validated bootstrap path, and that the conservative quarantine behavior (1 of 4 records quarantined) matched expectations. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
 

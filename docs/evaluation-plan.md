@@ -248,6 +248,8 @@ Records produced by the A-3B Databricks bootstrap SQL execution have two documen
 
 These signal that routing logic functioned correctly even without scalar confidence.
 
+**A-4.1 runtime inspection note:** A direct runtime inspection of the A-3B bootstrap Gold table was performed in Phase A-4.1. All candidate scalar confidence/score extraction paths (`$.confidence`, `$.score`, `$.response[0].confidence`, and others) returned `NULL` against real runtime data. The `ai_classify` output shape observed at runtime contained only `error_message` and `response`. This confirms that, for the validated Databricks bootstrap SQL path, scalar classification confidence is not currently available from runtime inspection. Gold evaluation for this path therefore relies on label outcome (`classification_success_rate`), routing outcome (`quarantine_rate`), export readiness (`export_ready_rate`), and `confidence_null_rate` observability rather than treating mean confidence as populated.
+
 ### 2. Placeholder `pipeline_run_id`
 
 The A-3B bootstrap uses `pipeline_run_id = 'bootstrap_sql_v1'` as a placeholder string, not a real MLflow run ID.
