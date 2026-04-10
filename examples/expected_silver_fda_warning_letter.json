@@ -1,0 +1,36 @@
+{
+  "_note": "This is a demonstration fixture showing what a successful Silver extraction looks like for the sample FDA warning letter. UUIDs are static placeholders — real pipeline runs generate new UUIDs per execution. Values are derived from examples/fda_warning_letter_sample.md.",
+  "document_id": "00000000-0000-0000-0000-000000000001",
+  "bronze_record_id": "00000000-0000-0000-0000-000000000002",
+  "extraction_id": "00000000-0000-0000-0000-000000000003",
+  "pipeline_run_id": "local-run-00000000-0000-0000-0000-000000000004",
+  "extracted_at": "2025-03-14T12:00:00+00:00",
+  "document_class_hint": "fda_warning_letter",
+  "extraction_prompt_id": "fda_warning_letter_extract_v1",
+  "extraction_model": "local_rule_extractor/v1",
+  "extracted_fields": {
+    "issuing_office": "Central Region — Chicago District",
+    "recipient_company": "Meridian Pharmaceutical Solutions, Inc",
+    "recipient_name": "Marcus J. Holloway",
+    "issue_date": "2025-03-14",
+    "violation_type": [
+      "Failure to Establish Adequate Laboratory Controls (21 CFR § 211.160(b))",
+      "Inadequate Investigation of Out-of-Specification (OOS) Results (21 CFR § 211.192)",
+      "Failure to Maintain Adequate Equipment Qualification Records (21 CFR § 211.68)"
+    ],
+    "cited_regulations": [
+      "21 CFR Part 210",
+      "21 CFR § 211.160(b)",
+      "21 CFR § 211.192",
+      "21 CFR § 211.68"
+    ],
+    "corrective_action_requested": true,
+    "response_deadline_days": 15,
+    "product_involved": "Amoxicillin Trihydrate Capsules, 500 mg",
+    "summary": "The United States Food and Drug Administration (FDA) inspected your drug manufacturing facility at 4800 Industrial Parkway, Suite 200, Springfield, IL 62704 during the period of January 8 through January 22, 2025. This inspection was conducted by investigators from the FDA Chicago District Office. Based on our inspection findings, we have determined that your facility is in significant violation of Current Good Manufacturing Practice (CGMP) regulations."
+  },
+  "field_coverage_pct": 1.0,
+  "validation_status": "valid",
+  "validation_errors": [],
+  "schema_version": "v0.1.0"
+}

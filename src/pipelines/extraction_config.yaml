@@ -1,0 +1,73 @@
+# extraction_config.yaml — Silver extraction configuration (Phase A-2)
+#
+# This file is safe to commit. It contains no secrets, credentials,
+# workspace URLs, or environment-specific values.
+#
+# Authority: ARCHITECTURE.md § Silver Layer
+# Contract:  docs/data-contracts.md § Silver: Extraction Schema Contract
+
+# ---------------------------------------------------------------------------
+# Document domain
+# ---------------------------------------------------------------------------
+
+document_domain: fda_warning_letter
+
+# ---------------------------------------------------------------------------
+# Directory paths (relative to repo root)
+# ---------------------------------------------------------------------------
+
+# Bronze artifacts produced by ingest_bronze.py are read from this directory.
+bronze_input_dir: output/bronze
+
+# Silver artifacts written by extract_silver.py go here.
+silver_output_dir: output/silver
+
+# ---------------------------------------------------------------------------
+# Contract version
+# ---------------------------------------------------------------------------
+
+schema_version: "v0.1.0"
+
+# ---------------------------------------------------------------------------
+# Extraction prompt
+# ---------------------------------------------------------------------------
+
+# Stable identifier for the FDA warning letter extraction prompt template.
+# This ID is written into every Silver record for traceability.
+# The prompt template lives in src/utils/extraction_prompts.py.
+extraction_prompt_id: fda_warning_letter_extract_v1
+
+# ---------------------------------------------------------------------------
+# Extraction model identifiers
+# ---------------------------------------------------------------------------
+
+# Model used for local deterministic extraction (no LLM required).
+# This is the active model for local-safe execution.
+local_extraction_model: local_rule_extractor/v1
+
+# Adapter label for future Databricks ai_extract integration.
+# Not active in local execution. Provided here for forward compatibility.
+# When Databricks execution is enabled, swap extraction_model to this value.
+databricks_extraction_model: ai_extract/v1
+
+# ---------------------------------------------------------------------------
+# Field configuration for FDA warning letter (V1)
+# ---------------------------------------------------------------------------
+
+# These lists drive field coverage calculation and validation status logic.
+# They must stay aligned with FDAWarningLetterFields in src/schemas/silver_schema.py
+# and the contract in docs/data-contracts.md § FDA Warning Letter Fields.
+
+required_fields:
+  - issuing_office
+  - recipient_company
+  - issue_date
+  - violation_type
+  - corrective_action_requested
+
+optional_fields:
+  - recipient_name
+  - cited_regulations
+  - response_deadline_days
+  - product_involved
+  - summary

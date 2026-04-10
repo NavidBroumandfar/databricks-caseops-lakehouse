@@ -11,8 +11,8 @@
 | Phase | Name | Status | Goal |
 |---|---|---|---|
 | A-0 | Repo Foundation | ✅ Complete | Docs, scaffold, project identity |
-| A-1 | Bronze: Ingest and Parse | 🔄 In Progress | Raw file → parsed text in Bronze Delta table |
-| A-2 | Silver: Extraction and Validation | 🔲 Planned | Parsed text → structured fields in Silver table |
+| A-1 | Bronze: Ingest and Parse | ✅ Complete | Raw file → parsed text in Bronze Delta table |
+| A-2 | Silver: Extraction and Validation | 🔄 In Progress | Parsed text → structured fields in Silver table |
 | A-3 | Gold: Classification and Routing | 🔲 Planned | Structured fields → classified, routed Gold records |
 | A-4 | Evaluation and Observability | 🔲 Planned | MLflow evaluation across all stages |
 | B | Bedrock Handoff Integration | 🔲 Future | Gold export → live Bedrock consumption |
@@ -40,7 +40,7 @@
 
 ## Phase A-1 — Bronze: Ingest and Parse
 
-**Status**: In progress
+**Status**: Complete
 
 **Goal**: Build the ingestion and parsing pipeline. A document dropped into the Unity Catalog Volume should produce a Bronze Delta record with parsed text and provenance metadata. For local development and demonstration, a Bronze JSON artifact is written instead of a Delta table write.
 
@@ -67,25 +67,30 @@
 
 ## Phase A-2 — Silver: Extraction and Validation
 
-**Status**: Not started
+**Status**: In Progress
 
-**Goal**: Extract structured fields from Bronze parsed text using `ai_extract`. Validate all extracted records against the Silver schema. Surface validation failures as records, not errors.
+**Goal**: Extract structured fields from Bronze parsed text. Validate all extracted records against the Silver schema. Surface validation failures as records, not silent drops. Local-safe implementation uses a deterministic rule-based extractor; Databricks `ai_extract` integration is stubbed as an adapter for future enablement.
 
 **Deliverables**:
 
-| Artifact | Path | Description |
-|---|---|---|
-| Extraction pipeline | `src/pipelines/silver_extractor.py` | `ai_extract` call with prompt selection |
-| Prompt templates | `docs/prompts/` (gitignored) | Per-domain extraction prompts |
-| Silver schema | `src/schemas/silver_schema.py` | Pydantic models per document class |
-| Validation logic | `src/utils/schema_validator.py` | Shared validation helpers |
-| Extraction eval notebook | `notebooks/eval_silver_extraction.ipynb` | MLflow run for extraction quality |
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Silver schema | `src/schemas/silver_schema.py` | ✅ Complete | Pydantic v2 model; FDA warning letter field set; coverage calculator |
+| Extraction config | `src/pipelines/extraction_config.yaml` | ✅ Complete | Domain, paths, field lists, model identifiers — no secrets |
+| Extraction prompt templates | `src/utils/extraction_prompts.py` | ✅ Complete | Versioned prompt for future `ai_extract`; not used in local execution |
+| Silver extraction pipeline | `src/pipelines/extract_silver.py` | ✅ Complete | Extractor abstraction; local rule-based FDA extractor; Databricks adapter stub |
+| Silver evaluation script | `src/evaluation/eval_silver.py` | ✅ Complete | Separate evaluation; validity rates, coverage, required-field null rate |
+| Expected Silver fixture | `examples/expected_silver_fda_warning_letter.json` | ✅ Complete | Reference extraction result for the sample FDA warning letter |
+| Delta table write | `src/pipelines/extract_silver.py` | 🔲 Deferred | Requires live Databricks runtime; local JSON artifact written instead |
 
 **Completion criteria**:
-- At least one document class (e.g., FDA warning letter) has a defined extraction schema
-- Extracted records pass Pydantic validation at ≥ 80% field coverage on test documents
-- Validation failures are recorded with `validation_status = 'partial'` or `'invalid'`
-- MLflow run reports field coverage %, schema validity rate, and model used
+- ✅ Bronze JSON artifact can be processed into a Silver JSON artifact locally
+- ✅ Silver artifact conforms to the Silver schema (Pydantic-validated)
+- ✅ Lineage fields (`document_id`, `bronze_record_id`, `pipeline_run_id`) are preserved
+- ✅ A separate evaluation script computes required Silver metrics
+- ✅ FDA warning letter field set is the sole V1 domain — no multi-domain execution
+- 🔲 Delta table write validated on Databricks cluster (deferred)
+- 🔲 MLflow evaluation run with real metrics on Databricks (deferred)
 
 ---
 

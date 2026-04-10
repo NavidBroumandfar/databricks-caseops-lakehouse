@@ -89,7 +89,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
-**Phase A-1 — Bronze ingestion and parsing pipeline** is in progress. The local-safe implementation slice is complete:
+**Phase A-1 — Bronze ingestion and parsing pipeline** is complete:
 
 | Deliverable | Path | Status |
 |---|---|---|
@@ -99,7 +99,18 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 | Bronze evaluation script | `src/evaluation/eval_bronze.py` | ✅ Complete |
 | Sample FDA warning letter fixture | `examples/fda_warning_letter_sample.md` | ✅ Complete |
 
-To run the local Bronze demo, see the [Running the Bronze Demo](#running-the-bronze-demo) section below.
+**Phase A-2 — Silver extraction and validation** is in progress. The local-safe implementation slice is complete:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Silver schema (Pydantic v2) | `src/schemas/silver_schema.py` | ✅ Complete |
+| Extraction config | `src/pipelines/extraction_config.yaml` | ✅ Complete |
+| Extraction prompt templates | `src/utils/extraction_prompts.py` | ✅ Complete |
+| Silver extraction pipeline | `src/pipelines/extract_silver.py` | ✅ Complete |
+| Silver evaluation script | `src/evaluation/eval_silver.py` | ✅ Complete |
+| Expected Silver fixture | `examples/expected_silver_fda_warning_letter.json` | ✅ Complete |
+
+To run the local Silver demo, see the [Running the Silver Demo](#running-the-silver-demo) section below.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -129,6 +140,42 @@ python src/evaluation/eval_bronze.py --input output/bronze/<bronze_record_id>.js
 ```
 
 The evaluation script prints a parse quality summary and writes a JSON evaluation artifact to `output/eval/`.
+
+---
+
+## Running the Silver Demo
+
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
+If you have already run the Bronze demo, skip step 2.
+
+```bash
+# 1. Install the only required dependency
+pip install pydantic
+
+# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+python src/pipelines/ingest_bronze.py \
+  --input examples/fda_warning_letter_sample.md \
+  --document-class-hint fda_warning_letter \
+  --source-system local_dev
+
+# Artifact is written to output/bronze/<bronze_record_id>.json
+
+# 3. Extract structured fields from Bronze → produces a Silver JSON artifact
+python src/pipelines/extract_silver.py --input-dir output/bronze
+
+# Artifact is written to output/silver/<extraction_id>.json
+
+# 4. Run Silver evaluation against all artifacts in the output directory
+python src/evaluation/eval_silver.py --input-dir output/silver
+
+# Optional: evaluate a single artifact
+python src/evaluation/eval_silver.py --input output/silver/<extraction_id>.json
+```
+
+The evaluation script prints an extraction quality summary (validity rate, field
+coverage, required-field null rate) and writes a JSON evaluation artifact to
+`output/eval/`. See `examples/expected_silver_fda_warning_letter.json` for a
+reference fixture showing a successful extraction result.
 
 ---
 

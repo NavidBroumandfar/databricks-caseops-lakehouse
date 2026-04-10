@@ -1,0 +1,14 @@
+# requirements.txt — Minimum dependencies for local pipeline execution
+#
+# Phase A-1 and A-2 run locally with no Databricks workspace connection.
+# Only pydantic is strictly required. All other standard library modules
+# (argparse, json, re, uuid, hashlib, statistics, pathlib) are built-in.
+#
+# MLflow is optional: install it only if you want to use the --mlflow flag
+# in the evaluation scripts.
+
+# Required
+pydantic>=2.0,<3.0
+
+# Optional: MLflow logging for evaluation scripts (--mlflow flag)
+# mlflow>=2.0
