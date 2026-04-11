@@ -71,6 +71,28 @@ export DATABRICKS_TOKEN=<your-personal-access-token>
 > your terminal session. The `.gitignore` already excludes `databricks_host`, `databricks_token`,
 > `.env`, and `databricks.cfg`. Verify before committing with `git status`.
 
+### Databricks experiment path root (required when targeting Databricks MLflow)
+
+Databricks MLflow requires **absolute workspace paths** for experiment names
+(e.g. `/Users/you@example.com/caseops/bronze/parse_quality`).  Relative names
+like `caseops/bronze/parse_quality` are only valid for local MLflow tracking.
+
+The evaluation layer resolves this via a single additional env var:
+
+```bash
+export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
+```
+
+When `MLFLOW_TRACKING_URI=databricks`, each evaluator calls
+`src/evaluation/mlflow_experiment_paths.py` to construct a fully-qualified
+experiment path.  If `CASEOPS_MLFLOW_EXPERIMENT_ROOT` is unset, empty, or does
+not start with `/`, the run fails immediately with a clear error message before
+any MLflow API call is made.
+
+For local MLflow runs (`MLFLOW_TRACKING_URI` unset or set to a non-`databricks`
+value), `CASEOPS_MLFLOW_EXPERIMENT_ROOT` is ignored and the original logical
+suffixes are used as-is.
+
 If you want to run a purely local MLflow evaluation first (no Databricks tracking server),
 omit the environment variables above. MLflow will log to a local `mlruns/` directory (also
 git-ignored).
@@ -85,7 +107,7 @@ git-ignored).
 | Evaluation scripts for all four layers | ✅ Implemented — run locally |
 | `--mlflow` flag in `run_evaluation.py` | ✅ Implemented — logs to configured tracking URI |
 | Sample FDA warning letter fixture | ✅ Present at `examples/fda_warning_letter_sample.md` |
-| MLflow experiment names defined in code | ✅ `caseops/pipeline/end_to_end` and per-layer experiments |
+| MLflow experiment names defined in code | ✅ Logical suffixes in `mlflow_experiment_paths.py`; Databricks-qualified at runtime via `CASEOPS_MLFLOW_EXPERIMENT_ROOT` |
 | Databricks workspace available | **Manual** — requires your personal workspace |
 | MLflow tracking URI configured in shell | **Manual** — set as environment variables, not committed |
 | Running the commands in this runbook | **Manual** |
@@ -104,6 +126,7 @@ Before executing, confirm each of the following:
 - [ ] `pip show mlflow` shows mlflow is installed
 - [ ] `pip show pydantic` shows pydantic v2 is installed
 - [ ] `MLFLOW_TRACKING_URI`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` are set in the current shell (if targeting Databricks MLflow)
+- [ ] `CASEOPS_MLFLOW_EXPERIMENT_ROOT` is set to an absolute workspace path (e.g. `/Users/you@example.com/caseops`) — **required when `MLFLOW_TRACKING_URI=databricks`**
 - [ ] `examples/fda_warning_letter_sample.md` exists in the repo
 - [ ] No credentials or workspace URLs are present in any tracked file (`git status` is clean)
 - [ ] Working directory is the repo root: `pwd` returns the `databricks-caseops-lakehouse/` path

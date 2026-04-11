@@ -54,13 +54,19 @@ except ImportError:
     mlflow = None  # type: ignore
     _MLFLOW_AVAILABLE = False
 
+from mlflow_experiment_paths import bronze_experiment, SUFFIX_BRONZE
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUTPUT_DIR = "output/eval"
-MLFLOW_EXPERIMENT_NAME = "caseops/bronze/parse_quality"
+
+# Logical suffix preserved for backward-compat references (e.g. report artifacts).
+# The resolved experiment name (which may be Databricks-qualified) is obtained
+# via bronze_experiment() at call time.
+MLFLOW_EXPERIMENT_NAME = SUFFIX_BRONZE
 
 # Thresholds from evaluation-plan.md
 TARGET_PARSE_SUCCESS_RATE = 0.95
@@ -314,7 +320,8 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         )
         return
 
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    experiment_name = bronze_experiment()
+    mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="bronze_parse_quality"):
         # Log scalar metrics
         scalar_keys = [
@@ -338,7 +345,7 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         if flagged_path and flagged_path.exists():
             mlflow.log_artifact(str(flagged_path))
 
-        print(f"[eval_bronze] Metrics logged to MLflow experiment: {MLFLOW_EXPERIMENT_NAME}")
+        print(f"[eval_bronze] Metrics logged to MLflow experiment: {experiment_name}")
 
 
 # ---------------------------------------------------------------------------

@@ -60,13 +60,15 @@ except ImportError:
     mlflow = None  # type: ignore
     _MLFLOW_AVAILABLE = False
 
+from mlflow_experiment_paths import silver_experiment, SUFFIX_SILVER
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUTPUT_DIR = "output/eval"
-MLFLOW_EXPERIMENT_NAME = "caseops/silver/extraction_quality"
+MLFLOW_EXPERIMENT_NAME = SUFFIX_SILVER
 
 # Thresholds from docs/evaluation-plan.md § Extraction Quality (Silver)
 TARGET_SCHEMA_VALIDITY_RATE = 0.80
@@ -382,7 +384,8 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         )
         return
 
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    experiment_name = silver_experiment()
+    mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="silver_extraction_quality"):
         scalar_keys = [
             "schema_validity_rate",
@@ -404,7 +407,7 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         if flagged_path and flagged_path.exists():
             mlflow.log_artifact(str(flagged_path))
 
-        print(f"[eval_silver] Metrics logged to MLflow experiment: {MLFLOW_EXPERIMENT_NAME}")
+        print(f"[eval_silver] Metrics logged to MLflow experiment: {experiment_name}")
 
 
 # ---------------------------------------------------------------------------

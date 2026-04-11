@@ -74,13 +74,15 @@ except ImportError:
     mlflow = None  # type: ignore
     _MLFLOW_AVAILABLE = False
 
+from mlflow_experiment_paths import traceability_experiment, SUFFIX_TRACEABILITY
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUTPUT_DIR = "output/eval"
-MLFLOW_EXPERIMENT_NAME = "caseops/pipeline/traceability"
+MLFLOW_EXPERIMENT_NAME = SUFFIX_TRACEABILITY
 
 # Known placeholder run ID values from the A-3B bootstrap SQL path.
 # Records carrying these values originated from bootstrap SQL, not from a
@@ -386,7 +388,8 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         )
         return
 
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    experiment_name = traceability_experiment()
+    mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="traceability_completeness"):
         scalar_keys = [
             "gold_to_silver_link_rate",
@@ -411,7 +414,7 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
             mlflow.log_artifact(str(flagged_path))
 
         print(
-            f"[eval_traceability] Metrics logged to MLflow experiment: {MLFLOW_EXPERIMENT_NAME}"
+            f"[eval_traceability] Metrics logged to MLflow experiment: {experiment_name}"
         )
 
 

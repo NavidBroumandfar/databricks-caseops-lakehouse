@@ -76,13 +76,15 @@ except ImportError:
     mlflow = None  # type: ignore
     _MLFLOW_AVAILABLE = False
 
+from mlflow_experiment_paths import gold_experiment, SUFFIX_GOLD
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUTPUT_DIR = "output/eval"
-MLFLOW_EXPERIMENT_NAME = "caseops/gold/classification_quality"
+MLFLOW_EXPERIMENT_NAME = SUFFIX_GOLD
 
 # Thresholds from docs/evaluation-plan.md § 3. Classification Quality (Gold)
 TARGET_CLASSIFICATION_SUCCESS_RATE = 0.85
@@ -476,7 +478,8 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         )
         return
 
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    experiment_name = gold_experiment()
+    mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="gold_classification_quality"):
         scalar_keys = [
             "classification_success_rate",
@@ -499,7 +502,7 @@ def log_to_mlflow(metrics: dict, warnings: list[str], flagged_path: Optional[Pat
         if flagged_path and flagged_path.exists():
             mlflow.log_artifact(str(flagged_path))
 
-        print(f"[eval_gold] Metrics logged to MLflow experiment: {MLFLOW_EXPERIMENT_NAME}")
+        print(f"[eval_gold] Metrics logged to MLflow experiment: {experiment_name}")
 
 
 # ---------------------------------------------------------------------------

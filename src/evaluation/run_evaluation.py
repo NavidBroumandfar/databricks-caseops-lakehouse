@@ -79,13 +79,15 @@ except ImportError:
     mlflow = None  # type: ignore
     _MLFLOW_AVAILABLE = False
 
+from mlflow_experiment_paths import end_to_end_experiment, SUFFIX_END_TO_END
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUTPUT_DIR = "output/eval"
-MLFLOW_EXPERIMENT_NAME = "caseops/pipeline/end_to_end"
+MLFLOW_EXPERIMENT_NAME = SUFFIX_END_TO_END
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +312,8 @@ def log_report_to_mlflow(report: EvaluationReport, json_path: Path) -> None:
         )
         return
 
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    experiment_name = end_to_end_experiment()
+    mlflow.set_experiment(experiment_name)
     with mlflow.start_run(run_name="end_to_end_evaluation"):
         mlflow.log_param("report_id", report.report_id)
         mlflow.log_param("pipeline_run_id_filter", report.pipeline_run_id_filter or "all")
@@ -341,7 +344,7 @@ def log_report_to_mlflow(report: EvaluationReport, json_path: Path) -> None:
                     mlflow.log_metric(f"traceability_{key}", float(val))
 
         mlflow.log_artifact(str(json_path))
-        print(f"[run_evaluation] End-to-end report logged to MLflow: {MLFLOW_EXPERIMENT_NAME}")
+        print(f"[run_evaluation] End-to-end report logged to MLflow: {experiment_name}")
 
 
 # ---------------------------------------------------------------------------
