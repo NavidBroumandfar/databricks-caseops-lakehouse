@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-5 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), and a single reviewable batch handoff bundle/manifest (B-5). Phase B proper (live Bedrock integration) has not started.
+**Phases A-0 through B-6 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -138,11 +138,21 @@ parameter and `--bundle-dir` CLI arg; bundle references all per-record artifact 
 `tests/test_b5_handoff_bundle.py` (84 tests). 335 tests pass total. No live Bedrock/AWS
 integration was introduced.
 
+**Phase B-6 — Handoff Bundle Integrity and Consistency Validation** is complete.
+B-6 proves the B-5 bundle is internally trustworthy and review-safe. Key deliverables:
+`src/pipelines/handoff_bundle_validation.py` with 24 explicit integrity checks across
+structural correctness, count consistency, reference integrity, identifier uniqueness, and
+filesystem path existence; `validate_handoff_bundle` (file-based entry point),
+`validate_handoff_bundle_from_manifest` (in-memory), `BundleValidationResult` with full
+check detail; `tests/test_b6_bundle_validation.py` (92 tests). 427 tests pass total. No
+live Bedrock/AWS integration was introduced.
+
 The module boundary is:
-  `classify_gold.py`   → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle
-  `export_handoff.py`  → validates contract → writes export artifact → returns `ExportResult`
-  `handoff_report.py`  → derives outcome categories → aggregates batch report → writes report artifacts
-  `handoff_bundle.py`  → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
+  `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle
+  `export_handoff.py`             → validates contract → writes export artifact → returns `ExportResult`
+  `handoff_report.py`             → derives outcome categories → aggregates batch report → writes report artifacts
+  `handoff_bundle.py`             → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
+  `handoff_bundle_validation.py`  → validates the bundle is internally consistent and trustworthy
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

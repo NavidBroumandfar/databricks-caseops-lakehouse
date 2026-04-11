@@ -23,6 +23,7 @@
 | B-3 | Export Packaging Refactor and Handoff Service Boundary | ✅ Complete | Export/handoff logic extracted into `export_handoff.py`; `classify_gold.py` delegates cleanly |
 | B-4 | Export Outcome Observability and Handoff Reporting | ✅ Complete | Explicit outcome categories, reason codes, and batch-level handoff summary reporting |
 | B-5 | Handoff Batch Manifest and Review Bundle | ✅ Complete | Single reviewable batch bundle with per-record artifact references, linked to B-4 report |
+| B-6 | Handoff Bundle Integrity and Consistency Validation | ✅ Complete | Local-safe validator that proves the B-5 bundle is internally trustworthy and review-safe |
 
 ---
 
@@ -524,6 +525,54 @@ handoff_bundle.py  → packages batch into manifest → writes bundle artifacts 
 
 ---
 
+## Phase B-6 — Handoff Bundle Integrity and Consistency Validation
+
+**Status**: Complete
+
+**Goal**: Prove that the B-5 handoff batch bundle is internally trustworthy and review-safe. Implement a dedicated local-safe validation layer that checks the bundle for structural correctness, count consistency, reference integrity, identifier uniqueness, and filesystem path existence.
+
+**Scope boundary**: B-6 is upstream bundle validation only. No AWS/Bedrock SDK, no live integration, no S3, no contract semantic changes, no new downstream assumptions. The manifest remains a derived packaging artifact — B-6 confirms it is coherent with the artifacts it references.
+
+**What B-6 validates:**
+
+| Check Category | Checks |
+|---|---|
+| Structural | manifest_version known; batch_id == pipeline_run_id |
+| Count consistency | total_exported/quarantined/blocked/skipped match record list lengths; total_eligible = sum of lists; total_records_processed = total_eligible + ineligible; outcome_distribution matches lists |
+| Reference consistency | exported records have export paths; non-exported records don't; outcome_category correct per list; quarantined records have quarantine routing; exported records don't have quarantine routing |
+| Identifier uniqueness | no duplicate document_ids; no duplicate gold_record_ids across all record lists |
+| Filesystem paths | gold_artifact_paths exist; export_artifact_paths exist; report_artifact paths exist (all optional, on by default) |
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Bundle validation module | `src/pipelines/handoff_bundle_validation.py` | ✅ New B-6 | `CHECK_*` constants, `CheckResult`, `BundleValidationResult`, `validate_handoff_bundle`, `validate_handoff_bundle_from_manifest`, `write_validation_result`, `format_validation_result_text` |
+| B-6 test suite | `tests/test_b6_bundle_validation.py` | ✅ New B-6 | 92 tests covering constants, models, valid bundle, structural failures, count mismatches, reference contradictions, identifier uniqueness, path checks, file-based entry point, write/format, module boundary, integration |
+
+**Module boundary preserved:**
+
+```
+classify_gold.py               → assembles GoldRecord → calls execute_export → writes Gold artifact → builds bundle
+export_handoff.py              → validates contract → writes export artifact → returns ExportResult
+handoff_report.py              → derives outcome categories → aggregates batch report → writes report
+handoff_bundle.py              → packages batch into manifest/review bundle → writes bundle artifacts
+handoff_bundle_validation.py   → validates the bundle is internally consistent and trustworthy
+```
+
+**Completion criteria met:**
+
+- ✅ Dedicated bundle integrity/consistency validation module exists (`src/pipelines/handoff_bundle_validation.py`)
+- ✅ Validator checks referenced artifact existence and count consistency
+- ✅ Validator detects broken or contradictory bundle state
+- ✅ Validator produces a structured validation result (`BundleValidationResult`)
+- ✅ Tests cover valid and broken bundle scenarios (92 tests)
+- ✅ Module boundaries remain clean after the change
+- ✅ No AWS/Bedrock SDK code or fake live integration added
+- ✅ 427 tests pass; zero regressions (335 pre-B-6 + 92 new B-6)
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -542,4 +591,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] B-3: Export/handoff slice extracted into `src/pipelines/export_handoff.py`; `classify_gold.py` delegates to `execute_export`; 28 new tests; 183 total tests pass
 - [x] B-4: Explicit handoff outcome categories, reason codes, and batch-level `HandoffBatchReport`; `handoff_report.py` module; 68 new tests; 251 total tests pass
 - [x] B-5: Single reviewable batch manifest/review bundle; `handoff_bundle.py` module; per-record artifact references; B-4 report linking; `--bundle-dir` CLI arg; 84 new tests; 335 total tests pass
+- [x] B-6: Bundle integrity and consistency validation; `handoff_bundle_validation.py` module; 24 explicit checks across structural, count, reference, uniqueness, and path categories; 92 new tests; 427 total tests pass
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

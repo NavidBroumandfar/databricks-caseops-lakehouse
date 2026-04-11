@@ -93,7 +93,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through B-5** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), and a single reviewable batch handoff manifest/review bundle (B-5). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**Phases A-0 through B-6** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -221,7 +221,16 @@ Outcome categories: `exported`, `quarantined`, `contract_blocked`, `skipped_not_
 
 The bundle is written as JSON + text artifacts when `--bundle-dir` is provided. When `--report-dir` is also provided, the bundle references the B-4 report artifacts. The manifest captures exported_records (with export_artifact_path), quarantined_records, contract_blocked_records, and skipped_records.
 
-Total test count: **335 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, and batch handoff bundle packaging.
+**Phase B-6 — Handoff Bundle Integrity and Consistency Validation** is complete. B-6 proves the B-5 bundle is internally trustworthy and review-safe. A dedicated validator checks the bundle for structural correctness, count consistency, reference integrity, identifier uniqueness, and filesystem path existence — locally and deterministically, with no live dependencies.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Bundle validation module | `src/pipelines/handoff_bundle_validation.py` | ✅ New B-6 |
+| B-6 test suite | `tests/test_b6_bundle_validation.py` (92 tests) | ✅ New B-6 |
+
+The validator exposes `validate_handoff_bundle(bundle_json_path)` for file-based validation and `validate_handoff_bundle_from_manifest(manifest, check_paths=False)` for in-memory validation. It produces a `BundleValidationResult` with `bundle_valid`, `failed_checks`, `count_mismatches`, `missing_paths`, `duplicate_identifiers`, `contradictions`, and full per-check detail. 24 explicit checks across 5 categories.
+
+Total test count: **427 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, and bundle integrity validation.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -341,6 +350,17 @@ python src/pipelines/classify_gold.py \
 #                   output/reports/handoff_bundle_<run_id>.txt   (human-readable review summary)
 # The bundle references all per-record artifact paths and the B-4 report when both flags are used.
 
+# Optional: run B-6 bundle integrity validation against the generated bundle
+python -c "
+from pathlib import Path
+from src.pipelines.handoff_bundle_validation import validate_handoff_bundle, format_validation_result_text
+import glob
+bundles = sorted(glob.glob('output/reports/handoff_bundle_*.json'))
+if bundles:
+    result = validate_handoff_bundle(Path(bundles[-1]))
+    print(format_validation_result_text(result))
+"
+
 # 5. Run Gold evaluation against all artifacts in the output directory
 python src/evaluation/eval_gold.py --input-dir output/gold
 
@@ -425,9 +445,10 @@ databricks-caseops-lakehouse/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
 │   │   └── bedrock_contract.py   # B-1: Gold export payload contract validator
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
-│   │   ├── export_handoff.py     # B-3: Export packaging and handoff service boundary
-│   │   ├── handoff_report.py     # B-4: Export outcome observability and handoff reporting
-│   │   └── handoff_bundle.py     # B-5: Batch manifest and review bundle packaging
+│   │   ├── export_handoff.py             # B-3: Export packaging and handoff service boundary
+│   │   ├── handoff_report.py             # B-4: Export outcome observability and handoff reporting
+│   │   ├── handoff_bundle.py             # B-5: Batch manifest and review bundle packaging
+│   │   └── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -439,7 +460,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 335 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28) + B-4 handoff reporting (68) + B-5 batch bundle (84)
+├── tests/                   # 427 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28) + B-4 handoff reporting (68) + B-5 batch bundle (84) + B-6 bundle validation (92)
 └── examples/
     ├── evaluation/          # A-4 usage guide
     └── ...                  # Sample documents and expected outputs

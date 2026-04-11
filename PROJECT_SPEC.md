@@ -315,6 +315,24 @@ Deliverables:
 
 **Scope boundary**: B-5 is upstream handoff packaging only. No AWS/Bedrock SDK, no live integration, no contract semantic changes. The repo remains the upstream-only governed document intelligence layer.
 
+### Phase B-6 — Handoff Bundle Integrity and Consistency Validation
+**Goal**: Prove that the B-5 handoff batch bundle is internally trustworthy and review-safe by implementing a dedicated local-safe validation layer. B-6 checks the bundle for structural correctness, count consistency, reference integrity, identifier uniqueness, and (optionally) filesystem path existence.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/pipelines/handoff_bundle_validation.py` — dedicated B-6 validation module with `CHECK_*` constants, `CheckResult`, `BundleValidationResult`, `validate_handoff_bundle` (file-based entry point), `validate_handoff_bundle_from_manifest` (in-memory entry point), `write_validation_result`, `format_validation_result_text`
+- `tests/test_b6_bundle_validation.py` — 92 focused tests covering valid bundle, structural failures, count mismatches, reference contradictions, identifier uniqueness, path checks, file-based entry point, module boundary, integration with real pipeline output
+
+**What B-6 validates (24 explicit checks):**
+- Structural: manifest_version known; batch_id == pipeline_run_id
+- Count consistency: all totals (exported, quarantined, contract_blocked, skipped, eligible, records_processed) match record list lengths; outcome_distribution sums match lists
+- Reference consistency: exported records have export paths; non-exported records don't; outcome_category correct per list; quarantined records carry quarantine routing; exported records don't carry quarantine routing
+- Identifier uniqueness: no duplicate document_ids or gold_record_ids across all record lists
+- Filesystem paths: gold_artifact_paths, export_artifact_paths, and report_artifact paths exist on disk (optional, on by default)
+
+**Scope boundary**: B-6 is upstream bundle validation only. No AWS/Bedrock SDK, no live integration, no contract semantic changes. The manifest remains a derived packaging artifact. B-6 confirms it is coherent with the artifacts it references — not a new source of truth.
+
 **Why B-0 exists before live integration:**
 Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
 
