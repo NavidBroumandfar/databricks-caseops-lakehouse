@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through A-4 are complete.** The repo is in a post-A-4.1 documentation alignment state, positioned for Phase B-0.
+**Phases A-0 through B-0 are complete.** The repo has a validated pipeline (A-0 through A-4.1) and an explicit Gold → Bedrock handoff contract (B-0). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -83,9 +83,14 @@ response variant at any tested path); Gold routing behavior matched expectations
 1 quarantined). This is a validation sub-step, not a separate major phase.
 See [`docs/databricks-bootstrap.md`](./databricks-bootstrap.md) § A-4.1 for full findings.
 
-**Phase B-0 — Bedrock Handoff Contract Preparation** is the next phase and has not started.
-Do not treat B-0 as active or underway. Scope will be defined when the Bedrock CaseOps interface
-is stabilized.
+**Phase B-0 — Bedrock Handoff Contract Preparation** is complete.
+B-0 established the explicit Gold → Bedrock CaseOps interface contract. The single authoritative
+contract artifact is `docs/bedrock-handoff-contract.md`. It defines the `export_payload` structure,
+required vs optional fields, routing label → Bedrock consumer mapping, `export_ready` / `quarantine`
+semantics, V1 delivery mechanism (JSON file export to Unity Catalog Volume), and known current
+limitations. `ARCHITECTURE.md`, `docs/data-contracts.md`, and `docs/roadmap.md` are updated for
+consistency. B-0 is a contract-hardening phase only — no live AWS/Bedrock integration was delivered.
+Live integration is Phase B proper (not started).
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

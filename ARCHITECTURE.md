@@ -245,32 +245,68 @@ See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details on evaluat
 
 This repo's responsibility ends at the Gold export. Everything upstream of the handoff — ingestion, parsing, extraction, schema validation, classification, routing, traceability, and evaluation — is owned here. Everything downstream — retrieval index population, vector search, agentic reasoning, escalation, and case-support workflow orchestration — is owned by Bedrock CaseOps.
 
-The Gold `export_payload` is the interface contract between the two systems. This repo prepares it; Bedrock consumes it.
+**The Gold `export_payload` is the interface contract between the two systems.** This repo prepares it; Bedrock CaseOps consumes it.
+
+The complete contract is defined in [`docs/bedrock-handoff-contract.md`](./docs/bedrock-handoff-contract.md). That document is the single authoritative artifact for the Gold → Bedrock handoff and supersedes any partial description of the interface elsewhere. This section provides the architectural framing; the contract document provides the operative field-level detail.
+
+### B-0 Phase Context
+
+The Bedrock Handoff Design section reflects the output of **Phase B-0 — Bedrock Handoff Contract Preparation**. B-0 is a contract-hardening phase. Its purpose is to establish the Gold → Bedrock interface boundary clearly enough that live integration work (Phase B proper) can begin without ambiguity.
+
+B-0 does **not** deliver:
+- Live AWS or Bedrock integration
+- S3 plumbing or Bedrock SDK code
+- Vector index configuration or retrieval logic
+- Event-driven delivery mechanisms
+
+The V1 delivery mechanism remains file-based (structured JSON export to a Unity Catalog Volume path). Live integration is Phase B proper.
 
 ### Contract
-The Gold layer produces an `export_payload` per document. This payload is the handoff unit. It contains:
 
-```json
-{
-  "document_id": "<uuid>",
-  "source_file": "<original filename>",
-  "document_type": "<label>",
-  "routing_label": "<bedrock index or workflow>",
-  "extracted_fields": { ... },
-  "parsed_text_excerpt": "<first N characters or key section>",
-  "provenance": {
-    "ingested_at": "<timestamp>",
-    "pipeline_run_id": "<mlflow run id>",
-    "extraction_model": "<model id>",
-    "classification_confidence": 0.92
-  }
-}
-```
+The Gold layer produces an `export_payload` per export-ready document. This payload is the handoff unit. The `export_payload` is both embedded in the Gold Delta table record and materialized as a standalone JSON file at a deterministic Volume path.
+
+**Required payload fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `document_id` | string (UUID v4) | Stable cross-layer document identifier |
+| `source_file` | string | Original filename as uploaded |
+| `document_type` | string | Classification label from the closed taxonomy |
+| `routing_label` | string | Target downstream Bedrock consumer or workflow |
+| `extracted_fields` | object | Domain-specific structured fields (shape varies by `document_type`) |
+| `parsed_text_excerpt` | string | First 2000 characters of parsed text |
+| `provenance` | object | Traceability metadata including `pipeline_run_id`, model identifiers, `classification_confidence`, and `schema_version` |
+
+Full field definitions, optional fields, the complete provenance sub-object, and a canonical payload example are in `docs/bedrock-handoff-contract.md` § 4.
+
+**Bootstrap-path note**: In the A-3B bootstrap implementation, `provenance.classification_confidence` is `null` and `provenance.pipeline_run_id` is the placeholder `"bootstrap_sql_v1"`. Both are explicitly documented limitations — see `docs/bedrock-handoff-contract.md` § 9 and `docs/data-contracts.md` § 5.
+
+### Routing Label → Bedrock Consumer Mapping
+
+The `routing_label` field determines which downstream Bedrock system is the intended consumer.
+
+| Routing Label | Bedrock Consumer | V1 Status |
+|---|---|---|
+| `regulatory_review` | Bedrock regulatory intelligence index | **V1 active** — FDA warning letters only |
+| `security_ops` | Bedrock security operations index | Planned V2+ |
+| `incident_management` | Bedrock incident management workflow | Planned V2+ |
+| `quality_management` | Bedrock quality assurance workflow | Planned V2+ |
+| `knowledge_base` | General Bedrock knowledge base index | Planned V2+ |
+| `quarantine` | Human review queue — not forwarded | Active (governance path) |
+
+Full routing label semantics are in `docs/bedrock-handoff-contract.md` § 5.
 
 ### Delivery Mechanism (V1)
-In V1, Gold records are exported as JSON files written to a Unity Catalog Volume path: `caseops/gold/exports/<routing_label>/<document_id>.json`. The consuming Bedrock system reads from this path.
 
-In V2, this will be replaced by a live Delta table subscription or a structured API call to the Bedrock ingestion endpoint.
+In V1, export-ready Gold records are materialized as individual JSON files at:
+
+```
+/Volumes/caseops/gold/exports/<routing_label>/<document_id>.json
+```
+
+One file per `export_ready = true` record. File content is the `export_payload` object exactly as defined in the contract. Records with `export_ready = false` (routed to `quarantine`) produce no export file.
+
+In V2, this will evolve to Delta Sharing, a structured API push, or an event-driven notification mechanism. No V2 delivery work is in scope until explicitly added to `PROJECT_SPEC.md`.
 
 ---
 

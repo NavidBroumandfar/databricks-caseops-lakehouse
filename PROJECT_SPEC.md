@@ -217,11 +217,40 @@ Key findings:
 This is not a separate major phase. It is a runtime validation checkpoint that closes the A-4 evaluation loop. Full findings are recorded in `docs/databricks-bootstrap.md` § A-4.1 and `ARCHITECTURE.md` § A-4.1 Runtime Inspection Findings.
 
 ### Phase B-0 — Bedrock Handoff Contract Preparation
-**Goal**: Define and deliver the formal handoff contract between this pipeline's Gold export and a live Bedrock retrieval index or agent workflow. Includes export schema finalization, delivery mechanism specification, and interface agreement with Bedrock CaseOps.
+**Goal**: Establish the explicit, testable, versioned Gold → Bedrock CaseOps interface contract before any live integration work begins. This phase hardens the contract boundary so that Phase B (live Bedrock integration) can proceed without ambiguity about what the upstream pipeline produces and what the downstream system must consume.
 
-**Status**: Not started. Scope to be defined when Bedrock CaseOps interface is stabilized.
+**Status**: Complete.
 
-This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). It does not include live integration — that is Phase B proper.
+**What B-0 delivers:**
+- `docs/bedrock-handoff-contract.md` — the single authoritative contract artifact for the Gold → Bedrock handoff
+- Explicit required vs optional payload field differentiation in the contract and in `docs/data-contracts.md`
+- Routing label → Bedrock consumer/workflow mapping defined and stable for V1
+- `export_ready`, `quarantine`, and delivery semantics formally defined
+- V1 delivery mechanism specified as structured JSON file export to a Unity Catalog Volume path
+- Versioning expectations established (v0.1.0 contract, semantic versioning rules)
+- Known current limitations documented honestly (null confidence, bootstrap placeholder run IDs, V1-only routing)
+- Acceptance criteria defined and verifiable
+- `ARCHITECTURE.md`, `docs/data-contracts.md`, and `docs/roadmap.md` updated for consistency
+
+**What B-0 explicitly excludes:**
+- AWS credentials, IAM roles, or S3 plumbing
+- Bedrock SDK code or API client implementation
+- Live ingestion endpoint on the Bedrock side
+- Vector index or retrieval configuration
+- Agent reasoning or escalation logic
+- Multi-domain pipeline execution (V2+ document types)
+- Streaming or event-driven delivery
+- Human-in-the-loop review tooling
+- Delta Sharing configuration
+- Production Databricks deployment
+
+**Why B-0 exists before live integration:**
+Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
+
+**How B-0 preserves the Databricks / Bedrock split:**
+B-0 documents what this repo guarantees to produce (Gold `export_payload` at a deterministic path) and what Bedrock CaseOps is responsible for consuming. It does not cross into Bedrock's implementation domain. The governance boundary remains at the materialized export file.
+
+This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). It does not include live endpoint work — that is Phase B proper.
 
 ---
 

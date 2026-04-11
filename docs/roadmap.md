@@ -17,7 +17,7 @@
 | A-3B | Personal Databricks Bootstrap Consolidation | ✅ Complete | Validated personal-workspace SQL execution; repo consolidation |
 | A-4 | Evaluation and Observability | ✅ Complete | Formal evaluation layer across all stages; structured reports; 84 tests |
 | A-4.1 | Runtime Validation Checkpoint | ✅ Complete | Runtime inspection of A-3B bootstrap tables; confirmed null confidence and routing behavior |
-| B-0 | Bedrock Handoff Contract Preparation | 🔲 Not started | Define and agree the Gold → Bedrock handoff contract before live integration |
+| B-0 | Bedrock Handoff Contract Preparation | ✅ Complete | Explicit Gold → Bedrock interface contract; payload definitions; routing map; delivery semantics |
 
 ---
 
@@ -228,13 +228,36 @@
 
 ## Phase B-0 — Bedrock Handoff Contract Preparation
 
-**Status**: Not started (next phase)
+**Status**: Complete
 
-**Goal**: Define and deliver the formal handoff contract between this pipeline's Gold export layer and a live Bedrock retrieval index or agent workflow. Agree the export schema, delivery mechanism, and interface boundary with Bedrock CaseOps before any live integration work begins.
+**Goal**: Establish the explicit, versioned Gold → Bedrock CaseOps interface contract before any live integration work begins. Harden the handoff boundary so that Phase B (live Bedrock integration) can proceed without interface ambiguity.
 
-**Scope**: To be defined when Bedrock CaseOps interface is stabilized. This phase depends on the export contract defined in `ARCHITECTURE.md` being accepted by the consuming system.
+**Scope boundary**: B-0 is a documentation and contract discipline phase. It produces no AWS infrastructure, no Bedrock SDK code, no S3 plumbing, no live integration, and no production credentials. It defines what gets built; Phase B proper builds it.
 
-This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). It does not include live endpoint work.
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Bedrock handoff contract | `docs/bedrock-handoff-contract.md` | ✅ Complete | Single authoritative contract for Gold → Bedrock handoff; required vs optional fields; routing map; delivery semantics; versioning; known limitations; acceptance criteria |
+| ARCHITECTURE.md update | `ARCHITECTURE.md` | ✅ Complete | Bedrock Handoff Design section strengthened; references contract doc; B-0 phase context added; routing table aligned |
+| data-contracts.md update | `docs/data-contracts.md` | ✅ Complete | Export payload field definitions tightened; routing label table expanded with V1 status; provenance requirements added; contract doc cross-referenced |
+| PROJECT_SPEC.md update | `PROJECT_SPEC.md` | ✅ Complete | B-0 entry replaced with concrete deliverables, exclusions, and rationale |
+| roadmap.md update | `docs/roadmap.md` | ✅ Complete | B-0 section (this section) updated with concrete completion criteria |
+
+**Completion criteria met:**
+
+- ✅ One dedicated contract document for Gold → Bedrock handoff exists and is committed
+- ✅ Required vs optional payload field expectations are explicit in the contract
+- ✅ Every routing label maps to a named downstream Bedrock consumer
+- ✅ `export_ready`, `quarantine`, and delivery semantics are unambiguous
+- ✅ The Databricks / Bedrock ownership boundary is stated explicitly and consistently
+- ✅ B-0 is defined as contract preparation, not live integration
+- ✅ All updated documents are consistent with each other
+- ✅ No document claims Bedrock CaseOps integration is live
+- ✅ Bootstrap limitations (null confidence, placeholder run IDs) remain explicitly documented
+- ✅ V1 executable domain remains FDA warning letters only
+
+This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration). Phase B proper begins live integration work against this contract.
 
 ---
 
@@ -250,5 +273,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] A-4: Full lineage trace evaluator implemented (eval_traceability.py)
 - [x] A-4: Evaluation runners implemented for all four quality dimensions
 - [x] A-4.1: Runtime inspection confirmed null confidence and routing behavior for bootstrap path
-- [ ] B-0: Gold → Bedrock handoff contract agreed (not started)
+- [x] B-0: Gold → Bedrock handoff contract established (`docs/bedrock-handoff-contract.md`)
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)
