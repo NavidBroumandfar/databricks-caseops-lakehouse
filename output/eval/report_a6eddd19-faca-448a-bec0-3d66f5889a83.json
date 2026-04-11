@@ -1,0 +1,104 @@
+{
+  "report_id": "a6eddd19-faca-448a-bec0-3d66f5889a83",
+  "generated_at": "2026-04-11T21:20:27.920365+00:00",
+  "pipeline_run_id_filter": null,
+  "bronze": {
+    "layer": "bronze",
+    "experiment": "caseops/bronze/parse_quality",
+    "eval_run_id": "c3093dd3-cc8e-4d49-8469-56b15253e026",
+    "evaluated_at": "2026-04-11T21:20:27.917241+00:00",
+    "total_records": 4,
+    "metrics": {
+      "evaluated_at": "2026-04-11T21:20:27.917241+00:00",
+      "total_records": 4,
+      "parse_success_rate": 1.0,
+      "parse_partial_rate": 0.0,
+      "parse_failure_rate": 0.0,
+      "median_char_count": 5131.0,
+      "p10_char_count": 5131,
+      "zero_char_count_rate": 0.0,
+      "flagged_record_count": 0
+    },
+    "threshold_warnings": [],
+    "observations": [],
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "silver": {
+    "layer": "silver",
+    "experiment": "caseops/silver/extraction_quality",
+    "eval_run_id": "89d9856f-294d-4ede-8bb1-96a99bfd5613",
+    "evaluated_at": "2026-04-11T21:20:27.918383+00:00",
+    "total_records": 7,
+    "metrics": {
+      "evaluated_at": "2026-04-11T21:20:27.918383+00:00",
+      "total_records": 7,
+      "schema_validity_rate": 1.0,
+      "partial_validity_rate": 0.0,
+      "invalid_rate": 0.0,
+      "mean_field_coverage_pct": 1.0,
+      "p25_field_coverage_pct": 1.0,
+      "required_field_null_rate": 0.0,
+      "validation_error_frequency": [],
+      "flagged_record_count": 0
+    },
+    "threshold_warnings": [],
+    "observations": [],
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "gold": {
+    "layer": "gold",
+    "experiment": "caseops/gold/classification_quality",
+    "eval_run_id": "0094f2dc-e972-4246-9cc5-e8ca2096d095",
+    "evaluated_at": "2026-04-11T21:20:27.919773+00:00",
+    "total_records": 7,
+    "metrics": {
+      "evaluated_at": "2026-04-11T21:20:27.919773+00:00",
+      "total_records": 7,
+      "classification_success_rate": 1.0,
+      "unknown_label_rate": 0.0,
+      "quarantine_rate": 0.0,
+      "export_ready_rate": 1.0,
+      "confidence_null_rate": 0.0,
+      "mean_classification_confidence": 1.0,
+      "low_confidence_rate": 0.0,
+      "label_distribution": [
+        {
+          "label": "fda_warning_letter",
+          "count": 7,
+          "rate": 1.0
+        }
+      ],
+      "flagged_record_count": 0
+    },
+    "threshold_warnings": [],
+    "observations": [],
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "traceability": {
+    "experiment": "caseops/pipeline/traceability",
+    "eval_run_id": "d859c220-1332-4c9b-b204-1ff5e288b9c3",
+    "evaluated_at": "2026-04-11T21:20:27.920333+00:00",
+    "total_bronze": 4,
+    "total_silver": 7,
+    "total_gold": 7,
+    "gold_to_silver_link_rate": 1.0,
+    "silver_to_bronze_link_rate": 1.0,
+    "pipeline_run_id_coverage": 1.0,
+    "schema_version_coverage": 1.0,
+    "orphaned_silver_count": 0,
+    "orphaned_gold_count": 0,
+    "placeholder_run_id_count": 0,
+    "placeholder_run_id_note": "",
+    "threshold_warnings": [],
+    "observations": [],
+    "orphaned_silver_records": [],
+    "orphaned_gold_records": []
+  },
+  "all_warnings": [],
+  "all_observations": [],
+  "review_queue_size": 0,
+  "bootstrap_path_detected": false
+}

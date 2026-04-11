@@ -1,0 +1,83 @@
+======================================================================
+  CaseOps Pipeline — Evaluation Report
+======================================================================
+  Report ID        : df523cef-1816-43c6-810f-839f5ccc1851
+  Generated at     : 2026-04-11T21:48:49.412138+00:00
+  Pipeline filter  : all
+  Review queue     : 0 record(s) flagged
+  Bootstrap path   : not detected
+======================================================================
+
+------------------------------------------------------------
+  Layer: BRONZE  |  Experiment: bronze/parse_quality
+------------------------------------------------------------
+  Records evaluated : 4
+  Flagged records   : 0
+
+  Metrics:
+    evaluated_at                             2026-04-11T21:48:49.410831+00:00
+    total_records                            4
+    parse_success_rate                       1.0000
+    parse_partial_rate                       0.0000
+    parse_failure_rate                       0.0000
+    median_char_count                        5131.0000
+    p10_char_count                           5131
+    zero_char_count_rate                     0.0000
+    flagged_record_count                     0
+
+------------------------------------------------------------
+  Layer: SILVER  |  Experiment: silver/extraction_quality
+------------------------------------------------------------
+  Records evaluated : 7
+  Flagged records   : 0
+
+  Metrics:
+    evaluated_at                             2026-04-11T21:48:49.411142+00:00
+    total_records                            7
+    schema_validity_rate                     1.0000
+    partial_validity_rate                    0.0000
+    invalid_rate                             0.0000
+    mean_field_coverage_pct                  1.0000
+    p25_field_coverage_pct                   1.0000
+    required_field_null_rate                 0.0000
+    validation_error_frequency               [0 entries]
+    flagged_record_count                     0
+
+------------------------------------------------------------
+  Layer: GOLD  |  Experiment: gold/classification_quality
+------------------------------------------------------------
+  Records evaluated : 7
+  Flagged records   : 0
+
+  Metrics:
+    evaluated_at                             2026-04-11T21:48:49.411646+00:00
+    total_records                            7
+    classification_success_rate              1.0000
+    unknown_label_rate                       0.0000
+    quarantine_rate                          0.0000
+    export_ready_rate                        1.0000
+    confidence_null_rate                     0.0000
+    mean_classification_confidence           1.0000
+    low_confidence_rate                      0.0000
+    label_distribution                       [1 entries]
+    flagged_record_count                     0
+
+------------------------------------------------------------
+  Traceability  |  Experiment: pipeline/traceability
+------------------------------------------------------------
+  Bronze records    : 4
+  Silver records    : 7
+  Gold records      : 7
+
+  Gold→Silver link  : 100.0%
+  Silver→Bronze link: 100.0%
+  pipeline_run_id   : 100.0%
+  schema_version    : 100.0%
+
+  Orphaned Silver   : 0
+  Orphaned Gold     : 0
+  Placeholder IDs   : 0
+
+======================================================================
+  All thresholds met.
+======================================================================

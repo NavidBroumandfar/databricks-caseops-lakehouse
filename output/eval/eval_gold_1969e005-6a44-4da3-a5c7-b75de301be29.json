@@ -1,0 +1,26 @@
+{
+  "eval_run_id": "1969e005-6a44-4da3-a5c7-b75de301be29",
+  "experiment": "gold/classification_quality",
+  "metrics": {
+    "evaluated_at": "2026-04-11T21:51:47.493178+00:00",
+    "total_records": 7,
+    "classification_success_rate": 1.0,
+    "unknown_label_rate": 0.0,
+    "quarantine_rate": 0.0,
+    "export_ready_rate": 1.0,
+    "confidence_null_rate": 0.0,
+    "mean_classification_confidence": 1.0,
+    "low_confidence_rate": 0.0,
+    "label_distribution": [
+      {
+        "label": "fda_warning_letter",
+        "count": 7,
+        "rate": 1.0
+      }
+    ],
+    "flagged_record_count": 0,
+    "flagged_records": [],
+    "observations": []
+  },
+  "threshold_warnings": []
+}

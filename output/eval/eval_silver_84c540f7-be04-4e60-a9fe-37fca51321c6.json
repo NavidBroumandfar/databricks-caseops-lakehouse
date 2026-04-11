@@ -1,0 +1,18 @@
+{
+  "eval_run_id": "84c540f7-be04-4e60-a9fe-37fca51321c6",
+  "experiment": "silver/extraction_quality",
+  "metrics": {
+    "evaluated_at": "2026-04-11T21:51:40.867733+00:00",
+    "total_records": 7,
+    "schema_validity_rate": 1.0,
+    "partial_validity_rate": 0.0,
+    "invalid_rate": 0.0,
+    "mean_field_coverage_pct": 1.0,
+    "p25_field_coverage_pct": 1.0,
+    "required_field_null_rate": 0.0,
+    "validation_error_frequency": [],
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "threshold_warnings": []
+}

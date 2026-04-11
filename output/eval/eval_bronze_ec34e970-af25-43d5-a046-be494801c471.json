@@ -1,0 +1,17 @@
+{
+  "eval_run_id": "ec34e970-af25-43d5-a046-be494801c471",
+  "experiment": "bronze/parse_quality",
+  "metrics": {
+    "evaluated_at": "2026-04-11T21:51:34.253550+00:00",
+    "total_records": 4,
+    "parse_success_rate": 1.0,
+    "parse_partial_rate": 0.0,
+    "parse_failure_rate": 0.0,
+    "median_char_count": 5131.0,
+    "p10_char_count": 5131,
+    "zero_char_count_rate": 0.0,
+    "flagged_record_count": 0,
+    "flagged_records": []
+  },
+  "threshold_warnings": []
+}
