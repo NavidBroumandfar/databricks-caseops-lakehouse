@@ -575,7 +575,9 @@ handoff_bundle_validation.py   → validates the bundle is internally consistent
 
 ## Milestone Markers
 
-These are the checkpoints that determine when the project is V1-complete:
+These are the checkpoints that determine when the project is V1-complete.
+
+**V1 IS COMPLETE** — all milestones below are checked. The final MLflow live-workspace milestone was completed in April 2026.
 
 - [x] A-1: One real document processed end-to-end to Bronze
 - [x] A-2: One document class with validated Silver extraction
@@ -592,4 +594,19 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] B-4: Explicit handoff outcome categories, reason codes, and batch-level `HandoffBatchReport`; `handoff_report.py` module; 68 new tests; 251 total tests pass
 - [x] B-5: Single reviewable batch manifest/review bundle; `handoff_bundle.py` module; per-record artifact references; B-4 report linking; `--bundle-dir` CLI arg; 84 new tests; 335 total tests pass
 - [x] B-6: Bundle integrity and consistency validation; `handoff_bundle_validation.py` module; 24 explicit checks across structural, count, reference, uniqueness, and path categories; 92 new tests; 427 total tests pass
-- [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)
+- [x] MLflow experiments populated with real metrics from a live Databricks workspace — completed April 2026; all four evaluation stages (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability) logged to Databricks-hosted MLflow experiments via `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified experiment paths; personal non-production workspace; see `docs/v1-closeout-mlflow-checkpoint.md` for runbook details
+
+---
+
+## V1 Closeout Statement
+
+V1 is complete as of April 2026. This means:
+
+- End-to-end single-domain (FDA warning letters) pipeline implemented, validated in a real Databricks personal workspace, and closed with live MLflow experiment population
+- Bronze / Silver / Gold contracts implemented, contract-enforced, and tested (427 tests)
+- Evaluation layer implemented for all four quality dimensions; all four stages logged to Databricks MLflow
+- Gold → Bedrock handoff preparation layer complete: contract, repo-enforced validator, materialization gate, outcome reporting, batch bundle, bundle integrity validation
+- Databricks-safe MLflow experiment path resolution implemented (`src/evaluation/mlflow_experiment_paths.py`)
+- V1 remains single-domain and controlled — no enterprise deployment, no production credentials, no live Bedrock integration
+- Downstream Bedrock live integration is future work (V2+)
+- V2 has not started

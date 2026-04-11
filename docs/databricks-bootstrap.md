@@ -217,17 +217,20 @@ The only Databricks-specific artifact committed to this repo is the example reso
 
 ---
 
-## Next Steps
+## Status and Next Steps
 
-A-3B consolidation is complete:
+**A-3B consolidation is complete:**
 
 - [x] All five SQL bootstrap files are committed under `notebooks/bootstrap/`
 - [x] `config/databricks.resources.example.yml` is committed
 - [x] This documentation file is committed
 - [x] `PROJECT_SPEC.md`, `ARCHITECTURE.md`, `README.md`, `docs/roadmap.md`, and `docs/CURSOR_CONTEXT.md` are updated to reflect A-3B
 
-Phase A-4 (Evaluation and Observability) is complete. Evaluation runners for all four quality dimensions are implemented in `src/evaluation/`. MLflow logging is optional and available.
+**Phases A-4 through B-6 are complete.** Evaluation runners for all four quality dimensions are implemented in `src/evaluation/`. MLflow logging is available via `--mlflow`. The full handoff contract, validation, reporting, and bundle integrity layers (B-0 through B-6) are implemented.
 
-Phase A-4.1 (Runtime Validation Checkpoint) is complete. Findings are recorded above. Null-confidence evaluator handling is confirmed correct for this bootstrap path.
+**V1 closeout MLflow evaluation checkpoint is complete** (April 2026). This is a separate, later milestone from the A-3B SQL bootstrap:
 
-Phase B-0 (Bedrock Handoff Contract Preparation) is the next phase and has not started.
+- A-3B (this document) = SQL AI Functions bootstrap validation in a personal Databricks workspace; used manual SQL evaluation; no MLflow automation
+- V1 closeout MLflow checkpoint = end-to-end local pipeline run against the sample FDA warning letter fixture, with all four evaluation stages (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability) logged to a real Databricks-hosted MLflow tracking server using `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified experiment paths; see `docs/v1-closeout-mlflow-checkpoint.md` for the runbook
+
+**V1 is complete. V2 (multi-domain pipelines, live Bedrock integration) has not started.**

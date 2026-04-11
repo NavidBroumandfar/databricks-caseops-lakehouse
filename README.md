@@ -93,7 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through B-6** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**V1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6).
+
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. V2 has not started.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -166,6 +168,8 @@ The quarantine record is a governance signal, not a failure — it confirms rule
 | Evaluation usage guide | `examples/evaluation/README.md` | ✅ Complete |
 
 The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. A-4.1 runtime inspection confirmed that scalar confidence is not available from `ai_classify` in the validated bootstrap path, and that the conservative quarantine behavior (1 of 4 records quarantined) matched expectations. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
+
+**V1 MLflow Live-Workspace Checkpoint** — The final V1 closeout milestone has been completed: all four evaluation stages (Bronze parse quality, Silver extraction quality, Gold classification quality, pipeline traceability) were executed end-to-end and logged to real Databricks MLflow experiments in a personal, non-production workspace. This closes the gap between "evaluation layer implemented locally" and "evaluation run logged to a real MLflow tracking server." The experiments were populated using the `caseops/` experiment root path via `Databricks-safe MLflow experiment path resolution` (`src/evaluation/mlflow_experiment_paths.py`). This is a personal workspace validation only — not an enterprise deployment and not connected to live Bedrock integration.
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
 

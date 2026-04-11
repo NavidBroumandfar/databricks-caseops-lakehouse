@@ -345,11 +345,20 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ## Success Criteria
 
-The project is considered complete for V1 when:
+**V1 is complete.** All criteria below are met as of the V1 closeout MLflow workspace checkpoint (April 2026).
 
-1. A real document (e.g., a publicly available FDA warning letter) can be dropped into a Unity Catalog Volume and processed end-to-end to a Gold record without manual intervention
-2. All three layer schemas (Bronze, Silver, Gold) are defined, documented, and validated
-3. An MLflow evaluation run exists with meaningful metrics for at least two pipeline stages
-4. The data contract is documented and consistent with the actual schema definitions
-5. The downstream export format is specified and could be consumed by a Bedrock retrieval system without modification
-6. The evaluation plan covers all four quality dimensions — parse quality, extraction quality, classification quality, and traceability completeness — and at least two of the four have implemented MLflow evaluation runs with real metrics
+1. ✅ A real document (e.g., a publicly available FDA warning letter) can be dropped into a Unity Catalog Volume and processed end-to-end to a Gold record without manual intervention — confirmed in personal Databricks workspace during A-3B bootstrap (4 documents, full lineage)
+2. ✅ All three layer schemas (Bronze, Silver, Gold) are defined, documented, and validated — Pydantic v2 schemas with contract enforcement (B-1)
+3. ✅ An MLflow evaluation run exists with meaningful metrics for at least two pipeline stages — all four stages logged to real Databricks MLflow experiments during V1 closeout checkpoint
+4. ✅ The data contract is documented and consistent with the actual schema definitions — `docs/data-contracts.md` and `docs/bedrock-handoff-contract.md` are consistent with all schemas
+5. ✅ The downstream export format is specified and could be consumed by a Bedrock retrieval system without modification — B-0 contract, B-1 enforced validator, B-2 materialization gate; no live Bedrock integration exists (V2+)
+6. ✅ The evaluation plan covers all four quality dimensions — parse quality, extraction quality, classification quality, and traceability completeness — and all four have implemented MLflow evaluation runs with real metrics logged to a Databricks-hosted MLflow tracking server during the V1 closeout checkpoint
+
+**What V1 completion means precisely:**
+- End-to-end single-domain (FDA warning letters) pipeline implemented and validated in a real Databricks personal workspace
+- Bronze / Silver / Gold layer contracts implemented, enforced, and tested (427 tests)
+- Evaluation layer implemented for all four quality dimensions with local and live Databricks MLflow logging
+- Gold → Bedrock handoff preparation layer implemented (contract, validator, export materialization, batch bundle, integrity validation)
+- Live Databricks MLflow experiments successfully populated for all four pipeline evaluation stages
+- V1 remains single-domain, controlled, and non-production — no enterprise deployment, no production credentials
+- Downstream Bedrock live integration is explicitly future work (V2+)

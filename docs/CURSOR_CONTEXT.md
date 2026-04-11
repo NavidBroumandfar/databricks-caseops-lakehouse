@@ -55,7 +55,21 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-6 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6). Phase B proper (live Bedrock integration) has not started.
+**V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not start V2. Do not rewrite V1 history.
+
+**Phases A-0 through B-6 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
+- A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
+- Real Databricks MLflow experiments populated for all four evaluation stages: bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability — logged April 2026 via `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified paths using `src/evaluation/mlflow_experiment_paths.py`
+- An explicit Gold → Bedrock handoff contract (B-0), repo-enforced contract validator (B-1), contract-enforced export materialization path (B-2), clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6)
+- 427 tests passing across all pipeline stages and contract enforcement layers
+
+**Phase B proper (live Bedrock integration) has not started. V2 has not started.**
+
+Key V1 completion boundaries:
+- No live Bedrock integration exists — downstream integration is V2+
+- No enterprise deployment or production credentials
+- Single domain only: FDA warning letters
+- Personal Databricks workspace was used for bootstrap (A-3B) and MLflow closeout — not an enterprise or production environment
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
