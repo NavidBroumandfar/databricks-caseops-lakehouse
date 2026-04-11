@@ -21,16 +21,22 @@ This project builds a **production-aware document intelligence pipeline** on Dat
 
 ## Positioning
 
-This is the Databricks-native sibling of **Bedrock CaseOps**. Where Bedrock CaseOps handles retrieval augmentation and agent orchestration, this repo owns the **document transformation and structuring layer** upstream of it.
+This is the Databricks-native upstream layer of the **Bedrock CaseOps** system. This repo owns **governed document transformation and AI-ready asset preparation**. Bedrock CaseOps owns what happens after the handoff: retrieval, agentic reasoning, escalation, and case-support workflows.
 
 | Concern | This Repo | Bedrock CaseOps |
 |---|---|---|
 | Raw document ingestion | Yes | No |
 | Parsing and extraction | Yes | No |
-| Structured schema output | Yes | Consumes |
-| Classification and routing | Yes | Consumes |
-| Agent orchestration | No | Yes |
-| Retrieval (RAG) | No | Yes |
+| Schema validation and traceability | Yes | No |
+| Classification and routing | Yes | No |
+| Governed AI-ready asset preparation | Yes | No |
+| Gold export payload delivery | Yes (file/Delta) | Consumes |
+| Retrieval and RAG | No | Yes |
+| Agent reasoning and orchestration | No | Yes |
+| Escalation and case-support workflows | No | Yes |
+| KPI reporting or cross-case analytics | No | Out of scope for both in V1 |
+
+This repo is the **governed upstream structuring layer**. It does not reason over documents, orchestrate decisions, or produce operational dashboards. Its contract is: raw document in, structured AI-ready record out.
 
 ---
 
@@ -371,6 +377,11 @@ This repo does **not** include:
 - Generic Databricks demo notebooks
 - Scala code
 - Anything that requires production credentials to demonstrate
+- Cross-case analytics, trend reporting, or KPI dashboards
+- Historical operational intelligence or aggregate performance metrics
+- Downstream agent orchestration, reasoning, or decision runtime (that is Bedrock CaseOps)
+
+This repo is not yet, and does not aim to be, a mature analytics backbone or operational intelligence platform. It is the governed upstream document intelligence and AI-ready asset preparation layer.
 
 ---
 

@@ -28,12 +28,17 @@ The following are out of scope for this project at all phases:
 | Frontend / UI of any kind | Outside platform boundary |
 | Conversational agent or chatbot | Owned by Bedrock CaseOps |
 | Retrieval-augmented generation (RAG) | Owned by Bedrock CaseOps |
+| Agent reasoning, orchestration, or escalation workflows | Owned by Bedrock CaseOps |
+| Cross-case analytics or trend reporting | Not the purpose of this repo; downstream concern |
+| KPI dashboards or historical operational intelligence | Not the purpose of this repo; downstream concern |
 | Generic ML or data science notebooks | Not the project identity |
 | Real-time streaming ingestion | V1 targets batch; streaming is a future evolution |
 | Fine-tuned model training | Evaluation and prompt engineering only in V1 |
 | Scala code | Python and SQL are the sole implementation languages |
 | External LLM API calls (OpenAI, Anthropic) | Databricks AI Functions are preferred; external calls require explicit justification |
 | Production secrets or credentials | Never included in this repo |
+
+**Scope positioning note**: This repo is the governed upstream document intelligence and AI-ready asset preparation layer. It is not an analytics backbone, a KPI platform, or a downstream decisioning system. Those roles belong to Bedrock CaseOps or to future platform evolution well beyond V1.
 
 ---
 
@@ -110,6 +115,8 @@ V1 delivers a functional, evaluated, single-domain pipeline end-to-end. Specific
 - Human-in-the-loop review workflow (V2+)
 - Automated reprocessing on failure (V2+)
 - Streaming or near-real-time ingestion (V3+)
+- Cross-case analytics, KPI reporting, or trend dashboards (not a V1 concern; not a repo concern)
+- Downstream agent reasoning, escalation logic, or case-support orchestration (Bedrock CaseOps, not this repo)
 
 ---
 

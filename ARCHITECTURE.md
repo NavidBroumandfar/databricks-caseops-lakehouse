@@ -241,6 +241,12 @@ See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details on evaluat
 
 ## Bedrock Handoff Design
 
+### Boundary
+
+This repo's responsibility ends at the Gold export. Everything upstream of the handoff — ingestion, parsing, extraction, schema validation, classification, routing, traceability, and evaluation — is owned here. Everything downstream — retrieval index population, vector search, agentic reasoning, escalation, and case-support workflow orchestration — is owned by Bedrock CaseOps.
+
+The Gold `export_payload` is the interface contract between the two systems. This repo prepares it; Bedrock consumes it.
+
 ### Contract
 The Gold layer produces an `export_payload` per document. This payload is the handoff unit. It contains:
 

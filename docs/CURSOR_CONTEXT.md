@@ -44,6 +44,12 @@ When starting any task in this repository, always read files in this exact order
 - Not a retrieval or RAG pipeline (that is Bedrock CaseOps)
 - Not a frontend project
 - Not a collection of ML experiments
+- Not a cross-case analytics or trend reporting platform
+- Not a KPI dashboard or historical operational intelligence system
+- Not a downstream agent reasoning or orchestration runtime (that is Bedrock CaseOps)
+- Not a full analytics backbone — it is the governed upstream document intelligence and AI-ready asset preparation layer
+
+**Positioning guard**: When summarizing this repo, do not use language that implies it is an analytics platform, a KPI system, or a mature intelligence backbone. It structures and prepares documents for downstream use. Bedrock CaseOps handles retrieval, reasoning, and decisioning.
 
 ---
 
