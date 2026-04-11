@@ -11,13 +11,31 @@
 
 All contracts carry a `schema_version` field. Breaking changes increment the major version. Additive changes increment the minor version. Deprecated fields are marked but not removed until the next major version.
 
-Current version: **v0.1.0**
+Current version: **v0.1.0** (V1 complete)
 
 | Version Component | Trigger |
 |---|---|
 | Patch (0.1.**x**) | Documentation-only; no schema field changes |
 | Minor (0.**x**.0) | Additive: new optional fields, new routing labels, new document type labels |
 | Major (**x**.0.0) | Breaking: field removal, type changes, renamed required fields |
+
+### V2 Contract Version Plan — v0.2.0
+
+Phase C-0 (design complete, April 2026) determined that a **minor version increment from v0.1.0 to v0.2.0** is required for V2-C implementation. This is a non-breaking, additive change.
+
+**v0.2.0 additions** (implemented in Phase C-1):
+
+| Addition | Field | Location | Required |
+|---|---|---|---|
+| Delivery mechanism identifier | `delivery_mechanism` | `export_payload.provenance` | Optional |
+| Delta Share name | `delta_share_name` | `export_payload.provenance` | Optional |
+| Delivery event reference | `delivery_event_id` | `export_payload.provenance` | Optional |
+
+All three fields are **optional**. Existing v0.1.0 payloads are unaffected. Consumers that do not need delivery traceability can ignore these fields.
+
+A `caseops.gold.delivery_events` Delta table (new in V2-C) records per-batch delivery notifications. This table is not part of the payload schema; it is a delivery audit log. Its schema is defined in [`docs/live-handoff-design.md`](./live-handoff-design.md) §10.
+
+v0.2.0 payloads are written beginning with Phase C-1. V1 test artifacts remain at v0.1.0 and are not retroactively updated.
 
 ---
 

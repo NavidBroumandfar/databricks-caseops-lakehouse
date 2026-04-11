@@ -306,7 +306,33 @@ In V1, export-ready Gold records are materialized as individual JSON files at:
 
 One file per `export_ready = true` record. File content is the `export_payload` object exactly as defined in the contract. Records with `export_ready = false` (routed to `quarantine`) produce no export file.
 
-In V2, this will evolve to Delta Sharing, a structured API push, or an event-driven notification mechanism. No V2 delivery work is in scope until explicitly added to `PROJECT_SPEC.md`.
+### Delivery Mechanism (V2 — C-0 Design Decision)
+
+The V2 delivery mechanism was selected during Phase C-0. See [`docs/live-handoff-design.md`](./docs/live-handoff-design.md) for the full design record, option comparison, and rationale.
+
+**Decision**: Delta Sharing as the primary delivery mechanism, augmenting (not replacing) the V1 file export path.
+
+The V1 file export path is **retained**. The V2 delivery layer adds:
+
+1. **Delta Share** (`caseops_handoff`): shares the `caseops.gold.ai_ready_assets` Gold table with a Bedrock CaseOps recipient via the Delta Sharing open protocol. Bedrock CaseOps queries the share to discover export-ready records. This is governed at the Unity Catalog level — access is auditable, schema-versioned, and routing-label-transparent.
+
+2. **Delivery events table** (`caseops.gold.delivery_events`): a Unity Catalog Delta table that records a per-batch delivery notification after each successful pipeline run. Each row references the B-5 batch manifest path, record count, routing labels, and `schema_version`. Bedrock CaseOps reads this table to discover new batches.
+
+3. **Schema version bump**: payloads written in V2-C carry `schema_version: v0.2.0`. Three new optional fields are added to `provenance`: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`. These are optional — v0.1.0 consumers are unaffected.
+
+**V2 runtime boundary** (definitive):
+
+| Boundary Artifact | Owner | V2 Change |
+|---|---|---|
+| Export payload file at Volume path | This repo writes | Unchanged from V1 |
+| `caseops.gold.ai_ready_assets` Delta table | This repo writes | Shared via Delta Share in V2-C |
+| `caseops_handoff` Delta Share | This repo provisions | New in V2-C |
+| `caseops.gold.delivery_events` Delta table | This repo writes | New in V2-C |
+| B-5 batch manifest | This repo writes | Referenced in delivery event |
+| Delta Share consumption | Bedrock CaseOps | Consumer-side; not in this repo |
+| Delivery event polling / subscription | Bedrock CaseOps | Consumer-side; not in this repo |
+| Export payload file fetch | Bedrock CaseOps | Consumer-side; not in this repo |
+| Retrieval index, vector search, RAG | Bedrock CaseOps | Unchanged; not in this repo |
 
 ### Phase B Handoff Layer — Implementation Status
 

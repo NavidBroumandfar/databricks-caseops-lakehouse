@@ -398,7 +398,7 @@ This boundary remains explicit and non-negotiable in V2:
 | Document ingestion, parsing, extraction | Yes | No |
 | Schema validation and traceability | Yes | No |
 | Classification, routing, and export | Yes | No |
-| Live export delivery to Bedrock | Yes — V2-C (planned) | Receives |
+| Live export delivery to Bedrock | Yes — V2-C (Delta Sharing + delivery events) | Receives via Delta Share |
 | Multi-domain extraction and classification | Yes — V2-D (planned) | No |
 | Human review queue (upstream intake side) | Yes — V2-E (planned) | Downstream review tools: No |
 | Retrieval, RAG, and agent reasoning | No | Yes |
@@ -410,14 +410,14 @@ This boundary remains explicit and non-negotiable in V2:
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps. V1 B-phases prepared and hardened the export boundary. V2-C executes across that boundary — delivering to a real Bedrock consumer using a selected delivery protocol.
 
-**Status**: Not started.
+**Status**: C-0 design complete. C-1 and C-2 not started.
 
 Subphases:
-- **C-0** — Integration delivery mechanism design and selection (Delta Sharing vs API push vs event-driven); enhanced interface contract design; V2 contract versioning
-- **C-1** — Export delivery implementation: first live Bedrock-facing delivery slice; replaces or augments file-only handoff path
-- **C-2** — Runtime integration validation and observability: end-to-end delivery validation; live integration health signals
+- **C-0** — Integration delivery mechanism design and selection. **Complete.** Decision: Delta Sharing as primary mechanism, augmenting (not replacing) the V1 file export path. See [`docs/live-handoff-design.md`](./docs/live-handoff-design.md) for the full design record.
+- **C-1** — Export delivery implementation: first live Bedrock-facing delivery slice. Implements Delta Sharing of the Gold table, a `delivery_events` notification table, and optional provenance fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`). **Augments the V1 file export path; does not replace it.** Contract version bumps from v0.1.0 to v0.2.0 (minor, additive).
+- **C-2** — Runtime integration validation: end-to-end delivery confirmation via a reproducible validation script or notebook. Validates: share query returns correct records, delivery event row present, B-5 manifest integrity passes, export payload files fetchable at manifest-referenced paths, payloads carry `schema_version: v0.2.0`.
 
-**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, agent reasoning, or escalation logic — those remain Bedrock CaseOps.
+**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, agent reasoning, or escalation logic — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share provisioning — making data available for Bedrock to consume.
 
 #### Phase D — Multi-Domain Pipeline Expansion
 

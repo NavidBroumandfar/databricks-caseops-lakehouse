@@ -631,9 +631,9 @@ V1 is complete as of April 2026. This means:
 
 | Phase | Name | Status | Goal |
 |---|---|---|---|
-| C-0 | Integration Delivery Mechanism Design | 🔲 Not Started | Select V2 delivery mechanism; design live handoff architecture; version V2 contract |
-| C-1 | Export Delivery Implementation | 🔲 Not Started | First live Bedrock-facing delivery slice; replace file-only export path |
-| C-2 | Runtime Integration Validation | 🔲 Not Started | End-to-end delivery validation; live integration observability |
+| C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
+| C-1 | Export Delivery Implementation | 🔲 Not Started | Delta Share setup + delivery events table + v0.2.0 payloads; augments V1 file export path |
+| C-2 | Runtime Integration Validation | 🔲 Not Started | End-to-end delivery validation: share query, event row, manifest integrity, payload fetch |
 | D-0 | Multi-Domain Framework | 🔲 Not Started | Per-domain prompt routing; domain registry; multi-domain classification and routing |
 | D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
 | D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
@@ -645,32 +645,38 @@ V1 is complete as of April 2026. This means:
 
 ## Phase C — Live Handoff Integration and Export Delivery
 
-**Status**: Not started.
+**Status**: C-0 design complete. C-1 and C-2 not started.
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
 
 **What is different from V1**: V1 B-phases prepared the handoff (file export to a Unity Catalog Volume path). V2-C delivers that handoff to a live Bedrock consumer. This is the first point in the project where output leaves this repo's infrastructure boundary and arrives at a Bedrock CaseOps consumer.
 
-**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, RAG, agent reasoning, or escalation logic — those remain Bedrock CaseOps.
+**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, RAG, agent reasoning, or escalation logic — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share provisioning.
 
-**Candidate delivery mechanisms (to be selected in C-0)**:
-- Delta Sharing (table-level governed export)
-- Structured API push to a Bedrock-controlled consumer endpoint
-- Event-driven notification with export manifest reference
+**C-0 decision (final)**: Delta Sharing is the selected primary delivery mechanism. The V1 file export path is **augmented, not replaced**. A `delivery_events` Delta table is added as the per-batch notification record. The contract version bumps from v0.1.0 to v0.2.0 (minor, additive). See [`docs/live-handoff-design.md`](./live-handoff-design.md) for the full design record.
 
 ---
 
 ### Phase C-0 — Integration Delivery Mechanism Design
 
-**Status**: Not started.
+**Status**: Design complete.
 
 **Goal**: Evaluate and select the V2 export delivery mechanism. Define the enhanced interface contract that supports live delivery. Document the integration architecture and consumer-side prerequisites.
 
-**Key decisions**:
-- Delivery protocol selection
-- Consumer-side prerequisites (what Bedrock CaseOps must implement to receive)
-- Contract versioning for V2 (minor version bump from `v0.1.0`)
-- Authentication and security boundary (no credentials committed to repo)
+**Decisions made**:
+- **Primary delivery mechanism**: Delta Sharing (`caseops_handoff` share; shares `caseops.gold.ai_ready_assets`)
+- **Secondary delivery artifact**: `caseops.gold.delivery_events` Delta table (per-batch notification log)
+- **Rejected**: Structured API push (tight coupling, not Databricks-native, imports consumer concerns)
+- **File export path**: Retained and augmented — not replaced
+- **Contract version**: v0.1.0 → v0.2.0 (minor bump; three new optional `provenance` fields)
+- **Runtime boundary**: Delta Share provisioning is this repo's V2 boundary; consumption is Bedrock CaseOps
+
+**Deliverables**:
+- `docs/live-handoff-design.md` — complete C-0 design record (purpose, V1 baseline, option comparison, recommendation, boundary, contract versioning, C-1 target, C-2 target, non-goals, open questions)
+- `PROJECT_SPEC.md` — Phase C subphase entries updated with C-0 decisions
+- `ARCHITECTURE.md` — V2 delivery mechanism section added; runtime boundary table added
+- `docs/roadmap.md` — C-0/C-1/C-2 entries updated; Phase C status updated
+- `docs/data-contracts.md` — V2 contract versioning note added
 
 ---
 
@@ -678,7 +684,17 @@ V1 is complete as of April 2026. This means:
 
 **Status**: Not started.
 
-**Goal**: Implement the selected delivery mechanism. First live, validated Gold → Bedrock delivery slice. Export-ready payloads are delivered to the Bedrock consumer without a manual copy step.
+**Goal**: Implement the Delta Sharing delivery mechanism. First live, validated Gold → Bedrock delivery slice. Export-ready payloads are accessible to the Bedrock consumer without a manual copy step. The V1 file export path is preserved.
+
+**Implementation targets** (from C-0):
+- Delta Share `caseops_handoff` in Unity Catalog; shares `caseops.gold.ai_ready_assets`
+- Recipient configured (personal workspace self-share or simulated recipient for portfolio validation)
+- `caseops.gold.delivery_events` Delta table created with defined schema
+- Pipeline writes a delivery event row after each successful export batch
+- Delivery event references the B-5 batch manifest path
+- Export payloads updated to `schema_version: v0.2.0` with optional provenance additions
+- `docs/bedrock-handoff-contract.md` updated to v0.2.0
+- New modules: `notebooks/c1/01_delta_share_setup.sql`, `src/pipelines/delivery_handoff.py` (or equivalent), `notebooks/c1/02_c1_delivery_validation.sql`
 
 ---
 
@@ -686,7 +702,15 @@ V1 is complete as of April 2026. This means:
 
 **Status**: Not started.
 
-**Goal**: Validate the live delivery end-to-end. Confirm payloads arrive and are consumable on the Bedrock side. Establish integration observability — what does a successful runtime handoff look like?
+**Goal**: Validate the C-1 delivery slice end-to-end via a reproducible validation script or notebook. Confirm all six delivery validation targets pass in a single run.
+
+**Validation targets** (from C-0):
+- Delta Sharing recipient can query `gold_ai_ready_assets` and observe `export_ready = true` records
+- `delivery_events` table shows a row for the batch with correct counts and manifest path
+- B-5 manifest referenced in the delivery event is readable and passes B-6 integrity validation
+- Export payload files at manifest-referenced paths are readable JSON
+- Payloads carry `schema_version: v0.2.0`
+- `routing_label` is correctly observable from the shared table
 
 ---
 
