@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-0 are complete.** The repo has a validated pipeline (A-0 through A-4.1) and an explicit Gold → Bedrock handoff contract (B-0). Phase B proper (live Bedrock integration) has not started.
+**Phases A-0 through B-1 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), and a repo-enforced contract validator with tests (B-1). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -91,6 +91,15 @@ semantics, V1 delivery mechanism (JSON file export to Unity Catalog Volume), and
 limitations. `ARCHITECTURE.md`, `docs/data-contracts.md`, and `docs/roadmap.md` are updated for
 consistency. B-0 is a contract-hardening phase only — no live AWS/Bedrock integration was delivered.
 Live integration is Phase B proper (not started).
+
+**Phase B-1 — Handoff Contract Materialization and Validation** is complete.
+B-1 converted the B-0 documentation contract into repo-enforced behavior. Key deliverables:
+`src/schemas/bedrock_contract.py` (validates export payloads against B-0 §4 requirements),
+`examples/contract_valid_fda_export_payload.json` (contract-valid V1 FDA fixture),
+`tests/test_bedrock_contract_validation.py` (53 tests: valid, invalid, quarantine, bootstrap-path).
+Also fixed: `classification_confidence` in `gold_schema.py` is now `Optional[float]` (per B-0 §4.3),
+and `classify_gold.py` routing logic correctly handles null confidence (per B-0 §6).
+No live Bedrock/AWS integration was introduced.
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

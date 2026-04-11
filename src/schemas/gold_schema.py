@@ -13,7 +13,15 @@ V1 scope: FDA warning letters only. The taxonomy module (classification_taxonomy
 defines the closed label sets enforced here.
 
 Authoritative contract: docs/data-contracts.md § Gold: AI-Ready Asset Contract
+Bedrock handoff contract: docs/bedrock-handoff-contract.md § 4
 Architecture context: ARCHITECTURE.md § Gold Layer
+
+B-1 note: classification_confidence is Optional[float] in both ExportProvenance
+and GoldRecord. Per B-0 §4.3 and §9: confidence is null in A-3B bootstrap-origin
+records because ai_classify does not expose a scalar confidence score in that
+implementation. The target-state pipeline populates this field; bootstrap-origin
+records carry None. Contract validation enforces this distinction explicitly via
+src/schemas/bedrock_contract.py.
 """
 
 from __future__ import annotations
@@ -22,7 +30,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 SCHEMA_VERSION = "v0.1.0"
@@ -53,15 +61,27 @@ class ExportProvenance(BaseModel):
     classification_model: str = Field(
         description="Model identifier used by the Gold classification step."
     )
-    classification_confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence score produced by the classifier. Range: 0.0–1.0.",
+    classification_confidence: Optional[float] = Field(
+        default=None,
+        description=(
+            "Confidence score produced by the classifier. Range: 0.0–1.0 when present. "
+            "Null in bootstrap-origin records (A-3B path) — see docs/bedrock-handoff-contract.md § 9."
+        ),
     )
     schema_version: str = Field(
         default=SCHEMA_VERSION,
         description="Data contract version this payload was written against.",
     )
+
+    @field_validator("classification_confidence")
+    @classmethod
+    def confidence_range(cls, v: Optional[float]) -> Optional[float]:
+        """When present, confidence must be in [0.0, 1.0]."""
+        if v is not None and not (0.0 <= v <= 1.0):
+            raise ValueError(
+                f"classification_confidence {v} out of range [0.0, 1.0]"
+            )
+        return v
 
 
 # ---------------------------------------------------------------------------
@@ -152,10 +172,12 @@ class GoldRecord(BaseModel):
     routing_label: str = Field(
         description="Routing label determining which downstream system receives this record."
     )
-    classification_confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Classifier confidence score. Range: 0.0–1.0.",
+    classification_confidence: Optional[float] = Field(
+        default=None,
+        description=(
+            "Classifier confidence score. Range: 0.0–1.0 when present. "
+            "Null in bootstrap-origin records — see docs/bedrock-handoff-contract.md § 9."
+        ),
     )
     classification_model: str = Field(
         description="Model or function identifier used for classification."

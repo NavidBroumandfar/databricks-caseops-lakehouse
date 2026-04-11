@@ -93,7 +93,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through A-4** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B) and a full evaluation and observability layer (A-4). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**Phases A-0 through B-1** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), and a repo-enforced contract validator with tests (B-1). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -162,12 +162,26 @@ The quarantine record is a governance signal, not a failure — it confirms rule
 | Full-pipeline orchestrator | `src/evaluation/run_evaluation.py` | ✅ Complete |
 | Report models | `src/evaluation/report_models.py` | ✅ Complete |
 | Report writer | `src/evaluation/report_writer.py` | ✅ Complete |
-| A-4 test suite | `tests/` (84 tests) | ✅ Complete |
+| A-4 test suite | `tests/` (84 tests) | ✅ Complete | Evaluation layer tests |
 | Evaluation usage guide | `examples/evaluation/README.md` | ✅ Complete |
 
 The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. A-4.1 runtime inspection confirmed that scalar confidence is not available from `ai_classify` in the validated bootstrap path, and that the conservative quarantine behavior (1 of 4 records quarantined) matched expectations. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
+
+**Phase B-0 — Bedrock Handoff Contract Preparation** is complete. The single authoritative contract artifact is [`docs/bedrock-handoff-contract.md`](./docs/bedrock-handoff-contract.md). It defines the `export_payload` structure, required vs optional fields, routing label → Bedrock consumer mapping, and `export_ready` / `quarantine` semantics for the Gold → Bedrock handoff. No live AWS/Bedrock integration was delivered.
+
+**Phase B-1 — Handoff Contract Materialization and Validation** is complete. B-1 converts the B-0 documentation contract into repo-enforced, testable behavior:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Contract validator | `src/schemas/bedrock_contract.py` | ✅ Complete |
+| Contract-valid fixture | `examples/contract_valid_fda_export_payload.json` | ✅ Complete |
+| B-1 test suite | `tests/test_bedrock_contract_validation.py` (53 tests) | ✅ Complete |
+| Gold schema alignment | `src/schemas/gold_schema.py` (`classification_confidence` Optional) | ✅ Updated |
+| Pipeline alignment | `src/pipelines/classify_gold.py` (null-confidence safe routing) | ✅ Updated |
+
+Total test count: **137 tests** across all pipeline stages and contract validation.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -348,6 +362,7 @@ databricks-caseops-lakehouse/
 │   └── prompts/             # Excluded from version control
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
+│   │   └── bedrock_contract.py   # B-1: Gold export payload contract validator
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
@@ -360,7 +375,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # A-4 unit tests (84 tests across all evaluators)
+├── tests/                   # 137 tests: A-4 evaluators (84) + B-1 contract validation (53)
 └── examples/
     ├── evaluation/          # A-4 usage guide
     └── ...                  # Sample documents and expected outputs

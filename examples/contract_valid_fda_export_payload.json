@@ -1,0 +1,37 @@
+{
+  "_note": "B-1 contract-valid fixture. This is the standalone export payload written to /Volumes/caseops/gold/exports/regulatory_review/<document_id>.json for an export-ready FDA warning letter Gold record. Shape reflects B-0 contract §4 (docs/bedrock-handoff-contract.md). UUIDs are static placeholders. classification_confidence is populated (target-state path). See also expected_gold_fda_warning_letter.json for the full Gold record containing this payload.",
+  "document_id": "00000000-0000-0000-0000-000000000001",
+  "source_file": "fda_warning_letter_sample.md",
+  "document_type": "fda_warning_letter",
+  "routing_label": "regulatory_review",
+  "extracted_fields": {
+    "issuing_office": "Central Region — Chicago District",
+    "recipient_company": "Meridian Pharmaceutical Solutions, Inc",
+    "recipient_name": "Marcus J. Holloway",
+    "issue_date": "2025-03-14",
+    "violation_type": [
+      "Failure to Establish Adequate Laboratory Controls (21 CFR § 211.160(b))",
+      "Inadequate Investigation of Out-of-Specification (OOS) Results (21 CFR § 211.192)",
+      "Failure to Maintain Adequate Equipment Qualification Records (21 CFR § 211.68)"
+    ],
+    "cited_regulations": [
+      "21 CFR Part 210",
+      "21 CFR § 211.160(b)",
+      "21 CFR § 211.192",
+      "21 CFR § 211.68"
+    ],
+    "corrective_action_requested": true,
+    "response_deadline_days": 15,
+    "product_involved": "Amoxicillin Trihydrate Capsules, 500 mg",
+    "summary": "The FDA inspected Meridian Pharmaceutical Solutions, Inc. and found significant violations of CGMP regulations related to laboratory controls, OOS investigations, and equipment qualification records."
+  },
+  "parsed_text_excerpt": "FDA Warning Letter — Meridian Pharmaceutical Solutions, Inc.\n\nDate: March 14, 2025\n\nIssued to:\nMarcus J. Holloway\nChief Executive Officer\nMeridian Pharmaceutical Solutions, Inc.\n4800 Industrial Parkway, Suite 200\nSpringfield, IL 62704\n\nDistrict Office: Central Region — Chicago District\n\nDear Mr. Holloway,\n\nThe United States Food and Drug Administration (FDA) inspected your drug manufacturing facility...",
+  "provenance": {
+    "ingested_at": "2025-03-14T11:55:00+00:00",
+    "pipeline_run_id": "local-run-00000000-0000-0000-0000-000000000004",
+    "extraction_model": "local_rule_extractor/v1",
+    "classification_model": "local_rule_classifier/v1",
+    "classification_confidence": 0.9,
+    "schema_version": "v0.1.0"
+  }
+}

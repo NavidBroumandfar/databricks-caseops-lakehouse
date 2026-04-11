@@ -18,6 +18,7 @@
 | A-4 | Evaluation and Observability | ✅ Complete | Formal evaluation layer across all stages; structured reports; 84 tests |
 | A-4.1 | Runtime Validation Checkpoint | ✅ Complete | Runtime inspection of A-3B bootstrap tables; confirmed null confidence and routing behavior |
 | B-0 | Bedrock Handoff Contract Preparation | ✅ Complete | Explicit Gold → Bedrock interface contract; payload definitions; routing map; delivery semantics |
+| B-1 | Handoff Contract Materialization and Validation | ✅ Complete | B-0 contract converted from docs into repo-enforced schema, fixtures, and tests |
 
 ---
 
@@ -261,6 +262,53 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ---
 
+## Phase B-1 — Handoff Contract Materialization and Validation
+
+**Status**: Complete
+
+**Goal**: Convert the B-0 Gold → Bedrock handoff contract from documentation into repo-enforced schema behavior, fixtures, and tests. B-1 makes the contract enforceable — not just documented.
+
+**Scope boundary**: B-1 is contract materialization only. It introduces no AWS/Bedrock SDK code, no live integration, no S3 plumbing, no vector search, and no agent workflows. The repo remains the upstream-only governed document intelligence layer.
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Contract validator | `src/schemas/bedrock_contract.py` | ✅ Complete | `validate_export_payload()` and `validate_quarantine_record()` enforce B-0 §4, §6 |
+| Contract-valid fixture | `examples/contract_valid_fda_export_payload.json` | ✅ Complete | Standalone V1 FDA export payload matching B-0 §4.5 exactly |
+| B-1 test suite | `tests/test_bedrock_contract_validation.py` | ✅ Complete | 53 tests covering valid, invalid, quarantine, bootstrap-path, and schema alignment cases |
+| Gold schema alignment | `src/schemas/gold_schema.py` | ✅ Updated | `classification_confidence` made `Optional[float]` in `ExportProvenance` and `GoldRecord` per B-0 §4.3 |
+| Pipeline alignment | `src/pipelines/classify_gold.py` | ✅ Updated | Routing/readiness logic handles `None` confidence correctly per B-0 §6 |
+
+**What B-1 enforces:**
+
+- Required vs optional payload field expectations (B-0 §4.1, §4.2)
+- Required provenance fields, with `classification_confidence` explicitly nullable (B-0 §4.3)
+- Required FDA warning letter extracted_fields for the V1 executable slice (B-0 §4.4)
+- `document_type != 'unknown'` and `routing_label != 'quarantine'` for valid handoff units (B-0 §3)
+- Quarantine record shape: `export_ready=False`, `routing_label='quarantine'`, `export_path=None` (B-0 §6)
+- Bootstrap-path: `classification_confidence=None` accepted without rejection (B-0 §9)
+
+**Inconsistencies found and resolved:**
+
+- `ExportProvenance.classification_confidence` was `float` (non-optional) but B-0 §4.3 and §9 explicitly allow null for bootstrap-origin records. Fixed to `Optional[float]`.
+- `GoldRecord.classification_confidence` had the same issue. Fixed.
+- `classify_gold.py` routing and readiness logic compared `None < threshold` (would raise TypeError). Fixed with explicit None guard per B-0 §6.
+- The existing Gold fixture `expected_gold_fda_warning_letter.json` had `classification_confidence=0.9` (valid target-state shape — no change needed). A separate bootstrap-path fixture is not required since null confidence is tested in the test suite.
+
+**Completion criteria met:**
+
+- ✅ Gold export payload validation is explicit in the repo (`src/schemas/bedrock_contract.py`)
+- ✅ Required vs optional handoff fields are enforced by `validate_export_payload()`
+- ✅ At least one V1 FDA Gold fixture is contract-valid (`examples/contract_valid_fda_export_payload.json`)
+- ✅ Tests cover valid, invalid, quarantine, null-confidence (bootstrap path), and optional-field cases
+- ✅ Gold schema / pipeline output / fixture shape are aligned (Optional confidence)
+- ✅ Repo docs remain consistent with B-0 (no rewrites of the handoff contract)
+- ✅ No AWS/Bedrock SDK code introduced; no fake live integration added
+- ✅ 137 tests pass (84 A-4 existing + 53 B-1 new); no regressions
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -274,4 +322,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] A-4: Evaluation runners implemented for all four quality dimensions
 - [x] A-4.1: Runtime inspection confirmed null confidence and routing behavior for bootstrap path
 - [x] B-0: Gold → Bedrock handoff contract established (`docs/bedrock-handoff-contract.md`)
+- [x] B-1: B-0 contract materialized into repo-enforced validator, contract-valid fixture, and 53 tests (`src/schemas/bedrock_contract.py`, `tests/test_bedrock_contract_validation.py`)
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

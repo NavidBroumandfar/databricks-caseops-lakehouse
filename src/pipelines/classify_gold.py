@@ -324,7 +324,7 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
 
 def compute_routing_label(
     document_type_label: str,
-    classification_confidence: float,
+    classification_confidence: Optional[float],
     silver_validation_status: str,
     silver_coverage: float,
 ) -> str:
@@ -333,7 +333,8 @@ def compute_routing_label(
 
     Quarantine if:
     - document_type_label == 'unknown'
-    - confidence < export threshold
+    - confidence is non-null AND below export threshold (per B-0 §6: threshold
+      applies only when classification_confidence is non-null)
     - Silver validation_status == 'invalid'
     - Silver field_coverage_pct < coverage threshold
 
@@ -341,7 +342,9 @@ def compute_routing_label(
     """
     if document_type_label == DOCUMENT_TYPE_UNKNOWN:
         return ROUTING_LABEL_QUARANTINE
-    if classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
+    # Per B-0 §6: confidence threshold applies only when classification_confidence is non-null.
+    # Bootstrap-origin records (null confidence) are routed by label alone.
+    if classification_confidence is not None and classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
         return ROUTING_LABEL_QUARANTINE
     if silver_validation_status == "invalid":
         return ROUTING_LABEL_QUARANTINE
@@ -358,7 +361,7 @@ def compute_routing_label(
 def compute_export_ready(
     document_type_label: str,
     routing_label: str,
-    classification_confidence: float,
+    classification_confidence: Optional[float],
     silver_validation_status: str,
     silver_coverage: float,
     export_payload: ExportPayload,
@@ -366,19 +369,25 @@ def compute_export_ready(
     """
     Determine whether a Gold record meets all export readiness criteria.
 
-    From docs/data-contracts.md § Downstream AI-Ready Asset Requirements:
+    From docs/data-contracts.md § Downstream AI-Ready Asset Requirements and
+    docs/bedrock-handoff-contract.md § 6:
       1. document_type_label != 'unknown'
       2. routing_label != 'quarantine'
-      3. classification_confidence >= threshold
+      3. classification_confidence >= threshold (target-state; skipped when null — B-0 §6)
       4. Silver validation_status in ('valid', 'partial')
       5. Silver field_coverage_pct >= threshold
       6. export_payload is structurally valid (all required fields present)
+
+    Per B-0 §6: the confidence threshold applies only when classification_confidence
+    is non-null. Bootstrap-origin records (null confidence) are evaluated on the
+    remaining criteria only.
     """
     if document_type_label == DOCUMENT_TYPE_UNKNOWN:
         return False
     if routing_label == ROUTING_LABEL_QUARANTINE:
         return False
-    if classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
+    # Per B-0 §6: confidence threshold applied only when non-null.
+    if classification_confidence is not None and classification_confidence < EXPORT_CONFIDENCE_THRESHOLD:
         return False
     if silver_validation_status not in ("valid", "partial"):
         return False
@@ -405,7 +414,7 @@ def build_export_payload(
     bronze_ingested_at: str,
     document_type_label: str,
     routing_label: str,
-    classification_confidence: float,
+    classification_confidence: Optional[float],
     classification_model: str,
     pipeline_run_id: str,
 ) -> ExportPayload:
@@ -682,11 +691,16 @@ def run_classify_gold(
         summaries.append(summary)
 
         status_tag = "EXPORT-READY" if gold_record.export_ready else "quarantine"
+        confidence_str = (
+            f"{gold_record.classification_confidence:.2f}"
+            if gold_record.classification_confidence is not None
+            else "null"
+        )
         print(
             f"[classify_gold] Gold artifact written → {gold_artifact_path} "
             f"(label={gold_record.document_type_label}, "
             f"routing={gold_record.routing_label}, "
-            f"confidence={gold_record.classification_confidence:.2f}, "
+            f"confidence={confidence_str}, "
             f"status={status_tag})"
         )
         if export_artifact_path:

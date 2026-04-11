@@ -221,6 +221,20 @@ This is not a separate major phase. It is a runtime validation checkpoint that c
 
 **Status**: Complete.
 
+### Phase B-1 — Handoff Contract Materialization and Validation
+**Goal**: Convert the B-0 documentation contract into repo-enforced schema behavior, fixtures, and tests. Make the Gold → Bedrock handoff contract enforceable in code, not just documented.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/schemas/bedrock_contract.py` — explicit contract validator for Gold export payloads
+- `examples/contract_valid_fda_export_payload.json` — contract-valid V1 FDA export payload fixture
+- `tests/test_bedrock_contract_validation.py` — 53 focused tests (valid, invalid, quarantine, bootstrap-path)
+- `src/schemas/gold_schema.py` updated — `classification_confidence` made `Optional[float]` per B-0 §4.3
+- `src/pipelines/classify_gold.py` updated — routing and readiness logic handles `None` confidence per B-0 §6
+
+**Scope boundary**: B-1 introduces no AWS/Bedrock SDK, no live integration, no S3, and no agent workflows. The repo remains the upstream-only governed document intelligence layer.
+
 **What B-0 delivers:**
 - `docs/bedrock-handoff-contract.md` — the single authoritative contract artifact for the Gold → Bedrock handoff
 - Explicit required vs optional payload field differentiation in the contract and in `docs/data-contracts.md`
