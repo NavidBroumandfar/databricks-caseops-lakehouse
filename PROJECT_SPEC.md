@@ -271,6 +271,19 @@ Deliverables:
 
 **Scope boundary**: B-2 strengthens upstream export behavior only. No AWS/Bedrock SDK, no live integration. The repo remains the upstream-only governed document intelligence layer.
 
+### Phase B-3 — Export Packaging Refactor and Handoff Service Boundary
+**Goal**: Extract export/handoff materialization behavior from `classify_gold.py` into a dedicated internal module (`src/pipelines/export_handoff.py`), creating a clean service boundary for the export/handoff slice while preserving B-2 behavior exactly.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/pipelines/export_handoff.py` — `ExportResult`, `compute_export_path`, `write_export_artifact`, `execute_export`
+- `src/pipelines/classify_gold.py` updated — delegates all export/handoff materialization to `execute_export`
+- `tests/test_b3_export_handoff.py` — 28 focused tests (path computation, `execute_export` all cases, module boundary, integration)
+- `tests/test_b2_export_materialization.py` updated — import updated; no-SDK guard reflects new boundary
+
+**Scope boundary**: B-3 is a structural refactor only. No contract semantic changes, no AWS/Bedrock SDK, no live integration, no new downstream assumptions. The repo remains the upstream-only governed document intelligence layer.
+
 **Why B-0 exists before live integration:**
 Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
 

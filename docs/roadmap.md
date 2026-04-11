@@ -20,6 +20,7 @@
 | B-0 | Bedrock Handoff Contract Preparation | ✅ Complete | Explicit Gold → Bedrock interface contract; payload definitions; routing map; delivery semantics |
 | B-1 | Handoff Contract Materialization and Validation | ✅ Complete | B-0 contract converted from docs into repo-enforced schema, fixtures, and tests |
 | B-2 | Contract-Enforced Export Materialization | ✅ Complete | Pipeline obeys B-1 contract during real export write; invalid payloads blocked; quarantine explicit |
+| B-3 | Export Packaging Refactor and Handoff Service Boundary | ✅ Complete | Export/handoff logic extracted into `export_handoff.py`; `classify_gold.py` delegates cleanly |
 
 ---
 
@@ -362,6 +363,55 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ---
 
+## Phase B-3 — Export Packaging Refactor and Handoff Service Boundary
+
+**Status**: Complete
+
+**Goal**: Extract export/handoff materialization behavior from `classify_gold.py` into a dedicated internal module (`src/pipelines/export_handoff.py`), giving the export/handoff slice a clean service boundary while preserving B-2 behavior exactly.
+
+**Scope boundary**: B-3 is a structural refactor only. No AWS/Bedrock SDK, no live integration, no contract semantic changes, no new downstream assumptions. The repo remains the upstream-only governed document intelligence layer.
+
+**What B-3 extracts:**
+
+| Behavior | Pre-B-3 location | Post-B-3 location |
+|---|---|---|
+| Export artifact path computation | Inline in `write_export_artifact` | `compute_export_path()` in `export_handoff.py` |
+| Export artifact write | `write_export_artifact()` in `classify_gold.py` | `write_export_artifact()` in `export_handoff.py` |
+| Contract-gated export validation + write | Inline block in `run_classify_gold` | `execute_export()` in `export_handoff.py` |
+| Quarantine governance shape assertion | Inline block in `run_classify_gold` | `execute_export()` in `export_handoff.py` |
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Export/handoff module | `src/pipelines/export_handoff.py` | ✅ New B-3 | `compute_export_path`, `write_export_artifact`, `execute_export`, `ExportResult` |
+| Simplified pipeline | `src/pipelines/classify_gold.py` | ✅ Updated B-3 | Delegates to `execute_export`; no inline contract/export logic |
+| B-3 test suite | `tests/test_b3_export_handoff.py` | ✅ New B-3 | 28 tests: path computation, execute_export all cases, module boundary, integration |
+| B-2 test update | `tests/test_b2_export_materialization.py` | ✅ Updated B-3 | Import updated; no-SDK guard updated to reflect new module boundary |
+
+**Module boundary established:**
+
+```
+classify_gold.py   → assembles GoldRecord → calls execute_export → writes Gold artifact
+export_handoff.py  → validates contract  → writes export artifact → returns ExportResult
+```
+
+**Inconsistencies found and resolved:**
+None. B-2 behavior was preserved exactly. The `execute_export` function encapsulates the identical contract gating, quarantine shape validation, and write logic that was previously inline. All 183 tests pass (155 pre-B-3 + 28 new B-3).
+
+**Completion criteria met:**
+
+- ✅ Export/handoff materialization logic extracted into `src/pipelines/export_handoff.py`
+- ✅ `classify_gold.py` is materially cleaner — no inline contract/export logic
+- ✅ B-2 export behavior preserved exactly (same contract enforcement rules, same paths)
+- ✅ Contract enforcement still happens in the real export path (via `execute_export`)
+- ✅ Quarantine and export-ready behavior remain explicit and tested
+- ✅ Path generation is deterministic and tested via `compute_export_path`
+- ✅ No AWS/Bedrock SDK code or fake live integration introduced
+- ✅ 183 tests pass; zero regressions
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -377,4 +427,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] B-0: Gold → Bedrock handoff contract established (`docs/bedrock-handoff-contract.md`)
 - [x] B-1: B-0 contract materialized into repo-enforced validator, contract-valid fixture, and 53 tests (`src/schemas/bedrock_contract.py`, `tests/test_bedrock_contract_validation.py`)
 - [x] B-2: Contract-enforced export materialization — pipeline validates before write; invalid payloads blocked; quarantine explicit; 22 new tests (`src/pipelines/classify_gold.py`, `tests/test_b2_export_materialization.py`)
+- [x] B-3: Export/handoff slice extracted into `src/pipelines/export_handoff.py`; `classify_gold.py` delegates to `execute_export`; 28 new tests; 183 total tests pass
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

@@ -93,7 +93,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through B-2** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), and a contract-enforced export materialization path (B-2). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**Phases A-0 through B-3** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), and a clean export/handoff module boundary (B-3). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -190,7 +190,17 @@ To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-de
 | Invalid payload fixture | `examples/invalid_export_payload_missing_fields.json` | ✅ New B-2 |
 | Quarantine record fixture | `examples/quarantine_gold_record.json` | ✅ New B-2 |
 
-Total test count: **155 tests** across all pipeline stages, contract validation, and export materialization.
+**Phase B-3 — Export Packaging Refactor and Handoff Service Boundary** is complete. B-3 extracts export/handoff materialization into a dedicated module with a clean internal service boundary:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Export/handoff module | `src/pipelines/export_handoff.py` | ✅ New B-3 |
+| Simplified pipeline | `src/pipelines/classify_gold.py` (delegates to `execute_export`) | ✅ Updated B-3 |
+| B-3 test suite | `tests/test_b3_export_handoff.py` (28 tests) | ✅ New B-3 |
+
+Module boundary: `classify_gold.py` assembles the Gold record and delegates all export packaging to `export_handoff.py`. B-2 behavior is preserved exactly.
+
+Total test count: **183 tests** across all pipeline stages, contract validation, export materialization, and export handoff boundary.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -374,6 +384,7 @@ databricks-caseops-lakehouse/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
 │   │   └── bedrock_contract.py   # B-1: Gold export payload contract validator
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
+│   │   └── export_handoff.py     # B-3: Export packaging and handoff service boundary
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -385,7 +396,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 155 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18)
+├── tests/                   # 183 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28)
 └── examples/
     ├── evaluation/          # A-4 usage guide
     └── ...                  # Sample documents and expected outputs

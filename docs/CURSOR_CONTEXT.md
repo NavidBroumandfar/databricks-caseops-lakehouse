@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-2 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), and a contract-enforced export materialization path (B-2). Phase B proper (live Bedrock integration) has not started.
+**Phases A-0 through B-3 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), and a clean export/handoff module boundary (B-3). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -109,6 +109,18 @@ invalid payloads blocked; quarantine shape validated; Gold record written once w
 separation, deterministic path, error surfacing, no-SDK guard),
 `examples/invalid_export_payload_missing_fields.json` and `examples/quarantine_gold_record.json`
 (B-2 fixtures). No live Bedrock/AWS integration was introduced.
+
+**Phase B-3 — Export Packaging Refactor and Handoff Service Boundary** is complete.
+B-3 extracts export/handoff materialization logic from the classification pipeline loop into a
+dedicated module (`src/pipelines/export_handoff.py`). Key deliverables: `export_handoff.py`
+with `ExportResult`, `compute_export_path`, `write_export_artifact`, and `execute_export`;
+`classify_gold.py` simplified to delegate all export packaging to `execute_export`;
+`tests/test_b3_export_handoff.py` (28 focused tests). B-2 behavior is preserved exactly.
+183 tests pass total. No live Bedrock/AWS integration was introduced.
+
+The module boundary is:
+  `classify_gold.py` → assembles GoldRecord → calls `execute_export` → writes Gold artifact
+  `export_handoff.py` → validates contract → writes export artifact → returns `ExportResult`
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

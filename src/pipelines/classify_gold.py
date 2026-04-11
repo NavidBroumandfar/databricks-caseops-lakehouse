@@ -1,5 +1,5 @@
 """
-classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-2)
+classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3)
 
 Reads Silver JSON artifacts produced by extract_silver.py, classifies each
 record into a Gold record (document type label + routing label), assembles
@@ -12,15 +12,18 @@ classification. All eligible records are classified and written — no silent
 drops. Records that do not meet export readiness criteria are still written
 as Gold records with export_ready=False.
 
-B-2 contract enforcement:
-  Before any export-ready payload is written as a Bedrock handoff artifact, it is
-  validated against the B-1 contract (src/schemas/bedrock_contract.py). Payloads
-  that fail contract validation are NOT written to the export path. The Gold record
-  is demoted to export_ready=False and the failure is logged explicitly. Invalid
-  export payloads cannot silently pass as valid Bedrock handoff artifacts.
+Responsibilities of this module (B-3 boundary):
+  - Load and validate Silver artifacts for eligibility
+  - Select and run the appropriate document classifier
+  - Assemble the Gold record (routing label, export payload, export readiness)
+  - Delegate all export/handoff materialization to src/pipelines/export_handoff.py
+  - Write the final Gold artifact with its resolved export state
+  - Assemble and return the pipeline summary
 
-  Quarantine records (routing_label='quarantine') produce no export file.
-  Their governance shape is validated post-assembly for correctness.
+Export/handoff behavior (B-2 enforcement, B-3 boundary):
+  All contract-gated export materialization lives in src/pipelines/export_handoff.py.
+  Invalid export payloads are blocked before write. Quarantine records produce no
+  export file. The Gold record is written once with its final resolved state.
 
 Export path:
   <export_base_dir>/<routing_label>/<document_id>.json
@@ -47,7 +50,8 @@ Outputs:
 
 Authoritative contract: docs/data-contracts.md § Gold: AI-Ready Asset Contract
 Bedrock handoff contract: docs/bedrock-handoff-contract.md
-Contract validator: src/schemas/bedrock_contract.py (B-1 / B-2)
+Contract validator: src/schemas/bedrock_contract.py (B-1)
+Export/handoff boundary: src/pipelines/export_handoff.py (B-3)
 Architecture context: ARCHITECTURE.md § Gold Layer
 """
 
@@ -65,10 +69,7 @@ from typing import Optional
 # Allow running from the repo root without installing as a package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src.schemas.bedrock_contract import (
-    validate_export_payload,
-    validate_quarantine_record,
-)
+from src.pipelines.export_handoff import execute_export
 from src.schemas.gold_schema import (
     ExportPayload,
     ExportProvenance,
@@ -557,22 +558,6 @@ def write_gold_artifact(record: GoldRecord, output_dir: Path) -> Path:
     return artifact_path
 
 
-def write_export_artifact(record: GoldRecord, export_base_dir: Path) -> Path:
-    """
-    Write the export payload as a standalone JSON artifact.
-
-    Path: <export_base_dir>/<routing_label>/<document_id>.json
-
-    This layout allows Bedrock consumers to subscribe to a specific routing
-    label sub-directory without reading the full Gold table.
-    """
-    export_dir = export_base_dir / record.routing_label
-    export_dir.mkdir(parents=True, exist_ok=True)
-    artifact_path = export_dir / f"{record.document_id}.json"
-    artifact_path.write_text(record.export_payload.to_json_str(), encoding="utf-8")
-    return artifact_path
-
-
 # ---------------------------------------------------------------------------
 # Bronze metadata resolution
 # ---------------------------------------------------------------------------
@@ -687,44 +672,27 @@ def run_classify_gold(
             pipeline_run_id=run_id,
         )
 
-        # B-2: Contract-enforced export — validate before write.
-        # Determine export_path first so the Gold record is written once with its final state.
-        export_artifact_path = None
-        contract_validation_errors: list[str] = []
+        # B-3: Delegate all export/handoff materialization to the export_handoff module.
+        # execute_export handles contract validation, quarantine shape assertion, and
+        # artifact write. Returns ExportResult with the final export state.
+        export_result = execute_export(gold_record, export_dir_path)
 
-        if gold_record.export_ready:
-            # Validate export payload against the B-1 contract before materializing.
-            # Invalid payloads must not be written as Bedrock handoff artifacts (B-2).
-            payload_dict = gold_record.export_payload.to_json_dict()
-            contract_result = validate_export_payload(payload_dict)
+        # Apply export result to the Gold record — written once with its final state.
+        gold_record = gold_record.model_copy(update={
+            "export_ready": export_result.export_ready,
+            "export_path": export_result.export_path,
+        })
 
-            if contract_result.valid:
-                export_artifact_path = write_export_artifact(gold_record, export_dir_path)
-                gold_record = gold_record.model_copy(
-                    update={"export_path": str(export_artifact_path)}
-                )
-            else:
-                # Contract block: do not write invalid payload as a handoff artifact.
-                # Demote to export_ready=False; export_path stays None.
-                contract_validation_errors = contract_result.errors
-                gold_record = gold_record.model_copy(
-                    update={"export_ready": False, "export_path": None}
-                )
-                print(
-                    f"[classify_gold] CONTRACT BLOCK for {gold_record.document_id}: "
-                    "export payload failed B-1 validation — NOT written. "
-                    f"Errors: {contract_validation_errors}",
-                    file=sys.stderr,
-                )
-        elif gold_record.routing_label == ROUTING_LABEL_QUARANTINE:
-            # B-2: Assert quarantine shape for governance correctness.
-            quarantine_result = validate_quarantine_record(gold_record.to_json_dict())
-            if not quarantine_result.valid:
-                print(
-                    f"[classify_gold] QUARANTINE SHAPE INVALID for {gold_record.document_id}: "
-                    f"{quarantine_result.errors}",
-                    file=sys.stderr,
-                )
+        if export_result.contract_validation_errors:
+            print(
+                f"[classify_gold] CONTRACT BLOCK for {gold_record.document_id}: "
+                "export payload failed B-1 validation — NOT written. "
+                f"Errors: {export_result.contract_validation_errors}",
+                file=sys.stderr,
+            )
+
+        export_artifact_path = export_result.export_artifact_path
+        contract_validation_errors = export_result.contract_validation_errors
 
         # Write Gold artifact once with its final state (export_path and export_ready resolved).
         gold_artifact_path = write_gold_artifact(gold_record, output_dir_path)

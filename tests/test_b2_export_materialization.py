@@ -40,9 +40,9 @@ from src.pipelines.classify_gold import (
     build_export_payload,
     resolve_bronze_metadata,
     run_classify_gold,
-    write_export_artifact,
     write_gold_artifact,
 )
+from src.pipelines.export_handoff import write_export_artifact
 from src.schemas.bedrock_contract import (
     validate_export_payload,
     validate_quarantine_record,
@@ -661,27 +661,36 @@ class TestNoBedrockIntegration:
 
     def test_contract_validator_imported_not_bedrock_sdk(self):
         """
-        The B-2 enforcement path in classify_gold.py must use the local
-        bedrock_contract validator (src/schemas/bedrock_contract.py), not any
-        live SDK. This confirms the integration path is structural validation only.
+        The B-2/B-3 enforcement path must use the local bedrock_contract validator
+        (src/schemas/bedrock_contract.py), not any live SDK.
+
+        After B-3: contract enforcement lives in export_handoff.py, which classify_gold.py
+        delegates to via execute_export(). The structural validation chain is intact.
         """
-        import re
+        repo_root = Path(__file__).resolve().parents[1]
 
-        pipeline_path = (
-            Path(__file__).resolve().parents[1]
-            / "src"
-            / "pipelines"
-            / "classify_gold.py"
-        )
-        source = pipeline_path.read_text(encoding="utf-8")
+        # After B-3: export_handoff.py owns the contract validator imports.
+        export_handoff_path = repo_root / "src" / "pipelines" / "export_handoff.py"
+        handoff_source = export_handoff_path.read_text(encoding="utf-8")
 
-        assert "from src.schemas.bedrock_contract import" in source, (
-            "classify_gold.py must import from src.schemas.bedrock_contract "
-            "(the B-1 contract validator) for B-2 enforcement"
+        assert "from src.schemas.bedrock_contract import" in handoff_source, (
+            "export_handoff.py must import from src.schemas.bedrock_contract "
+            "(the B-1 contract validator) for B-2/B-3 enforcement"
         )
-        assert "validate_export_payload" in source, (
-            "validate_export_payload must be used in classify_gold.py (B-2 enforcement)"
+        assert "validate_export_payload" in handoff_source, (
+            "validate_export_payload must be used in export_handoff.py (B-3 enforcement)"
         )
-        assert "validate_quarantine_record" in source, (
-            "validate_quarantine_record must be used in classify_gold.py (B-2 quarantine assertion)"
+        assert "validate_quarantine_record" in handoff_source, (
+            "validate_quarantine_record must be used in export_handoff.py (B-3 quarantine assertion)"
+        )
+
+        # classify_gold.py delegates export materialization to execute_export (B-3 boundary).
+        pipeline_path = repo_root / "src" / "pipelines" / "classify_gold.py"
+        pipeline_source = pipeline_path.read_text(encoding="utf-8")
+
+        assert "from src.pipelines.export_handoff import" in pipeline_source, (
+            "classify_gold.py must import from export_handoff (B-3 delegation boundary)"
+        )
+        assert "execute_export" in pipeline_source, (
+            "classify_gold.py must delegate export materialization to execute_export (B-3)"
         )
