@@ -55,7 +55,9 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not start V2. Do not rewrite V1 history.
+**V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
+
+**V2 IS FORMALLY DEFINED AND HAS NOT STARTED.** V2 planning is complete (April 2026). Do not begin V2 implementation without an explicit phase scope and prompt. See `PROJECT_SPEC.md` § V2 Scope and `docs/roadmap.md` § V2 — Future Work for the canonical V2 definition.
 
 **Phases A-0 through B-6 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
@@ -63,7 +65,7 @@ When starting any task in this repository, always read files in this exact order
 - An explicit Gold → Bedrock handoff contract (B-0), repo-enforced contract validator (B-1), contract-enforced export materialization path (B-2), clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6)
 - 427 tests passing across all pipeline stages and contract enforcement layers
 
-**Phase B proper (live Bedrock integration) has not started. V2 has not started.**
+**V2 is formally defined. Phase C (live Bedrock integration and export delivery) is the first V2 phase. V2 has not started implementation.**
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+

@@ -362,3 +362,96 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 - Live Databricks MLflow experiments successfully populated for all four pipeline evaluation stages
 - V1 remains single-domain, controlled, and non-production — no enterprise deployment, no production credentials
 - Downstream Bedrock live integration is explicitly future work (V2+)
+
+---
+
+## V2 Scope
+
+**V2 has not started.** V2 is formally defined after V1 closeout (April 2026). The phases below describe what V2 will deliver when implementation begins. No V2 code, infrastructure, or live integration exists yet.
+
+### V2 Objective
+
+V2 deepens the operational readiness and integration capability of this repo across three themes:
+
+1. **Live downstream integration** — Move from contract-only handoff preparation (V1) to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption.
+2. **Multi-domain coverage** — Expand beyond FDA warning letters to CISA advisories and incident reports, both of which have draft schemas in `docs/data-contracts.md` and routing labels already defined.
+3. **Enterprise operational hardening** — Add human review workflow, environment separation, and governance monitoring.
+
+### V2 Explicit Non-Goals
+
+The following are explicitly out of scope for V2:
+
+| Out of Scope for V2 | Reason |
+|---|---|
+| Streaming or near-real-time ingestion | V3+ |
+| Cross-case analytics or KPI reporting | Not a repo concern at any phase |
+| Agent reasoning, orchestration, or escalation | Bedrock CaseOps, not this repo |
+| Production enterprise deployment | Requires explicit organizational scope change |
+| Turning this repo into Bedrock CaseOps | Violates the Databricks / Bedrock boundary |
+
+### V2 Databricks / Bedrock Boundary
+
+This boundary remains explicit and non-negotiable in V2:
+
+| Concern | This Repo (V2) | Bedrock CaseOps |
+|---|---|---|
+| Document ingestion, parsing, extraction | Yes | No |
+| Schema validation and traceability | Yes | No |
+| Classification, routing, and export | Yes | No |
+| Live export delivery to Bedrock | Yes — V2-C (planned) | Receives |
+| Multi-domain extraction and classification | Yes — V2-D (planned) | No |
+| Human review queue (upstream intake side) | Yes — V2-E (planned) | Downstream review tools: No |
+| Retrieval, RAG, and agent reasoning | No | Yes |
+| Escalation and case-support workflows | No | Yes |
+
+### V2 Phased Roadmap
+
+#### Phase C — Live Handoff Integration and Export Delivery
+
+**Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps. V1 B-phases prepared and hardened the export boundary. V2-C executes across that boundary — delivering to a real Bedrock consumer using a selected delivery protocol.
+
+**Status**: Not started.
+
+Subphases:
+- **C-0** — Integration delivery mechanism design and selection (Delta Sharing vs API push vs event-driven); enhanced interface contract design; V2 contract versioning
+- **C-1** — Export delivery implementation: first live Bedrock-facing delivery slice; replaces or augments file-only handoff path
+- **C-2** — Runtime integration validation and observability: end-to-end delivery validation; live integration health signals
+
+**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, agent reasoning, or escalation logic — those remain Bedrock CaseOps.
+
+#### Phase D — Multi-Domain Pipeline Expansion
+
+**Goal**: Extend the pipeline beyond FDA warning letters. CISA cybersecurity advisories are the first V2-D domain (draft schema in `docs/data-contracts.md`, `security_ops` routing label already defined). Incident reports are the second.
+
+**Status**: Not started.
+
+Subphases:
+- **D-0** — Multi-domain framework: per-domain prompt routing, domain registry, multi-domain classification and routing table extension
+- **D-1** — CISA advisory domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, evaluation pass
+- **D-2** — Incident report domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, evaluation pass
+
+**Scope boundary**: Domain expansion adds schemas, prompts, labels, and routing to this repo. It does not add retrieval indexes or agent workflows.
+
+#### Phase E — Enterprise Operational Hardening
+
+**Goal**: Add selected operational hardening: structured human review for quarantined and low-confidence records, environment separation for safe multi-environment iteration, and governance monitoring views for pipeline health visibility.
+
+**Status**: Not started.
+
+Subphases:
+- **E-0** — Human review queue and reprocessing design: review queue structure for quarantined records; reprocessing-on-failure path design; review outcome recording
+- **E-1** — Environment separation: dev/staging/prod Databricks environment structure; environment-aware Unity Catalog configuration; deployment patterns without production credentials
+- **E-2** — Governance monitoring: pipeline health views; batch-level quality trend artifacts; schema drift detection; governance reporting outputs
+
+**Scope boundary**: E-phase hardening is upstream only. This repo does not own human case management tooling, production orchestration, or downstream operational dashboards.
+
+### V2 Success Criteria
+
+V2 is complete when all of the following are true:
+
+1. A live delivery mechanism exists and is validated: Gold export payloads can be delivered to a Bedrock CaseOps consumer endpoint without a manual copy step (Phase C)
+2. At least two additional document domains (CISA advisories, incident reports) can be processed end-to-end through the pipeline alongside FDA warning letters (Phase D)
+3. Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0)
+4. The pipeline can be deployed in at least two distinct Databricks environments without configuration collision (Phase E-1)
+5. The Databricks / Bedrock ownership boundary remains explicit throughout V2 — no retrieval, RAG, agent, or escalation logic enters this repo
+6. No production credentials or enterprise organizational configuration is committed to this repo at any V2 phase

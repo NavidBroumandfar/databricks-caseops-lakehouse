@@ -95,7 +95,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **V1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6).
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. V2 has not started.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 is formally defined and has not started.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work. No V2 implementation work has begun.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 

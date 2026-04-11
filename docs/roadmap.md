@@ -6,7 +6,9 @@
 
 ---
 
-## Phase Summary
+## V1 Phase Summary
+
+> V2 phases are defined in the [V2 — Future Work](#v2--future-work) section below.
 
 | Phase | Name | Status | Goal |
 |---|---|---|---|
@@ -609,4 +611,169 @@ V1 is complete as of April 2026. This means:
 - Databricks-safe MLflow experiment path resolution implemented (`src/evaluation/mlflow_experiment_paths.py`)
 - V1 remains single-domain and controlled — no enterprise deployment, no production credentials, no live Bedrock integration
 - Downstream Bedrock live integration is future work (V2+)
-- V2 has not started
+- V2 is formally defined and has not started
+
+---
+
+## V2 — Future Work
+
+**V2 is not started.** V2 is formally defined after V1 closeout (April 2026). The phases below are planned and not yet implemented. No V2 code, infrastructure, or live integration exists.
+
+### V2 Boundary Rules
+
+- V2 may deepen the Bedrock handoff and operational readiness of this repo
+- V2 must not turn this repo into Bedrock CaseOps
+- The Databricks / Bedrock ownership split remains explicit in all V2 phases
+- V2 introduces no production credentials, no enterprise deployment, and no implementation work until a phase is formally started with an explicit spec
+- V2 begins when Phase C-0 is formally started
+
+### V2 Phase Summary
+
+| Phase | Name | Status | Goal |
+|---|---|---|---|
+| C-0 | Integration Delivery Mechanism Design | 🔲 Not Started | Select V2 delivery mechanism; design live handoff architecture; version V2 contract |
+| C-1 | Export Delivery Implementation | 🔲 Not Started | First live Bedrock-facing delivery slice; replace file-only export path |
+| C-2 | Runtime Integration Validation | 🔲 Not Started | End-to-end delivery validation; live integration observability |
+| D-0 | Multi-Domain Framework | 🔲 Not Started | Per-domain prompt routing; domain registry; multi-domain classification and routing |
+| D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
+| D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
+| E-0 | Human Review and Reprocessing | 🔲 Not Started | Human review queue for quarantined records; reprocessing-on-failure path |
+| E-1 | Environment Separation | 🔲 Not Started | Dev/staging/prod Databricks environment structure; environment-aware configuration |
+| E-2 | Governance Monitoring | 🔲 Not Started | Pipeline health views; quality trend artifacts; schema drift detection |
+
+---
+
+## Phase C — Live Handoff Integration and Export Delivery
+
+**Status**: Not started.
+
+**Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
+
+**What is different from V1**: V1 B-phases prepared the handoff (file export to a Unity Catalog Volume path). V2-C delivers that handoff to a live Bedrock consumer. This is the first point in the project where output leaves this repo's infrastructure boundary and arrives at a Bedrock CaseOps consumer.
+
+**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, RAG, agent reasoning, or escalation logic — those remain Bedrock CaseOps.
+
+**Candidate delivery mechanisms (to be selected in C-0)**:
+- Delta Sharing (table-level governed export)
+- Structured API push to a Bedrock-controlled consumer endpoint
+- Event-driven notification with export manifest reference
+
+---
+
+### Phase C-0 — Integration Delivery Mechanism Design
+
+**Status**: Not started.
+
+**Goal**: Evaluate and select the V2 export delivery mechanism. Define the enhanced interface contract that supports live delivery. Document the integration architecture and consumer-side prerequisites.
+
+**Key decisions**:
+- Delivery protocol selection
+- Consumer-side prerequisites (what Bedrock CaseOps must implement to receive)
+- Contract versioning for V2 (minor version bump from `v0.1.0`)
+- Authentication and security boundary (no credentials committed to repo)
+
+---
+
+### Phase C-1 — Export Delivery Implementation
+
+**Status**: Not started.
+
+**Goal**: Implement the selected delivery mechanism. First live, validated Gold → Bedrock delivery slice. Export-ready payloads are delivered to the Bedrock consumer without a manual copy step.
+
+---
+
+### Phase C-2 — Runtime Integration Validation
+
+**Status**: Not started.
+
+**Goal**: Validate the live delivery end-to-end. Confirm payloads arrive and are consumable on the Bedrock side. Establish integration observability — what does a successful runtime handoff look like?
+
+---
+
+## Phase D — Multi-Domain Pipeline Expansion
+
+**Status**: Not started.
+
+**Goal**: Extend the pipeline beyond FDA warning letters. V1 is single-domain by design. V2-D adds CISA cybersecurity advisories and incident reports — both have draft schemas in `docs/data-contracts.md` § 3 and routing labels already defined in `ARCHITECTURE.md` and `docs/data-contracts.md` § 4.
+
+**Domain expansion priority**: CISA advisories are the first V2-D domain because:
+- Draft extraction schema exists in `docs/data-contracts.md` § 3 (CISA Advisory Fields)
+- `cisa_advisory` classification label and `security_ops` routing label are already in the defined taxonomy
+- Public CISA advisory PDFs are freely accessible for non-commercial use
+
+**Scope boundary**: Domain expansion adds extraction schemas, prompts, classification labels, and routing labels to this repo. It does not add retrieval indexes, vector stores, or agent workflows — those are Bedrock CaseOps concerns.
+
+---
+
+### Phase D-0 — Multi-Domain Framework
+
+**Status**: Not started.
+
+**Goal**: Extend the extraction, classification, and routing framework to support multiple document domains in a single pipeline run. Includes: domain registry, per-domain prompt selection, per-domain schema validation, and multi-domain routing table.
+
+---
+
+### Phase D-1 — CISA Advisory Domain
+
+**Status**: Not started.
+
+**Goal**: Implement the CISA advisory domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, and evaluation pass. This activates the `security_ops` routing label for the first time.
+
+---
+
+### Phase D-2 — Incident Report Domain
+
+**Status**: Not started.
+
+**Goal**: Implement the incident report domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, and evaluation pass. This activates the `incident_management` routing label for the first time.
+
+---
+
+## Phase E — Enterprise Operational Hardening
+
+**Status**: Not started.
+
+**Goal**: Add selected operational hardening that makes the pipeline more robust for non-trivial batch operations: structured human review for quarantined and low-confidence records, environment separation for safe multi-environment iteration, and governance monitoring for pipeline health visibility.
+
+**Scope constraint**: E-phase hardening is upstream only. This repo does not own human case management tooling, production orchestration, or downstream operational dashboards.
+
+---
+
+### Phase E-0 — Human Review and Reprocessing
+
+**Status**: Not started.
+
+**Goal**: Design and implement a structured human review queue for quarantined or low-confidence records. Define the reprocessing path — how a reviewed record re-enters the pipeline with an updated classification or routing decision.
+
+---
+
+### Phase E-1 — Environment Separation
+
+**Status**: Not started.
+
+**Goal**: Define and implement dev/staging/prod environment separation for the Databricks deployment. Includes Unity Catalog catalog-level separation, environment-aware configuration, and deployment patterns.
+
+**Scope boundary**: Environment separation design only. No production credentials, no enterprise organizational deployment configuration committed to the repo.
+
+---
+
+### Phase E-2 — Governance Monitoring
+
+**Status**: Not started.
+
+**Goal**: Implement governance monitoring views: pipeline health metrics, batch-level quality trend artifacts, schema drift detection signals, and governance reporting outputs — surfaced as Databricks notebooks or structured export artifacts.
+
+**Scope boundary**: Pipeline health visibility only. Not cross-case analytics, not KPI dashboards, not downstream operational intelligence.
+
+---
+
+## V2 Closeout Criteria
+
+V2 is complete when all of the following are true:
+
+- A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C)
+- CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D)
+- Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0)
+- Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1)
+- The Databricks / Bedrock boundary remains explicit throughout — no retrieval, RAG, agent, or escalation logic enters this repo
+- No production credentials or enterprise configuration committed at any V2 phase
