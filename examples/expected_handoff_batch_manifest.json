@@ -1,0 +1,65 @@
+{
+  "manifest_version": "v0.1.0",
+  "batch_id": "local-run-b5000000-0000-0000-0000-000000000001",
+  "pipeline_run_id": "local-run-b5000000-0000-0000-0000-000000000001",
+  "generated_at": "2026-04-11T00:00:00+00:00",
+  "total_records_processed": 4,
+  "total_ineligible_skipped": 1,
+  "total_eligible": 3,
+  "total_exported": 2,
+  "total_quarantined": 1,
+  "total_contract_blocked": 0,
+  "total_skipped_not_export_ready": 0,
+  "outcome_distribution": {
+    "exported": 2,
+    "quarantined": 1,
+    "contract_blocked": 0,
+    "skipped_not_export_ready": 0
+  },
+  "exported_records": [
+    {
+      "document_id": "b5fix0001-0000-0000-0000-000000000001",
+      "gold_record_id": "b5gold001-0000-0000-0000-000000000001",
+      "outcome_category": "exported",
+      "outcome_reason": "none",
+      "routing_label": "regulatory_review",
+      "gold_artifact_path": "output/gold/b5gold001-0000-0000-0000-000000000001.json",
+      "export_artifact_path": "output/gold/exports/regulatory_review/b5fix0001-0000-0000-0000-000000000001.json"
+    },
+    {
+      "document_id": "b5fix0002-0000-0000-0000-000000000002",
+      "gold_record_id": "b5gold002-0000-0000-0000-000000000002",
+      "outcome_category": "exported",
+      "outcome_reason": "none",
+      "routing_label": "regulatory_review",
+      "gold_artifact_path": "output/gold/b5gold002-0000-0000-0000-000000000002.json",
+      "export_artifact_path": "output/gold/exports/regulatory_review/b5fix0002-0000-0000-0000-000000000002.json"
+    }
+  ],
+  "quarantined_records": [
+    {
+      "document_id": "b5fix0003-0000-0000-0000-000000000003",
+      "gold_record_id": "b5gold003-0000-0000-0000-000000000003",
+      "outcome_category": "quarantined",
+      "outcome_reason": "routing_quarantine",
+      "routing_label": "quarantine",
+      "gold_artifact_path": "output/gold/b5gold003-0000-0000-0000-000000000003.json",
+      "export_artifact_path": null
+    }
+  ],
+  "contract_blocked_records": [],
+  "skipped_records": [],
+  "report_artifacts": {
+    "json_path": "output/reports/handoff_report_local-run-b5000000-0000-0000-0000-000000000001.json",
+    "text_path": "output/reports/handoff_report_local-run-b5000000-0000-0000-0000-000000000001.txt"
+  },
+  "review_notes": [
+    "Batch processed 4 record(s): 3 eligible, 1 ineligible/skipped before classification.",
+    "Export outcomes: 2 exported, 1 quarantined, 0 contract-blocked, 0 skipped.",
+    "2 record(s) successfully written as Bedrock handoff artifact(s). Export paths are in exported_records[].export_artifact_path.",
+    "1 record(s) routed to quarantine (governance path). No export file was written for quarantined records. Gold artifact paths are in quarantined_records[].gold_artifact_path.",
+    "B-4 HandoffBatchReport is attached via report_artifacts. The report provides outcome counts, reason code distributions, and a human-readable batch summary.",
+    "Export artifact path pattern: <export_dir>/<routing_label>/<document_id>.json (per B-0 §7 and ARCHITECTURE.md § Delivery Mechanism V1).",
+    "Manifest schema version: v0.1.0. Authoritative contract: docs/bedrock-handoff-contract.md."
+  ]
+}

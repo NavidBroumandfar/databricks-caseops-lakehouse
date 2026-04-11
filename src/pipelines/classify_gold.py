@@ -70,6 +70,10 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.pipelines.export_handoff import execute_export
+from src.pipelines.handoff_bundle import (
+    build_handoff_batch_manifest,
+    write_handoff_bundle,
+)
 from src.pipelines.handoff_report import (
     build_handoff_batch_report,
     derive_outcome,
@@ -618,6 +622,7 @@ def run_classify_gold(
     bronze_dir: Optional[str] = None,
     pipeline_run_id: Optional[str] = None,
     report_dir: Optional[str] = None,
+    bundle_dir: Optional[str] = None,
 ) -> list[dict]:
     """
     Run the Gold classification and routing pipeline.
@@ -629,8 +634,13 @@ def run_classify_gold(
         - outcome_category: one of the OUTCOME_* constants from handoff_report.py
         - outcome_reason: one of the REASON_* constants from handoff_report.py
 
-    If report_dir is provided, a HandoffBatchReport is written as JSON + text
+    If report_dir is provided, a B-4 HandoffBatchReport is written as JSON + text
     artifacts under that directory after all records are processed.
+
+    If bundle_dir is provided, a B-5 HandoffBatchManifest review bundle is written
+    as JSON + text artifacts under that directory. The bundle references all
+    per-record artifact paths and the B-4 report artifacts (if report_dir was
+    also provided). The bundle_dir may be the same as report_dir.
 
     Returns a list of summary dicts (one per processed Silver record).
     """
@@ -640,6 +650,7 @@ def run_classify_gold(
     export_dir_path = Path(export_dir)
     bronze_dir_path = Path(bronze_dir) if bronze_dir else None
     report_dir_path = Path(report_dir) if report_dir else None
+    bundle_dir_path = Path(bundle_dir) if bundle_dir else None
     run_id = pipeline_run_id or generate_pipeline_run_id()
 
     silver_paths = collect_silver_paths(input_dir_path, input_file_path)
@@ -761,6 +772,7 @@ def run_classify_gold(
     print(f"[classify_gold] Done. {len(summaries)} Gold artifact(s) written.")
 
     # B-4: Build and optionally write the handoff batch report.
+    report_artifact_paths: Optional[dict] = None
     if report_dir_path is not None:
         batch_report = build_handoff_batch_report(
             summaries=summaries,
@@ -768,9 +780,26 @@ def run_classify_gold(
             total_records_processed=len(silver_paths),
             total_ineligible_skipped=ineligible_count,
         )
-        json_path, text_path = write_handoff_report(batch_report, report_dir_path)
-        print(f"[classify_gold] Handoff report (JSON) → {json_path}")
-        print(f"[classify_gold] Handoff report (text) → {text_path}")
+        report_json_path, report_text_path = write_handoff_report(batch_report, report_dir_path)
+        report_artifact_paths = {
+            "json_path": str(report_json_path),
+            "text_path": str(report_text_path),
+        }
+        print(f"[classify_gold] Handoff report (JSON) → {report_json_path}")
+        print(f"[classify_gold] Handoff report (text) → {report_text_path}")
+
+    # B-5: Build and optionally write the handoff batch manifest/review bundle.
+    if bundle_dir_path is not None:
+        bundle_manifest = build_handoff_batch_manifest(
+            summaries=summaries,
+            pipeline_run_id=run_id,
+            total_records_processed=len(silver_paths),
+            total_ineligible_skipped=ineligible_count,
+            report_artifact_paths=report_artifact_paths,
+        )
+        bundle_json_path, bundle_text_path = write_handoff_bundle(bundle_manifest, bundle_dir_path)
+        print(f"[classify_gold] Handoff bundle (JSON) → {bundle_json_path}")
+        print(f"[classify_gold] Handoff bundle (text) → {bundle_text_path}")
 
     return summaries
 
@@ -835,6 +864,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "(JSON + text). If omitted, no report is written."
         ),
     )
+    p.add_argument(
+        "--bundle-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Directory to write B-5 handoff batch manifest/review bundle artifacts "
+            "(JSON + text). If omitted, no bundle is written. May be the same as "
+            "--report-dir. When both are provided, the bundle references the report."
+        ),
+    )
     return p
 
 
@@ -848,6 +887,7 @@ def main() -> None:
         bronze_dir=args.bronze_dir,
         pipeline_run_id=args.pipeline_run_id,
         report_dir=args.report_dir,
+        bundle_dir=args.bundle_dir,
     )
 
 

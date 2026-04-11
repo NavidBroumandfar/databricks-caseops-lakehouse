@@ -93,7 +93,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through B-4** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), and structured handoff outcome observability with batch-level reporting (B-4). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**Phases A-0 through B-5** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), and a single reviewable batch handoff manifest/review bundle (B-5). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -210,7 +210,18 @@ Module boundary: `classify_gold.py` assembles the Gold record and delegates all 
 
 Outcome categories: `exported`, `quarantined`, `contract_blocked`, `skipped_not_export_ready`. Reason codes: `none`, `routing_quarantine`, `contract_validation_failed`, `export_not_attempted`. The batch report is written as JSON + text artifacts when `--report-dir` is provided.
 
-Total test count: **251 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, and handoff outcome observability.
+**Phase B-5 — Handoff Batch Manifest and Review Bundle** is complete. B-5 packages the full Gold/export batch into a single, coherent, reviewable batch handoff bundle. A `HandoffBatchManifest` links batch metadata, aggregate outcome counts, per-record artifact references (Gold + export paths by outcome category), and B-4 report artifacts into one reviewable unit.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Batch manifest/review bundle module | `src/pipelines/handoff_bundle.py` | ✅ New B-5 |
+| Pipeline integration | `src/pipelines/classify_gold.py` (`bundle_dir` + `--bundle-dir`) | ✅ Updated B-5 |
+| B-5 test suite | `tests/test_b5_handoff_bundle.py` (84 tests) | ✅ New B-5 |
+| Expected manifest fixture | `examples/expected_handoff_batch_manifest.json` | ✅ New B-5 |
+
+The bundle is written as JSON + text artifacts when `--bundle-dir` is provided. When `--report-dir` is also provided, the bundle references the B-4 report artifacts. The manifest captures exported_records (with export_artifact_path), quarantined_records, contract_blocked_records, and skipped_records.
+
+Total test count: **335 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, and batch handoff bundle packaging.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -319,6 +330,17 @@ python src/pipelines/classify_gold.py \
 # Report artifacts: output/reports/handoff_report_<run_id>.json  (machine-readable)
 #                   output/reports/handoff_report_<run_id>.txt   (human-readable)
 
+# Optional: produce a B-5 batch manifest/review bundle (may be combined with --report-dir)
+python src/pipelines/classify_gold.py \
+  --input-dir output/silver \
+  --bronze-dir output/bronze \
+  --report-dir output/reports \
+  --bundle-dir output/reports
+
+# Bundle artifacts: output/reports/handoff_bundle_<run_id>.json  (machine-readable manifest)
+#                   output/reports/handoff_bundle_<run_id>.txt   (human-readable review summary)
+# The bundle references all per-record artifact paths and the B-4 report when both flags are used.
+
 # 5. Run Gold evaluation against all artifacts in the output directory
 python src/evaluation/eval_gold.py --input-dir output/gold
 
@@ -404,7 +426,8 @@ databricks-caseops-lakehouse/
 │   │   └── bedrock_contract.py   # B-1: Gold export payload contract validator
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   │   ├── export_handoff.py     # B-3: Export packaging and handoff service boundary
-│   │   └── handoff_report.py     # B-4: Export outcome observability and handoff reporting
+│   │   ├── handoff_report.py     # B-4: Export outcome observability and handoff reporting
+│   │   └── handoff_bundle.py     # B-5: Batch manifest and review bundle packaging
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -416,7 +439,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 251 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28) + B-4 handoff reporting (68)
+├── tests/                   # 335 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28) + B-4 handoff reporting (68) + B-5 batch bundle (84)
 └── examples/
     ├── evaluation/          # A-4 usage guide
     └── ...                  # Sample documents and expected outputs

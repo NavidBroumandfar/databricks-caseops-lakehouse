@@ -300,6 +300,21 @@ Deliverables:
 
 **Scope boundary**: B-4 is reporting and observability only. No AWS/Bedrock SDK, no live integration, no contract semantic changes. The repo remains the upstream-only governed document intelligence layer.
 
+### Phase B-5 — Handoff Batch Manifest and Review Bundle
+**Goal**: Package the Gold → Bedrock export batch outputs into a single, coherent, reviewable batch handoff bundle — a single manifest artifact per pipeline run that links batch metadata, aggregate outcome counts, per-record artifact references (by outcome category), and paths to B-4 report artifacts.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/pipelines/handoff_bundle.py` — `MANIFEST_VERSION`, `RecordArtifactRef`, `HandoffBatchManifest`, `build_handoff_batch_manifest`, `compute_bundle_path`, `format_bundle_text`, `write_handoff_bundle`
+- `src/pipelines/classify_gold.py` updated — `bundle_dir` parameter; `--bundle-dir` CLI arg; B-5 bundle written when `bundle_dir` is provided; bundle references B-4 report artifacts when `report_dir` was also provided
+- `tests/test_b5_handoff_bundle.py` — 84 focused tests (manifest structure, builder, path computation, text formatter, write, integration, module boundary)
+- `examples/expected_handoff_batch_manifest.json` — reference manifest fixture
+
+**Design boundary (B-5 vs B-4)**: B-4 produces counts, reason codes, and a batch summary. B-5 packages that batch into a clean manifest with full per-record artifact references — the single artifact a reviewer opens to understand the full state of a batch run.
+
+**Scope boundary**: B-5 is upstream handoff packaging only. No AWS/Bedrock SDK, no live integration, no contract semantic changes. The repo remains the upstream-only governed document intelligence layer.
+
 **Why B-0 exists before live integration:**
 Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
 

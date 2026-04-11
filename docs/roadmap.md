@@ -22,6 +22,7 @@
 | B-2 | Contract-Enforced Export Materialization | ✅ Complete | Pipeline obeys B-1 contract during real export write; invalid payloads blocked; quarantine explicit |
 | B-3 | Export Packaging Refactor and Handoff Service Boundary | ✅ Complete | Export/handoff logic extracted into `export_handoff.py`; `classify_gold.py` delegates cleanly |
 | B-4 | Export Outcome Observability and Handoff Reporting | ✅ Complete | Explicit outcome categories, reason codes, and batch-level handoff summary reporting |
+| B-5 | Handoff Batch Manifest and Review Bundle | ✅ Complete | Single reviewable batch bundle with per-record artifact references, linked to B-4 report |
 
 ---
 
@@ -476,6 +477,53 @@ handoff_report.py  → derives outcome categories → aggregates batch report �
 
 ---
 
+## Phase B-5 — Handoff Batch Manifest and Review Bundle
+
+**Status**: Complete
+
+**Goal**: Package the Gold → Bedrock export batch outputs into a single, coherent, reviewable batch handoff bundle. Each pipeline run that produces a B-5 bundle has a single manifest artifact that links batch metadata, aggregate outcome counts, per-record artifact references organized by outcome category, and paths to B-4 report artifacts into one reviewable unit.
+
+**Scope boundary**: B-5 is upstream handoff packaging only. No AWS/Bedrock SDK, no live integration, no S3, no contract semantic changes, no new downstream assumptions. The repo remains the upstream-only governed document intelligence layer.
+
+**Design constraint (B-5 vs B-4)**: B-4 tells us what happened in the handoff path: outcome categories, reason codes, counts, and affected document ID lists. B-5 packages that batch into a clean manifest with full per-record artifact references — the single artifact a reviewer opens to understand and navigate the full state of a batch handoff run.
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Batch manifest/review bundle module | `src/pipelines/handoff_bundle.py` | ✅ New B-5 | `MANIFEST_VERSION`, `RecordArtifactRef`, `HandoffBatchManifest`, `build_handoff_batch_manifest`, `compute_bundle_path`, `format_bundle_text`, `write_handoff_bundle` |
+| Pipeline integration | `src/pipelines/classify_gold.py` | ✅ Updated B-5 | `bundle_dir` parameter; `--bundle-dir` CLI arg; B-5 bundle written after B-4 report when requested |
+| B-5 test suite | `tests/test_b5_handoff_bundle.py` | ✅ New B-5 | 84 tests covering manifest structure, builder, path computation, text formatter, write, integration, module boundary |
+| Expected manifest fixture | `examples/expected_handoff_batch_manifest.json` | ✅ New B-5 | Reference manifest showing a batch with 3 eligible records: 2 exported, 1 quarantined, with report_artifacts attached |
+
+**Manifest structure (per-run):**
+
+Each `HandoffBatchManifest` includes: `manifest_version`, `batch_id` (= `pipeline_run_id`), `pipeline_run_id`, `generated_at`, `total_records_processed`, `total_ineligible_skipped`, `total_eligible`, `total_exported`, `total_quarantined`, `total_contract_blocked`, `total_skipped_not_export_ready`, `outcome_distribution`, `exported_records` (with `export_artifact_path`), `quarantined_records`, `contract_blocked_records`, `skipped_records`, `report_artifacts` (B-4 JSON + text paths when available), `review_notes`.
+
+Written as both `.json` (machine-readable) and `.txt` (human-readable review summary).
+
+**Module boundary preserved:**
+
+```
+classify_gold.py   → assembles GoldRecord → calls execute_export → derives outcome → builds batch report → builds bundle
+export_handoff.py  → validates contract  → writes export artifact → returns ExportResult
+handoff_report.py  → derives outcome categories → aggregates batch report → writes report artifacts
+handoff_bundle.py  → packages batch into manifest → writes bundle artifacts (JSON + text)
+```
+
+**Completion criteria met:**
+
+- ✅ A stable batch manifest/review bundle exists (`src/pipelines/handoff_bundle.py`)
+- ✅ The bundle clearly references exported / quarantined / contract-blocked / skipped records with artifact paths
+- ✅ The bundle references B-4 handoff report artifacts when available
+- ✅ The real pipeline flow produces the bundle via `--bundle-dir` (`classify_gold.py`)
+- ✅ Bundle path/materialization behavior is deterministic and tested (`compute_bundle_path`)
+- ✅ Module boundaries remain clean (4 distinct modules, no collapsed responsibilities)
+- ✅ No AWS/Bedrock SDK code or fake live integration added
+- ✅ 335 tests pass; zero regressions (84 A-4 + 53 B-1 + 18 B-2 + 28 B-3 + 68 B-4 + 84 B-5)
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -493,4 +541,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] B-2: Contract-enforced export materialization — pipeline validates before write; invalid payloads blocked; quarantine explicit; 22 new tests (`src/pipelines/classify_gold.py`, `tests/test_b2_export_materialization.py`)
 - [x] B-3: Export/handoff slice extracted into `src/pipelines/export_handoff.py`; `classify_gold.py` delegates to `execute_export`; 28 new tests; 183 total tests pass
 - [x] B-4: Explicit handoff outcome categories, reason codes, and batch-level `HandoffBatchReport`; `handoff_report.py` module; 68 new tests; 251 total tests pass
+- [x] B-5: Single reviewable batch manifest/review bundle; `handoff_bundle.py` module; per-record artifact references; B-4 report linking; `--bundle-dir` CLI arg; 84 new tests; 335 total tests pass
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-4 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), and structured handoff outcome observability (B-4). Phase B proper (live Bedrock integration) has not started.
+**Phases A-0 through B-5 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), and a single reviewable batch handoff bundle/manifest (B-5). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -128,10 +128,21 @@ Key deliverables: `src/pipelines/handoff_report.py` with explicit outcome catego
 `report_dir` parameter for batch report output; `tests/test_b4_handoff_report.py` (68 tests).
 251 tests pass total. No live Bedrock/AWS integration was introduced.
 
+**Phase B-5 — Handoff Batch Manifest and Review Bundle** is complete.
+B-5 packages the full Gold/export batch into a single, coherent, reviewable batch handoff
+bundle. Key deliverables: `src/pipelines/handoff_bundle.py` with `RecordArtifactRef`,
+`HandoffBatchManifest`, `build_handoff_batch_manifest`, `compute_bundle_path`,
+`format_bundle_text`, `write_handoff_bundle`; `classify_gold.py` updated — `bundle_dir`
+parameter and `--bundle-dir` CLI arg; bundle references all per-record artifact paths
+(Gold + export) by outcome category and links B-4 report artifacts when available;
+`tests/test_b5_handoff_bundle.py` (84 tests). 335 tests pass total. No live Bedrock/AWS
+integration was introduced.
+
 The module boundary is:
-  `classify_gold.py`  → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact
-  `export_handoff.py` → validates contract → writes export artifact → returns `ExportResult`
-  `handoff_report.py` → derives outcome categories → aggregates batch report → writes report artifacts
+  `classify_gold.py`   → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle
+  `export_handoff.py`  → validates contract → writes export artifact → returns `ExportResult`
+  `handoff_report.py`  → derives outcome categories → aggregates batch report → writes report artifacts
+  `handoff_bundle.py`  → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 
