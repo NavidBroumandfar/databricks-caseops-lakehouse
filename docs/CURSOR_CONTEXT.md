@@ -55,7 +55,7 @@ When starting any task in this repository, always read files in this exact order
 
 ## Current Status
 
-**Phases A-0 through B-1 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), and a repo-enforced contract validator with tests (B-1). Phase B proper (live Bedrock integration) has not started.
+**Phases A-0 through B-2 are complete.** The repo has a validated pipeline (A-0 through A-4.1), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), and a contract-enforced export materialization path (B-2). Phase B proper (live Bedrock integration) has not started.
 
 **A-0 through A-3** (local-safe implementation) are complete:
 - A-0: Repo foundation and documentation
@@ -100,6 +100,15 @@ B-1 converted the B-0 documentation contract into repo-enforced behavior. Key de
 Also fixed: `classification_confidence` in `gold_schema.py` is now `Optional[float]` (per B-0 §4.3),
 and `classify_gold.py` routing logic correctly handles null confidence (per B-0 §6).
 No live Bedrock/AWS integration was introduced.
+
+**Phase B-2 — Contract-Enforced Export Materialization** is complete.
+B-2 makes the pipeline obey the B-1 contract during real export materialization. Key deliverables:
+`src/pipelines/classify_gold.py` updated (B-1 contract validation gates every export write;
+invalid payloads blocked; quarantine shape validated; Gold record written once with final state),
+`tests/test_b2_export_materialization.py` (18 tests covering valid write, contract block, quarantine
+separation, deterministic path, error surfacing, no-SDK guard),
+`examples/invalid_export_payload_missing_fields.json` and `examples/quarantine_gold_record.json`
+(B-2 fixtures). No live Bedrock/AWS integration was introduced.
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

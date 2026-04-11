@@ -1,5 +1,5 @@
 """
-classify_gold.py — Gold classification and routing pipeline (Phase A-3)
+classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-2)
 
 Reads Silver JSON artifacts produced by extract_silver.py, classifies each
 record into a Gold record (document type label + routing label), assembles
@@ -11,6 +11,21 @@ Only Silver records with validation_status != 'invalid' are eligible for
 classification. All eligible records are classified and written — no silent
 drops. Records that do not meet export readiness criteria are still written
 as Gold records with export_ready=False.
+
+B-2 contract enforcement:
+  Before any export-ready payload is written as a Bedrock handoff artifact, it is
+  validated against the B-1 contract (src/schemas/bedrock_contract.py). Payloads
+  that fail contract validation are NOT written to the export path. The Gold record
+  is demoted to export_ready=False and the failure is logged explicitly. Invalid
+  export payloads cannot silently pass as valid Bedrock handoff artifacts.
+
+  Quarantine records (routing_label='quarantine') produce no export file.
+  Their governance shape is validated post-assembly for correctness.
+
+Export path:
+  <export_base_dir>/<routing_label>/<document_id>.json
+  One file per export_ready=True record that passes contract validation.
+  Deterministic: same document_id always maps to the same path within a run.
 
 Classification uses a deterministic local baseline classifier (V1 single domain).
 A placeholder adapter for Databricks ai_classify is included as an explicit
@@ -28,9 +43,11 @@ Usage:
 
 Outputs:
     output/gold/<gold_record_id>.json                            — Gold record per Silver input
-    output/gold/exports/<routing_label>/<document_id>.json       — Export payload (if export-ready)
+    output/gold/exports/<routing_label>/<document_id>.json       — Export payload (if export-ready, contract-valid)
 
 Authoritative contract: docs/data-contracts.md § Gold: AI-Ready Asset Contract
+Bedrock handoff contract: docs/bedrock-handoff-contract.md
+Contract validator: src/schemas/bedrock_contract.py (B-1 / B-2)
 Architecture context: ARCHITECTURE.md § Gold Layer
 """
 
@@ -48,6 +65,10 @@ from typing import Optional
 # Allow running from the repo root without installing as a package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from src.schemas.bedrock_contract import (
+    validate_export_payload,
+    validate_quarantine_record,
+)
 from src.schemas.gold_schema import (
     ExportPayload,
     ExportProvenance,
@@ -666,14 +687,47 @@ def run_classify_gold(
             pipeline_run_id=run_id,
         )
 
-        gold_artifact_path = write_gold_artifact(gold_record, output_dir_path)
-
+        # B-2: Contract-enforced export — validate before write.
+        # Determine export_path first so the Gold record is written once with its final state.
         export_artifact_path = None
+        contract_validation_errors: list[str] = []
+
         if gold_record.export_ready:
-            export_artifact_path = write_export_artifact(gold_record, export_dir_path)
-            # Update export_path in the Gold artifact now that we know the path
-            gold_record = gold_record.model_copy(update={"export_path": str(export_artifact_path)})
-            gold_artifact_path.write_text(gold_record.to_json_str(), encoding="utf-8")
+            # Validate export payload against the B-1 contract before materializing.
+            # Invalid payloads must not be written as Bedrock handoff artifacts (B-2).
+            payload_dict = gold_record.export_payload.to_json_dict()
+            contract_result = validate_export_payload(payload_dict)
+
+            if contract_result.valid:
+                export_artifact_path = write_export_artifact(gold_record, export_dir_path)
+                gold_record = gold_record.model_copy(
+                    update={"export_path": str(export_artifact_path)}
+                )
+            else:
+                # Contract block: do not write invalid payload as a handoff artifact.
+                # Demote to export_ready=False; export_path stays None.
+                contract_validation_errors = contract_result.errors
+                gold_record = gold_record.model_copy(
+                    update={"export_ready": False, "export_path": None}
+                )
+                print(
+                    f"[classify_gold] CONTRACT BLOCK for {gold_record.document_id}: "
+                    "export payload failed B-1 validation — NOT written. "
+                    f"Errors: {contract_validation_errors}",
+                    file=sys.stderr,
+                )
+        elif gold_record.routing_label == ROUTING_LABEL_QUARANTINE:
+            # B-2: Assert quarantine shape for governance correctness.
+            quarantine_result = validate_quarantine_record(gold_record.to_json_dict())
+            if not quarantine_result.valid:
+                print(
+                    f"[classify_gold] QUARANTINE SHAPE INVALID for {gold_record.document_id}: "
+                    f"{quarantine_result.errors}",
+                    file=sys.stderr,
+                )
+
+        # Write Gold artifact once with its final state (export_path and export_ready resolved).
+        gold_artifact_path = write_gold_artifact(gold_record, output_dir_path)
 
         summary = {
             "document_id": gold_record.document_id,
@@ -687,10 +741,13 @@ def run_classify_gold(
             "pipeline_run_id": run_id,
             "gold_artifact_path": str(gold_artifact_path),
             "export_artifact_path": str(export_artifact_path) if export_artifact_path else None,
+            "contract_validation_errors": contract_validation_errors,
         }
         summaries.append(summary)
 
         status_tag = "EXPORT-READY" if gold_record.export_ready else "quarantine"
+        if contract_validation_errors:
+            status_tag = "CONTRACT-BLOCKED"
         confidence_str = (
             f"{gold_record.classification_confidence:.2f}"
             if gold_record.classification_confidence is not None

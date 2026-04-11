@@ -1,0 +1,23 @@
+{
+  "_note": "B-2 invalid export payload fixture. This payload intentionally fails B-1 contract validation: violation_type is an empty array (violates B-0 §4.4 — must be a non-empty array) and corrective_action_requested is null (violates B-0 §4.4 — must be a boolean). This shape represents a record that would pass pipeline routing (classified as fda_warning_letter, export_ready computed True by rule-based logic) but is blocked from being written as a Bedrock handoff artifact by the B-2 contract enforcement gate in classify_gold.py. Use in tests to confirm invalid payloads cannot be silently written.",
+  "document_id": "ccccdddd-0000-0000-0000-000000000001",
+  "source_file": "test_invalid_payload.pdf",
+  "document_type": "fda_warning_letter",
+  "routing_label": "regulatory_review",
+  "extracted_fields": {
+    "issuing_office": "Office of Compliance",
+    "recipient_company": "BlockedCorp Inc.",
+    "issue_date": "2024-06-01",
+    "violation_type": [],
+    "corrective_action_requested": null
+  },
+  "parsed_text_excerpt": "Test excerpt for invalid payload fixture.",
+  "provenance": {
+    "ingested_at": "2024-06-01T10:00:00Z",
+    "pipeline_run_id": "local-run-test-b2-block",
+    "extraction_model": "local_rule_extractor/v1",
+    "classification_model": "local_rule_classifier/v1",
+    "classification_confidence": 0.87,
+    "schema_version": "v0.1.0"
+  }
+}

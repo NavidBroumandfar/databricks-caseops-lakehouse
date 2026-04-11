@@ -93,7 +93,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**Phases A-0 through B-1** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), and a repo-enforced contract validator with tests (B-1). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
+**Phases A-0 through B-2** are complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), and a contract-enforced export materialization path (B-2). This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live orchestration.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -181,7 +181,16 @@ To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-de
 | Gold schema alignment | `src/schemas/gold_schema.py` (`classification_confidence` Optional) | ✅ Updated |
 | Pipeline alignment | `src/pipelines/classify_gold.py` (null-confidence safe routing) | ✅ Updated |
 
-Total test count: **137 tests** across all pipeline stages and contract validation.
+**Phase B-2 — Contract-Enforced Export Materialization** is complete. B-2 makes the pipeline obey the B-1 contract during real export materialization — invalid downstream payloads cannot silently pass as valid exports:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Contract-enforced export path | `src/pipelines/classify_gold.py` (B-1 validation gates every write) | ✅ Updated B-2 |
+| B-2 materialization test suite | `tests/test_b2_export_materialization.py` (18 tests) | ✅ New B-2 |
+| Invalid payload fixture | `examples/invalid_export_payload_missing_fields.json` | ✅ New B-2 |
+| Quarantine record fixture | `examples/quarantine_gold_record.json` | ✅ New B-2 |
+
+Total test count: **155 tests** across all pipeline stages, contract validation, and export materialization.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -278,7 +287,8 @@ python src/pipelines/classify_gold.py \
   --bronze-dir output/bronze
 
 # Gold record: output/gold/<gold_record_id>.json
-# Export payload (if export-ready): output/gold/exports/regulatory_review/<document_id>.json
+# Export payload (if export-ready and contract-valid): output/gold/exports/regulatory_review/<document_id>.json
+# Invalid payloads are blocked before write (B-2) — see contract_validation_errors in pipeline output
 
 # 5. Run Gold evaluation against all artifacts in the output directory
 python src/evaluation/eval_gold.py --input-dir output/gold
@@ -375,7 +385,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 137 tests: A-4 evaluators (84) + B-1 contract validation (53)
+├── tests/                   # 155 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18)
 └── examples/
     ├── evaluation/          # A-4 usage guide
     └── ...                  # Sample documents and expected outputs

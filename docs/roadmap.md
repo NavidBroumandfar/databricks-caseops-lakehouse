@@ -19,6 +19,7 @@
 | A-4.1 | Runtime Validation Checkpoint | ✅ Complete | Runtime inspection of A-3B bootstrap tables; confirmed null confidence and routing behavior |
 | B-0 | Bedrock Handoff Contract Preparation | ✅ Complete | Explicit Gold → Bedrock interface contract; payload definitions; routing map; delivery semantics |
 | B-1 | Handoff Contract Materialization and Validation | ✅ Complete | B-0 contract converted from docs into repo-enforced schema, fixtures, and tests |
+| B-2 | Contract-Enforced Export Materialization | ✅ Complete | Pipeline obeys B-1 contract during real export write; invalid payloads blocked; quarantine explicit |
 
 ---
 
@@ -309,6 +310,58 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ---
 
+## Phase B-2 — Contract-Enforced Export Materialization
+
+**Status**: Complete
+
+**Goal**: Make the real Gold export-writing path obey the B-1 contract during actual materialization. B-2 converts contract enforcement from a testable schema layer into a pipeline-level gate: invalid export payloads cannot be written as Bedrock handoff artifacts. Quarantine behavior is explicit, deterministic, and correctly separated from export-ready behavior.
+
+**Scope boundary**: B-2 strengthens upstream export behavior only. No AWS/Bedrock SDK, no S3, no live integration, no vector search, no agent workflows, no orchestration are introduced. The repo remains the upstream-only governed document intelligence layer.
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Contract-enforced pipeline | `src/pipelines/classify_gold.py` | ✅ Updated B-2 | Validates export payload with B-1 validator before every write; blocks invalid payloads; validates quarantine shape |
+| B-2 materialization test suite | `tests/test_b2_export_materialization.py` | ✅ New B-2 | 18 focused tests covering valid write, contract block, quarantine separation, path generation, error surfacing, no-SDK guard |
+| Invalid payload fixture | `examples/invalid_export_payload_missing_fields.json` | ✅ New B-2 | FDA payload that passes routing but fails contract validation (empty violation_type, null corrective_action_requested) |
+| Quarantine record fixture | `examples/quarantine_gold_record.json` | ✅ New B-2 | Correctly shaped quarantine Gold record per B-0 §6; export_ready=False, export_path=null |
+
+**What B-2 enforces in the pipeline:**
+
+- Before any export-ready payload is written to disk, `validate_export_payload()` from `bedrock_contract.py` is called
+- If validation fails: the export artifact is NOT written; the Gold record is updated to `export_ready=False`; `contract_validation_errors` is populated in the summary; the failure is logged explicitly
+- If validation passes: the export artifact is written at the deterministic path `<export_base>/<routing_label>/<document_id>.json`
+- Quarantine records (`routing_label='quarantine'`) are validated with `validate_quarantine_record()` post-assembly for governance shape correctness
+- The Gold record is written once with its final resolved state (export_path and export_ready reflect actual outcome)
+
+**What B-2 makes explicit:**
+
+| Behavior | Pre-B-2 | Post-B-2 |
+|---|---|---|
+| Export payload contract validation in pipeline | Not called | Called before every write |
+| Invalid payload write behavior | Possible (no gate) | Blocked; errors in summary |
+| Quarantine shape validation | Not called | Called post-assembly |
+| Gold record written once vs twice | Double-write (then update) | Written once with final state |
+| Summary contract error field | Not present | Always present (`contract_validation_errors`) |
+
+**Inconsistencies found and resolved:**
+
+- The pre-B-2 pipeline called `compute_export_ready()` for routing, which did not use the B-1 contract validator (`validate_export_payload()`). A payload could be marked export_ready=True and written without ever being checked against B-0 §4 requirements. Fixed: contract validation now gates every write.
+- The Gold artifact was written twice (once without export_path, once with it after the export write). Restructured: export path is determined first, then the Gold record is written once with its final state.
+
+**Completion criteria met:**
+
+- ✅ Export payload validation is invoked in the real export-writing flow (`src/pipelines/classify_gold.py`)
+- ✅ Invalid export-ready payloads are not written as valid Bedrock handoff exports
+- ✅ Quarantine behavior is explicit and correctly separated from export-ready behavior
+- ✅ Export path generation/materialization behavior is deterministic and tested
+- ✅ Pipeline behavior, validator, and tests are aligned
+- ✅ Docs updated only where necessary and remain consistent
+- ✅ No AWS/Bedrock SDK code or fake live integration added
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -323,4 +376,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] A-4.1: Runtime inspection confirmed null confidence and routing behavior for bootstrap path
 - [x] B-0: Gold → Bedrock handoff contract established (`docs/bedrock-handoff-contract.md`)
 - [x] B-1: B-0 contract materialized into repo-enforced validator, contract-valid fixture, and 53 tests (`src/schemas/bedrock_contract.py`, `tests/test_bedrock_contract_validation.py`)
+- [x] B-2: Contract-enforced export materialization — pipeline validates before write; invalid payloads blocked; quarantine explicit; 22 new tests (`src/pipelines/classify_gold.py`, `tests/test_b2_export_materialization.py`)
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

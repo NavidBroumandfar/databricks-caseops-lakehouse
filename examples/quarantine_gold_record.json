@@ -1,0 +1,32 @@
+{
+  "_note": "B-2 quarantine Gold record fixture. This is the shape of a correctly formed quarantine Gold record per B-0 §6: export_ready=False, routing_label='quarantine', export_path=null. The document was classified as 'unknown' — the classifier found insufficient signals to assign a known document type. This is a governance signal, not a failure. Quarantine records are written to the Gold table but never materialized as Bedrock handoff artifacts (no export file). Validated by validate_quarantine_record() in src/schemas/bedrock_contract.py.",
+  "document_id": "eeeeffff-0000-0000-0000-000000000001",
+  "bronze_record_id": "eeeeffff-0000-0000-0000-000000000002",
+  "extraction_id": "eeeeffff-0000-0000-0000-000000000003",
+  "gold_record_id": "eeeeffff-0000-0000-0000-000000000099",
+  "pipeline_run_id": "local-run-test-b2-quarantine",
+  "classified_at": "2024-06-01T12:00:00+00:00",
+  "document_type_label": "unknown",
+  "routing_label": "quarantine",
+  "classification_confidence": 0.0,
+  "classification_model": "local_rule_classifier/v1",
+  "export_payload": {
+    "document_id": "eeeeffff-0000-0000-0000-000000000001",
+    "source_file": "unknown_document.pdf",
+    "document_type": "unknown",
+    "routing_label": "quarantine",
+    "extracted_fields": {},
+    "parsed_text_excerpt": "",
+    "provenance": {
+      "ingested_at": "2024-06-01T10:00:00Z",
+      "pipeline_run_id": "local-run-test-b2-quarantine",
+      "extraction_model": "local_rule_extractor/v1",
+      "classification_model": "local_rule_classifier/v1",
+      "classification_confidence": 0.0,
+      "schema_version": "v0.1.0"
+    }
+  },
+  "export_ready": false,
+  "export_path": null,
+  "schema_version": "v0.1.0"
+}

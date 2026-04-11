@@ -258,6 +258,19 @@ Deliverables:
 - Delta Sharing configuration
 - Production Databricks deployment
 
+### Phase B-2 — Contract-Enforced Export Materialization
+**Goal**: Make the real Gold export-writing path obey the B-1 contract during actual materialization. Before any export-ready payload is written as a Bedrock handoff artifact, it is validated against the B-1 contract enforcement layer. Invalid export payloads are explicitly blocked. Quarantine behavior is made explicit and deterministic. Export path semantics are hardened and tested.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/pipelines/classify_gold.py` updated — B-1 contract validation gating every export write; quarantine shape validation; Gold record written once with final state
+- `tests/test_b2_export_materialization.py` — 18 focused tests covering real materialization behavior (not just isolated validation helpers)
+- `examples/invalid_export_payload_missing_fields.json` — B-2 invalid payload fixture
+- `examples/quarantine_gold_record.json` — B-2 quarantine record fixture
+
+**Scope boundary**: B-2 strengthens upstream export behavior only. No AWS/Bedrock SDK, no live integration. The repo remains the upstream-only governed document intelligence layer.
+
 **Why B-0 exists before live integration:**
 Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
 
