@@ -21,6 +21,7 @@
 | B-1 | Handoff Contract Materialization and Validation | ✅ Complete | B-0 contract converted from docs into repo-enforced schema, fixtures, and tests |
 | B-2 | Contract-Enforced Export Materialization | ✅ Complete | Pipeline obeys B-1 contract during real export write; invalid payloads blocked; quarantine explicit |
 | B-3 | Export Packaging Refactor and Handoff Service Boundary | ✅ Complete | Export/handoff logic extracted into `export_handoff.py`; `classify_gold.py` delegates cleanly |
+| B-4 | Export Outcome Observability and Handoff Reporting | ✅ Complete | Explicit outcome categories, reason codes, and batch-level handoff summary reporting |
 
 ---
 
@@ -412,6 +413,69 @@ None. B-2 behavior was preserved exactly. The `execute_export` function encapsul
 
 ---
 
+## Phase B-4 — Export Outcome Observability and Handoff Reporting
+
+**Status**: Complete
+
+**Goal**: Make Gold → Bedrock handoff outcomes operationally visible, structured, and reviewable at batch level. Each pipeline run now produces a clear handoff outcome summary showing what was exported, quarantined, contract-blocked, or skipped, and why.
+
+**Scope boundary**: B-4 is reporting and observability only. No AWS/Bedrock SDK, no live integration, no S3, no contract semantic changes, no new downstream assumptions. The repo remains the upstream-only governed document intelligence layer.
+
+**Design constraint (B-4 vs A-4)**: A-4 covers generic pipeline evaluation quality (parse, extraction, classification, traceability). B-4 is narrower: what happened specifically in the handoff/export path — what was written vs not written, why records were blocked or quarantined, and what a downstream readiness review would need to inspect.
+
+**Deliverables:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Handoff reporting module | `src/pipelines/handoff_report.py` | ✅ New B-4 | Outcome categories, reason codes, `HandoffBatchReport`, `build_handoff_batch_report`, `write_handoff_report`, `format_handoff_report_text` |
+| Pipeline integration | `src/pipelines/classify_gold.py` | ✅ Updated B-4 | Per-record `outcome_category` + `outcome_reason` in summaries; `report_dir` parameter; batch report written when requested |
+| B-4 test suite | `tests/test_b4_handoff_report.py` | ✅ New B-4 | 68 tests covering outcome constants, derivation, batch report, write, integration, module boundary |
+
+**Outcome categories defined:**
+
+| Category | Meaning |
+|---|---|
+| `exported` | Record successfully written as a Bedrock handoff artifact |
+| `quarantined` | Record routed to quarantine — governance path, no export file |
+| `contract_blocked` | Export-ready record rejected by B-1 contract validator — not written |
+| `skipped_not_export_ready` | Not export-ready and not quarantined — no export attempted |
+
+**Reason codes defined:**
+
+| Reason Code | Meaning |
+|---|---|
+| `none` | Successful export — no blocking reason |
+| `routing_quarantine` | Document routed to quarantine by classification/routing logic |
+| `contract_validation_failed` | B-1 validator rejected the payload; field-level detail in `contract_validation_errors` |
+| `export_not_attempted` | Not export-ready and not quarantined (edge case path) |
+
+**Batch report structure:**
+
+Each `HandoffBatchReport` includes: `pipeline_run_id`, `batch_processed_at`, `total_records_processed`, `total_ineligible_skipped`, `total_eligible`, `total_export_attempts`, `total_exported`, `total_quarantined`, `total_contract_blocked`, `total_skipped_not_export_ready`, `outcome_distribution`, `reason_code_distribution`, `contract_blocked_document_ids`, `quarantined_document_ids`.
+
+Written as both `.json` (machine-readable) and `.txt` (human-readable) artifacts.
+
+**Module boundary preserved:**
+
+```
+classify_gold.py   → assembles GoldRecord → calls execute_export → derives outcome → builds batch report
+export_handoff.py  → validates contract  → writes export artifact → returns ExportResult
+handoff_report.py  → derives outcome categories → aggregates batch report → writes report artifacts
+```
+
+**Completion criteria met:**
+
+- ✅ Export/handoff outcomes have explicit, stable outcome categories
+- ✅ Non-export paths have structured reason codes
+- ✅ The real pipeline flow produces a structured batch-level handoff summary
+- ✅ Exported / quarantined / contract-blocked / skipped outcomes are clearly distinguishable
+- ✅ Tests cover both helper-level and integration-level reporting behavior (68 tests)
+- ✅ Module boundaries remain clean (`handoff_report.py` distinct from `export_handoff.py` and `classify_gold.py`)
+- ✅ No AWS/Bedrock SDK code or fake live integration introduced
+- ✅ 251 tests pass; zero regressions
+
+---
+
 ## Milestone Markers
 
 These are the checkpoints that determine when the project is V1-complete:
@@ -428,4 +492,5 @@ These are the checkpoints that determine when the project is V1-complete:
 - [x] B-1: B-0 contract materialized into repo-enforced validator, contract-valid fixture, and 53 tests (`src/schemas/bedrock_contract.py`, `tests/test_bedrock_contract_validation.py`)
 - [x] B-2: Contract-enforced export materialization — pipeline validates before write; invalid payloads blocked; quarantine explicit; 22 new tests (`src/pipelines/classify_gold.py`, `tests/test_b2_export_materialization.py`)
 - [x] B-3: Export/handoff slice extracted into `src/pipelines/export_handoff.py`; `classify_gold.py` delegates to `execute_export`; 28 new tests; 183 total tests pass
+- [x] B-4: Explicit handoff outcome categories, reason codes, and batch-level `HandoffBatchReport`; `handoff_report.py` module; 68 new tests; 251 total tests pass
 - [ ] MLflow experiments populated with real metrics from a live Databricks workspace (deferred — requires live execution)

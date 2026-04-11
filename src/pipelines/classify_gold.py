@@ -70,6 +70,11 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.pipelines.export_handoff import execute_export
+from src.pipelines.handoff_report import (
+    build_handoff_batch_report,
+    derive_outcome,
+    write_handoff_report,
+)
 from src.schemas.gold_schema import (
     ExportPayload,
     ExportProvenance,
@@ -612,12 +617,20 @@ def run_classify_gold(
     export_dir: str = DEFAULT_EXPORT_DIR,
     bronze_dir: Optional[str] = None,
     pipeline_run_id: Optional[str] = None,
+    report_dir: Optional[str] = None,
 ) -> list[dict]:
     """
     Run the Gold classification and routing pipeline.
 
     Reads Silver JSON artifacts, classifies each eligible record, assembles
     export payloads, and writes Gold and export artifacts.
+
+    Each per-record summary includes B-4 outcome fields:
+        - outcome_category: one of the OUTCOME_* constants from handoff_report.py
+        - outcome_reason: one of the REASON_* constants from handoff_report.py
+
+    If report_dir is provided, a HandoffBatchReport is written as JSON + text
+    artifacts under that directory after all records are processed.
 
     Returns a list of summary dicts (one per processed Silver record).
     """
@@ -626,17 +639,20 @@ def run_classify_gold(
     output_dir_path = Path(output_dir)
     export_dir_path = Path(export_dir)
     bronze_dir_path = Path(bronze_dir) if bronze_dir else None
+    report_dir_path = Path(report_dir) if report_dir else None
     run_id = pipeline_run_id or generate_pipeline_run_id()
 
     silver_paths = collect_silver_paths(input_dir_path, input_file_path)
     print(f"[classify_gold] Found {len(silver_paths)} Silver artifact(s). Run ID: {run_id}")
 
     summaries = []
+    ineligible_count = 0
 
     for silver_path in silver_paths:
         silver = load_silver_artifact(silver_path)
 
         if not is_eligible_for_classification(silver):
+            ineligible_count += 1
             print(
                 f"[classify_gold] Skipping {silver_path.name} "
                 f"(validation_status={silver.get('validation_status')})"
@@ -677,6 +693,14 @@ def run_classify_gold(
         # artifact write. Returns ExportResult with the final export state.
         export_result = execute_export(gold_record, export_dir_path)
 
+        # B-4: Derive explicit outcome category and reason code from the export result.
+        # routing_label is read before model_copy since it is unchanged by the export.
+        outcome_category, outcome_reason = derive_outcome(
+            export_ready=export_result.export_ready,
+            routing_label=gold_record.routing_label,
+            contract_validation_errors=export_result.contract_validation_errors,
+        )
+
         # Apply export result to the Gold record — written once with its final state.
         gold_record = gold_record.model_copy(update={
             "export_ready": export_result.export_ready,
@@ -710,6 +734,9 @@ def run_classify_gold(
             "gold_artifact_path": str(gold_artifact_path),
             "export_artifact_path": str(export_artifact_path) if export_artifact_path else None,
             "contract_validation_errors": contract_validation_errors,
+            # B-4: explicit outcome vocabulary
+            "outcome_category": outcome_category,
+            "outcome_reason": outcome_reason,
         }
         summaries.append(summary)
 
@@ -732,6 +759,19 @@ def run_classify_gold(
             print(f"[classify_gold] Export artifact written → {export_artifact_path}")
 
     print(f"[classify_gold] Done. {len(summaries)} Gold artifact(s) written.")
+
+    # B-4: Build and optionally write the handoff batch report.
+    if report_dir_path is not None:
+        batch_report = build_handoff_batch_report(
+            summaries=summaries,
+            pipeline_run_id=run_id,
+            total_records_processed=len(silver_paths),
+            total_ineligible_skipped=ineligible_count,
+        )
+        json_path, text_path = write_handoff_report(batch_report, report_dir_path)
+        print(f"[classify_gold] Handoff report (JSON) → {json_path}")
+        print(f"[classify_gold] Handoff report (text) → {text_path}")
+
     return summaries
 
 
@@ -786,6 +826,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         metavar="RUN_ID",
         help="Optional pipeline run ID. Auto-generated if not provided.",
     )
+    p.add_argument(
+        "--report-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Directory to write B-4 handoff batch report artifacts "
+            "(JSON + text). If omitted, no report is written."
+        ),
+    )
     return p
 
 
@@ -798,6 +847,7 @@ def main() -> None:
         export_dir=args.export_dir,
         bronze_dir=args.bronze_dir,
         pipeline_run_id=args.pipeline_run_id,
+        report_dir=args.report_dir,
     )
 
 

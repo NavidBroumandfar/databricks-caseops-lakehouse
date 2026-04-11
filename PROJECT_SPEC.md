@@ -284,6 +284,22 @@ Deliverables:
 
 **Scope boundary**: B-3 is a structural refactor only. No contract semantic changes, no AWS/Bedrock SDK, no live integration, no new downstream assumptions. The repo remains the upstream-only governed document intelligence layer.
 
+### Phase B-4 — Export Outcome Observability and Handoff Reporting
+**Goal**: Make Gold → Bedrock handoff outcomes operationally visible, structured, and reviewable at batch level. Each pipeline run produces a clear handoff outcome summary with explicit outcome categories, reason codes, and batch-level counts.
+
+**Status**: Complete.
+
+Deliverables:
+- `src/pipelines/handoff_report.py` — `OUTCOME_*` / `REASON_*` constants, `HandoffBatchReport`, `derive_outcome`, `build_handoff_batch_report`, `write_handoff_report`, `format_handoff_report_text`
+- `src/pipelines/classify_gold.py` updated — per-record `outcome_category` + `outcome_reason` in summaries; `report_dir` parameter; batch report written when requested
+- `tests/test_b4_handoff_report.py` — 68 focused tests (constants, derivation, batch report, write, integration, module boundary)
+
+**Outcome categories**: `exported`, `quarantined`, `contract_blocked`, `skipped_not_export_ready`
+
+**Reason codes**: `none`, `routing_quarantine`, `contract_validation_failed`, `export_not_attempted`
+
+**Scope boundary**: B-4 is reporting and observability only. No AWS/Bedrock SDK, no live integration, no contract semantic changes. The repo remains the upstream-only governed document intelligence layer.
+
 **Why B-0 exists before live integration:**
 Live integration (Phase B proper) requires both sides of the interface to have a shared, explicit understanding of the contract. Without B-0, the handoff structure is implicit, versionless, and subject to misalignment. B-0 makes the contract explicit, honest about current limitations, and testable before any infrastructure work begins.
 
