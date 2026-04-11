@@ -149,7 +149,7 @@ Assign a verified document type label and routing label to each Silver record, a
 | `classified_at` | timestamp | UTC classification time |
 | `document_type_label` | string | Primary classification label |
 | `routing_label` | string | Target downstream index or workflow |
-| `classification_confidence` | float | Confidence score from `ai_classify` |
+| `classification_confidence` | float or null | Confidence score from `ai_classify`; null in bootstrap path — see A-3B notes and B-1 |
 | `export_payload` | map / struct | AI-ready structured record for Bedrock |
 | `export_ready` | boolean | Whether record meets export quality threshold |
 | `pipeline_run_id` | string | MLflow run ID for traceability |
@@ -307,6 +307,30 @@ In V1, export-ready Gold records are materialized as individual JSON files at:
 One file per `export_ready = true` record. File content is the `export_payload` object exactly as defined in the contract. Records with `export_ready = false` (routed to `quarantine`) produce no export file.
 
 In V2, this will evolve to Delta Sharing, a structured API push, or an event-driven notification mechanism. No V2 delivery work is in scope until explicitly added to `PROJECT_SPEC.md`.
+
+### Phase B Handoff Layer — Implementation Status
+
+Phases B-1 through B-6 converted the B-0 contract from documentation into a fully implemented, tested, and locally-safe upstream handoff preparation layer. The following modules are complete:
+
+| Module | Path | Role |
+|---|---|---|
+| Contract validator | `src/schemas/bedrock_contract.py` | Enforces B-0 §4 required/optional field rules for every export payload (B-1) |
+| Export/handoff service | `src/pipelines/export_handoff.py` | Validates contract, writes export artifact, returns `ExportResult`; clean service boundary (B-3) |
+| Handoff reporting | `src/pipelines/handoff_report.py` | Derives outcome categories and reason codes; builds `HandoffBatchReport` per pipeline run (B-4) |
+| Batch bundle packaging | `src/pipelines/handoff_bundle.py` | Packages per-record artifact references and B-4 report into a single `HandoffBatchManifest` (B-5) |
+| Bundle integrity validation | `src/pipelines/handoff_bundle_validation.py` | 24 explicit checks: structural, count consistency, reference integrity, identifier uniqueness, path existence (B-6) |
+
+**Module boundary:**
+
+```
+classify_gold.py              → assembles GoldRecord → calls execute_export → derives outcome → writes Gold artifact → builds bundle
+export_handoff.py             → validates contract → writes export artifact → returns ExportResult
+handoff_report.py             → derives outcome categories → aggregates batch report → writes report artifacts
+handoff_bundle.py             → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
+handoff_bundle_validation.py  → validates the bundle is internally consistent and trustworthy
+```
+
+**What this layer does not include:** No live Bedrock/AWS integration, no Bedrock SDK, no S3 wiring, no vector index, no agent workflows. The repo remains the upstream-only governed document intelligence and handoff preparation layer. Live integration is a future phase beyond B-6.
 
 ---
 
