@@ -632,7 +632,7 @@ V1 is complete as of April 2026. This means:
 | Phase | Name | Status | Goal |
 |---|---|---|---|
 | C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
-| C-1 | Export Delivery Implementation | 🔲 Not Started | Delta Share setup + delivery events table + v0.2.0 payloads; augments V1 file export path |
+| C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
 | C-2 | Runtime Integration Validation | 🔲 Not Started | End-to-end delivery validation: share query, event row, manifest integrity, payload fetch |
 | D-0 | Multi-Domain Framework | 🔲 Not Started | Per-domain prompt routing; domain registry; multi-domain classification and routing |
 | D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
@@ -645,7 +645,7 @@ V1 is complete as of April 2026. This means:
 
 ## Phase C — Live Handoff Integration and Export Delivery
 
-**Status**: C-0 design complete. C-1 and C-2 not started.
+**Status**: C-0 design complete. C-1 complete. C-2 not started.
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
 
@@ -682,19 +682,37 @@ V1 is complete as of April 2026. This means:
 
 ### Phase C-1 — Export Delivery Implementation
 
-**Status**: Not started.
+**Status**: Complete (April 2026).
 
-**Goal**: Implement the Delta Sharing delivery mechanism. First live, validated Gold → Bedrock delivery slice. Export-ready payloads are accessible to the Bedrock consumer without a manual copy step. The V1 file export path is preserved.
+**Goal**: Implement the upstream producer-side delivery augmentation. First bounded, testable delivery slice — implementing the producer side of the Delta Sharing delivery channel chosen in C-0. The V1 file export path is preserved and augmented, not replaced.
 
-**Implementation targets** (from C-0):
-- Delta Share `caseops_handoff` in Unity Catalog; shares `caseops.gold.ai_ready_assets`
-- Recipient configured (personal workspace self-share or simulated recipient for portfolio validation)
-- `caseops.gold.delivery_events` Delta table created with defined schema
-- Pipeline writes a delivery event row after each successful export batch
-- Delivery event references the B-5 batch manifest path
-- Export payloads updated to `schema_version: v0.2.0` with optional provenance additions
-- `docs/bedrock-handoff-contract.md` updated to v0.2.0
-- New modules: `notebooks/c1/01_delta_share_setup.sql`, `src/pipelines/delivery_handoff.py` (or equivalent), `notebooks/c1/02_c1_delivery_validation.sql`
+**What C-1 delivers (implemented)**:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Delivery event schema | `src/schemas/delivery_event.py` | ✅ New C-1 |
+| Delivery event materialization | `src/pipelines/delivery_events.py` | ✅ New C-1 |
+| Delta Share prep layer | `src/pipelines/delta_share_handoff.py` | ✅ New C-1 |
+| v0.2.0 provenance fields | `src/schemas/gold_schema.py` (3 new optional fields) | ✅ Updated C-1 |
+| Pipeline delivery integration | `src/pipelines/classify_gold.py` (`--delivery-dir`) | ✅ Updated C-1 |
+| Delivery event fixture | `examples/expected_delivery_event.json` | ✅ New C-1 |
+| Delivery event tests | `tests/test_delivery_events.py` | ✅ New C-1 |
+| Delta Share handoff tests | `tests/test_delta_share_handoff.py` | ✅ New C-1 |
+
+**Total test count**: 613 (427 V1 + 186 C-1 across delivery event and Delta Share handoff modules).
+
+**C-1 implementation stance**:
+- All C-1 delivery events carry `status = 'prepared'` — producer-side preparation is complete
+- No live Unity Catalog provisioning has been executed — that is manual or C-2 automation
+- No Delta Sharing SDK calls, no credentials, no real share created
+- SQL DDL templates and share configuration are documented in `DeltaShareConfig` and `SharePreparationManifest`
+- Runtime end-to-end validation (share query, consumer receipt, payload conformance) is Phase C-2
+
+**What C-1 does NOT deliver** (deferred to C-2 or later):
+- Live Unity Catalog Delta Share provisioning
+- Bedrock CaseOps consumer implementation
+- End-to-end delivery receipt confirmation
+- Retrieval index, vector search, or agent logic
 
 ---
 

@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6).
+**V1 is complete. V2 Phase C-1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) has been implemented. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6).
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 is formally defined and has not started.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work. No V2 implementation work has begun.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C-1 (Export Delivery Implementation) is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work. Phase C-2 (runtime validation) is the next V2 phase.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -234,7 +234,22 @@ The bundle is written as JSON + text artifacts when `--bundle-dir` is provided. 
 
 The validator exposes `validate_handoff_bundle(bundle_json_path)` for file-based validation and `validate_handoff_bundle_from_manifest(manifest, check_paths=False)` for in-memory validation. It produces a `BundleValidationResult` with `bundle_valid`, `failed_checks`, `count_mismatches`, `missing_paths`, `duplicate_identifiers`, `contradictions`, and full per-check detail. 24 explicit checks across 5 categories.
 
-Total test count: **427 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, and bundle integrity validation.
+**Phase C-1 — Export Delivery Implementation** is complete. C-1 implements the upstream producer-side delivery augmentation, adding the Delta Sharing-oriented delivery layer on top of the existing B-phase handoff preparation. The V1 file export path is fully preserved. C-1 is additive and honest: all delivery events carry `status = 'prepared'`; runtime validation (live share query, consumer receipt) is Phase C-2.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Delivery event schema | `src/schemas/delivery_event.py` | ✅ New C-1 |
+| Delivery event materialization | `src/pipelines/delivery_events.py` | ✅ New C-1 |
+| Delta Share prep layer | `src/pipelines/delta_share_handoff.py` | ✅ New C-1 |
+| v0.2.0 provenance fields | `src/schemas/gold_schema.py` (3 optional fields + `SCHEMA_VERSION_V2`) | ✅ Updated C-1 |
+| Pipeline delivery integration | `src/pipelines/classify_gold.py` (`--delivery-dir`) | ✅ Updated C-1 |
+| Delivery event fixture | `examples/expected_delivery_event.json` | ✅ New C-1 |
+| Delivery event test suite | `tests/test_delivery_events.py` | ✅ New C-1 |
+| Delta Share handoff test suite | `tests/test_delta_share_handoff.py` | ✅ New C-1 |
+
+The `--delivery-dir` flag activates C-1 delivery augmentation: export payloads are written at `schema_version: v0.2.0` with delivery provenance fields populated; a `DeliveryEvent` artifact (JSON + text) is written per batch; a `SharePreparationManifest` with Unity Catalog SQL DDL templates is written alongside. When `--delivery-dir` is omitted, V1 behavior is fully preserved.
+
+Total test count: **613 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, and Delta Share preparation layer.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -380,6 +395,43 @@ a successful classification and export-ready result.
 
 ---
 
+## Running the C-1 Delivery Demo
+
+Requires Python 3.9+ and `pydantic` (v2). Run the full Gold Demo first to generate artifacts.
+
+```bash
+# 1–3. Run the Bronze, Silver, Gold demos (if not already done)
+python src/pipelines/ingest_bronze.py \
+  --input examples/fda_warning_letter_sample.md \
+  --document-class-hint fda_warning_letter \
+  --source-system local_dev
+
+python src/pipelines/extract_silver.py --input-dir output/bronze
+
+# 4. Classify Gold with full delivery augmentation (C-1)
+python src/pipelines/classify_gold.py \
+  --input-dir output/silver \
+  --bronze-dir output/bronze \
+  --report-dir output/reports \
+  --bundle-dir output/reports \
+  --delivery-dir output/delivery
+
+# New C-1 artifacts:
+#   output/delivery/delivery_event_<run_id>.json   — DeliveryEvent record (v0.2.0)
+#   output/delivery/delivery_event_<run_id>.txt    — Human-readable delivery event summary
+#   output/delivery/delta_share_preparation_manifest.json — Share config + SQL DDL templates
+```
+
+The delivery event JSON carries `status: "prepared"` — the producer-side layer is complete.
+The Delta Share preparation manifest contains the Unity Catalog SQL DDL to provision the share
+in a Databricks workspace. Runtime end-to-end validation is Phase C-2.
+
+When `--delivery-dir` is active, export payloads are written at `schema_version: v0.2.0` with
+three new optional provenance fields: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`.
+When `--delivery-dir` is omitted, V1 export behavior (v0.1.0) is fully preserved.
+
+---
+
 ## Running the A-4 Evaluation Layer
 
 Requires Python 3.9+ and `pydantic` (v2). Run the pipeline demos first to generate artifacts.
@@ -447,12 +499,15 @@ databricks-caseops-lakehouse/
 │   └── prompts/             # Excluded from version control
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
-│   │   └── bedrock_contract.py   # B-1: Gold export payload contract validator
+│   │   ├── bedrock_contract.py   # B-1: Gold export payload contract validator
+│   │   └── delivery_event.py     # C-1: Delivery event schema (v0.2.0)
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   │   ├── export_handoff.py             # B-3: Export packaging and handoff service boundary
 │   │   ├── handoff_report.py             # B-4: Export outcome observability and handoff reporting
 │   │   ├── handoff_bundle.py             # B-5: Batch manifest and review bundle packaging
-│   │   └── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
+│   │   ├── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
+│   │   ├── delivery_events.py            # C-1: Delivery event materialization
+│   │   └── delta_share_handoff.py        # C-1: Delta Sharing producer-side preparation layer
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -466,8 +521,9 @@ databricks-caseops-lakehouse/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
 ├── tests/                   # 427 tests: A-4 evaluators (84) + B-1 contract validation (53) + B-2 materialization (18) + B-3 export handoff (28) + B-4 handoff reporting (68) + B-5 batch bundle (84) + B-6 bundle validation (92)
 └── examples/
-    ├── evaluation/          # A-4 usage guide
-    └── ...                  # Sample documents and expected outputs
+    ├── evaluation/                       # A-4 usage guide
+    ├── expected_delivery_event.json      # C-1: Reference delivery event fixture
+    └── ...                              # Sample documents and expected outputs
 ```
 
 ---

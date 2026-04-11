@@ -57,15 +57,15 @@ When starting any task in this repository, always read files in this exact order
 
 **V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
 
-**V2 IS FORMALLY DEFINED AND HAS NOT STARTED.** V2 planning is complete (April 2026). Do not begin V2 implementation without an explicit phase scope and prompt. See `PROJECT_SPEC.md` § V2 Scope and `docs/roadmap.md` § V2 — Future Work for the canonical V2 definition.
+**V2 HAS STARTED. PHASE C-1 IS COMPLETE.** C-0 (design) and C-1 (producer-side implementation) are complete. C-2 (runtime validation) is not started. Do not claim live Delta Sharing is provisioned — that is C-2. Do not reopen V1.
 
-**Phases A-0 through B-6 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
+**Phases A-0 through B-6 and C-1 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
 - Real Databricks MLflow experiments populated for all four evaluation stages: bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability — logged April 2026 via `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified paths using `src/evaluation/mlflow_experiment_paths.py`
 - An explicit Gold → Bedrock handoff contract (B-0), repo-enforced contract validator (B-1), contract-enforced export materialization path (B-2), clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6)
 - 427 tests passing across all pipeline stages and contract enforcement layers
 
-**V2 is formally defined. Phase C (live Bedrock integration and export delivery) is the first V2 phase. V2 has not started implementation.**
+**V2 has started. Phase C-1 (export delivery implementation) is complete. Phase C-2 (runtime validation) is not started.**
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
@@ -160,15 +160,30 @@ B-6 proves the B-5 bundle is internally trustworthy and review-safe. Key deliver
 structural correctness, count consistency, reference integrity, identifier uniqueness, and
 filesystem path existence; `validate_handoff_bundle` (file-based entry point),
 `validate_handoff_bundle_from_manifest` (in-memory), `BundleValidationResult` with full
-check detail; `tests/test_b6_bundle_validation.py` (92 tests). 427 tests pass total. No
-live Bedrock/AWS integration was introduced.
+check detail; `tests/test_b6_bundle_validation.py` (92 tests). 427 tests pass at B-6 closeout.
 
-The module boundary is:
-  `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle
+**Phase C-1 — Export Delivery Implementation** is complete.
+C-1 implements the upstream producer-side delivery augmentation chosen in C-0. Key deliverables:
+`src/schemas/delivery_event.py` (`DeliveryEvent` Pydantic schema; `DELIVERY_SCHEMA_VERSION = 'v0.2.0'`);
+`src/pipelines/delivery_events.py` (build, write, load delivery event artifacts);
+`src/pipelines/delta_share_handoff.py` (`DeltaShareConfig`, `SharePreparationManifest`, SQL DDL
+templates for Unity Catalog, C-2 validation query set);
+`src/schemas/gold_schema.py` updated with `SCHEMA_VERSION_V2 = 'v0.2.0'` and three new optional
+`ExportProvenance` fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`);
+`src/pipelines/classify_gold.py` updated with `--delivery-dir` flag (activates C-1 path);
+`examples/expected_delivery_event.json`; `tests/test_delivery_events.py` (88 tests);
+`tests/test_delta_share_handoff.py` (67 tests). **613 tests pass total.**
+All C-1 delivery events carry `status = 'prepared'` — producer-side is complete; runtime validation
+is C-2. No live Unity Catalog provisioning, no Bedrock SDK, no real Delta Share created.
+
+The module boundary (through C-1) is:
+  `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle → writes C-1 delivery event
   `export_handoff.py`             → validates contract → writes export artifact → returns `ExportResult`
   `handoff_report.py`             → derives outcome categories → aggregates batch report → writes report artifacts
   `handoff_bundle.py`             → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
   `handoff_bundle_validation.py`  → validates the bundle is internally consistent and trustworthy
+  `delivery_events.py`            → builds DeliveryEvent from summaries → writes event artifacts
+  `delta_share_handoff.py`        → defines share config → generates SQL templates → writes share prep manifest
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

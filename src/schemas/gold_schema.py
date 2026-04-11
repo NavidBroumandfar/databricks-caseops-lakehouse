@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 SCHEMA_VERSION = "v0.1.0"
+SCHEMA_VERSION_V2 = "v0.2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +72,33 @@ class ExportProvenance(BaseModel):
     schema_version: str = Field(
         default=SCHEMA_VERSION,
         description="Data contract version this payload was written against.",
+    )
+    # V2-C (C-1) optional delivery provenance fields — added at schema_version v0.2.0.
+    # All three are optional; v0.1.0 payloads carry None for each.
+    # When a delivery event is written (delivery_dir provided to classify_gold.py),
+    # these fields are populated and schema_version is bumped to v0.2.0.
+    delivery_mechanism: Optional[str] = Field(
+        default=None,
+        description=(
+            "Delivery mechanism used for this payload. 'delta_sharing' when written "
+            "via the C-1 delivery layer. Null in v0.1.0 payloads. "
+            "See docs/live-handoff-design.md § C-0 Decision Summary."
+        ),
+    )
+    delta_share_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Name of the Delta Share that makes this payload's Gold table accessible. "
+            "Default: 'caseops_handoff'. Null in v0.1.0 payloads."
+        ),
+    )
+    delivery_event_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "UUID of the DeliveryEvent record that covers the batch containing "
+            "this payload. Enables cross-reference between export payload and "
+            "the delivery event audit log. Null in v0.1.0 payloads."
+        ),
     )
 
     @field_validator("classification_confidence")

@@ -410,11 +410,11 @@ This boundary remains explicit and non-negotiable in V2:
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps. V1 B-phases prepared and hardened the export boundary. V2-C executes across that boundary — delivering to a real Bedrock consumer using a selected delivery protocol.
 
-**Status**: C-0 design complete. C-1 and C-2 not started.
+**Status**: C-0 design complete. C-1 complete. C-2 not started.
 
 Subphases:
 - **C-0** — Integration delivery mechanism design and selection. **Complete.** Decision: Delta Sharing as primary mechanism, augmenting (not replacing) the V1 file export path. See [`docs/live-handoff-design.md`](./docs/live-handoff-design.md) for the full design record.
-- **C-1** — Export delivery implementation: first live Bedrock-facing delivery slice. Implements Delta Sharing of the Gold table, a `delivery_events` notification table, and optional provenance fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`). **Augments the V1 file export path; does not replace it.** Contract version bumps from v0.1.0 to v0.2.0 (minor, additive).
+- **C-1** — Export delivery implementation. **Complete.** Implements the upstream producer-side delivery augmentation: `DeliveryEvent` schema (`src/schemas/delivery_event.py`), delivery event materialization (`src/pipelines/delivery_events.py`), Delta Sharing producer-side preparation layer (`src/pipelines/delta_share_handoff.py`), and integration into `classify_gold.py` via `--delivery-dir`. Export payloads written with `--delivery-dir` carry `schema_version: v0.2.0` and three new optional provenance fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`). V1 file export path fully preserved. 155 new tests. C-2 runtime validation not yet performed — `status = 'prepared'` in delivery events.
 - **C-2** — Runtime integration validation: end-to-end delivery confirmation via a reproducible validation script or notebook. Validates: share query returns correct records, delivery event row present, B-5 manifest integrity passes, export payload files fetchable at manifest-referenced paths, payloads carry `schema_version: v0.2.0`.
 
 **Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, agent reasoning, or escalation logic — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share provisioning — making data available for Bedrock to consume.

@@ -69,6 +69,16 @@ from typing import Optional
 # Allow running from the repo root without installing as a package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from src.pipelines.delivery_events import (
+    build_delivery_event,
+    generate_delivery_event_id,
+    write_delivery_event,
+)
+from src.pipelines.delta_share_handoff import (
+    DeltaShareConfig,
+    compute_share_preparation_manifest,
+    write_share_manifest,
+)
 from src.pipelines.export_handoff import execute_export
 from src.pipelines.handoff_bundle import (
     build_handoff_batch_manifest,
@@ -84,6 +94,7 @@ from src.schemas.gold_schema import (
     ExportProvenance,
     GoldRecord,
     SCHEMA_VERSION,
+    SCHEMA_VERSION_V2,
 )
 from src.utils.classification_taxonomy import (
     DOCUMENT_TYPE_FDA_WARNING_LETTER,
@@ -448,6 +459,9 @@ def build_export_payload(
     classification_confidence: Optional[float],
     classification_model: str,
     pipeline_run_id: str,
+    delivery_event_id: Optional[str] = None,
+    delivery_mechanism: Optional[str] = None,
+    delta_share_name: Optional[str] = None,
 ) -> ExportPayload:
     """
     Assemble the AI-ready export payload from Silver record fields and
@@ -456,11 +470,23 @@ def build_export_payload(
     The parsed_text_excerpt is taken from the Silver record's bronze source
     text if available, defaulting to empty string. In a live Databricks run
     the Bronze parsed_text would be joined from the Delta table.
+
+    C-1 delivery augmentation (v0.2.0):
+    When delivery_event_id is provided (delivery_dir set in run_classify_gold),
+    the provenance block is upgraded to schema_version v0.2.0 and the three
+    new optional delivery fields are populated:
+      - delivery_mechanism: 'delta_sharing'
+      - delta_share_name: 'caseops_handoff'
+      - delivery_event_id: UUID of the delivery event for this batch
+    When delivery_event_id is not provided, v0.1.0 behavior is preserved exactly.
     """
     parsed_text = silver.get("parsed_text_excerpt") or silver.get("parsed_text") or ""
     excerpt = parsed_text[:PARSED_TEXT_EXCERPT_LENGTH]
 
     extracted_fields = silver.get("extracted_fields") or {}
+
+    # C-1: bump to v0.2.0 and populate delivery provenance fields when delivery is active.
+    schema_ver = SCHEMA_VERSION_V2 if delivery_event_id else SCHEMA_VERSION
 
     provenance = ExportProvenance(
         ingested_at=bronze_ingested_at,
@@ -468,7 +494,10 @@ def build_export_payload(
         extraction_model=silver.get("extraction_model", "unknown"),
         classification_model=classification_model,
         classification_confidence=classification_confidence,
-        schema_version=SCHEMA_VERSION,
+        schema_version=schema_ver,
+        delivery_mechanism=delivery_mechanism,
+        delta_share_name=delta_share_name,
+        delivery_event_id=delivery_event_id,
     )
 
     return ExportPayload(
@@ -494,6 +523,9 @@ def assemble_gold_record(
     classification_result: dict,
     classifier_model_id: str,
     pipeline_run_id: str,
+    delivery_event_id: Optional[str] = None,
+    delivery_mechanism: Optional[str] = None,
+    delta_share_name: Optional[str] = None,
 ) -> GoldRecord:
     """
     Build a GoldRecord from a Silver record dict and classification output.
@@ -525,6 +557,9 @@ def assemble_gold_record(
         classification_confidence=classification_confidence,
         classification_model=classifier_model_id,
         pipeline_run_id=pipeline_run_id,
+        delivery_event_id=delivery_event_id,
+        delivery_mechanism=delivery_mechanism,
+        delta_share_name=delta_share_name,
     )
 
     export_ready = compute_export_ready(
@@ -535,6 +570,9 @@ def assemble_gold_record(
         silver_coverage=silver_coverage,
         export_payload=export_payload,
     )
+
+    # C-1: use v0.2.0 schema version when delivery is active (delivery_event_id set).
+    gold_schema_version = SCHEMA_VERSION_V2 if delivery_event_id else SCHEMA_VERSION
 
     return GoldRecord(
         document_id=silver["document_id"],
@@ -550,7 +588,7 @@ def assemble_gold_record(
         export_payload=export_payload,
         export_ready=export_ready,
         export_path=None,  # Set after export artifact is written
-        schema_version=SCHEMA_VERSION,
+        schema_version=gold_schema_version,
     )
 
 
@@ -623,6 +661,7 @@ def run_classify_gold(
     pipeline_run_id: Optional[str] = None,
     report_dir: Optional[str] = None,
     bundle_dir: Optional[str] = None,
+    delivery_dir: Optional[str] = None,
 ) -> list[dict]:
     """
     Run the Gold classification and routing pipeline.
@@ -642,6 +681,16 @@ def run_classify_gold(
     per-record artifact paths and the B-4 report artifacts (if report_dir was
     also provided). The bundle_dir may be the same as report_dir.
 
+    If delivery_dir is provided (C-1 delivery augmentation):
+        - A delivery_event_id is generated before the classification loop.
+        - Export payloads are written at schema_version v0.2.0 with the three
+          new optional provenance fields (delivery_mechanism, delta_share_name,
+          delivery_event_id) populated.
+        - After the batch, a C-1 DeliveryEvent artifact is written to delivery_dir.
+        - A Delta Share preparation manifest is written to delivery_dir.
+        - The delivery_dir may be the same as bundle_dir or report_dir.
+        - V1 export path behavior is fully preserved — this is additive augmentation.
+
     Returns a list of summary dicts (one per processed Silver record).
     """
     input_dir_path = Path(input_dir) if input_dir else None
@@ -651,7 +700,28 @@ def run_classify_gold(
     bronze_dir_path = Path(bronze_dir) if bronze_dir else None
     report_dir_path = Path(report_dir) if report_dir else None
     bundle_dir_path = Path(bundle_dir) if bundle_dir else None
+    delivery_dir_path = Path(delivery_dir) if delivery_dir else None
     run_id = pipeline_run_id or generate_pipeline_run_id()
+
+    # C-1: Generate delivery_event_id before the loop so it can be embedded in
+    # every export payload's provenance. This links each payload to its batch
+    # delivery event. Only active when delivery_dir is provided.
+    active_delivery_event_id: Optional[str] = None
+    active_delivery_mechanism: Optional[str] = None
+    active_delta_share_name: Optional[str] = None
+    if delivery_dir_path is not None:
+        from src.schemas.delivery_event import (
+            DEFAULT_SHARE_NAME,
+            DELIVERY_MECHANISM_DELTA_SHARING,
+        )
+        active_delivery_event_id = generate_delivery_event_id()
+        active_delivery_mechanism = DELIVERY_MECHANISM_DELTA_SHARING
+        active_delta_share_name = DEFAULT_SHARE_NAME
+        print(
+            f"[classify_gold] C-1 delivery active. "
+            f"delivery_event_id={active_delivery_event_id} "
+            f"share={active_delta_share_name}"
+        )
 
     silver_paths = collect_silver_paths(input_dir_path, input_file_path)
     print(f"[classify_gold] Found {len(silver_paths)} Silver artifact(s). Run ID: {run_id}")
@@ -697,6 +767,9 @@ def run_classify_gold(
             classification_result=classification_result,
             classifier_model_id=classifier.model_id,
             pipeline_run_id=run_id,
+            delivery_event_id=active_delivery_event_id,
+            delivery_mechanism=active_delivery_mechanism,
+            delta_share_name=active_delta_share_name,
         )
 
         # B-3: Delegate all export/handoff materialization to the export_handoff module.
@@ -789,6 +862,7 @@ def run_classify_gold(
         print(f"[classify_gold] Handoff report (text) → {report_text_path}")
 
     # B-5: Build and optionally write the handoff batch manifest/review bundle.
+    bundle_json_path: Optional[Path] = None
     if bundle_dir_path is not None:
         bundle_manifest = build_handoff_batch_manifest(
             summaries=summaries,
@@ -800,6 +874,33 @@ def run_classify_gold(
         bundle_json_path, bundle_text_path = write_handoff_bundle(bundle_manifest, bundle_dir_path)
         print(f"[classify_gold] Handoff bundle (JSON) → {bundle_json_path}")
         print(f"[classify_gold] Handoff bundle (text) → {bundle_text_path}")
+
+    # C-1: Write the delivery event and Delta Share preparation manifest.
+    if delivery_dir_path is not None and active_delivery_event_id is not None:
+        delivery_event = build_delivery_event(
+            summaries=summaries,
+            pipeline_run_id=run_id,
+            delivery_event_id=active_delivery_event_id,
+            bundle_artifact_path=str(bundle_json_path) if bundle_json_path else None,
+            report_artifact_path=(
+                report_artifact_paths["json_path"] if report_artifact_paths else None
+            ),
+            share_name=active_delta_share_name or "",
+        )
+        event_json_path, event_text_path = write_delivery_event(
+            delivery_event, delivery_dir_path
+        )
+        print(f"[classify_gold] Delivery event (JSON) → {event_json_path}")
+        print(f"[classify_gold] Delivery event (text) → {event_text_path}")
+
+        # Write the Delta Share preparation manifest alongside the delivery event.
+        share_manifest = compute_share_preparation_manifest(
+            config=DeltaShareConfig(),
+            pipeline_run_id=run_id,
+            delivery_event_id=active_delivery_event_id,
+        )
+        share_manifest_path = write_share_manifest(share_manifest, delivery_dir_path)
+        print(f"[classify_gold] Delta Share manifest → {share_manifest_path}")
 
     return summaries
 
@@ -874,6 +975,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "--report-dir. When both are provided, the bundle references the report."
         ),
     )
+    p.add_argument(
+        "--delivery-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "C-1: Directory to write delivery event artifacts (JSON + text) and the "
+            "Delta Share preparation manifest. When provided, activates the C-1 delivery "
+            "augmentation layer: export payloads are written at schema_version v0.2.0 "
+            "with delivery provenance fields populated. If omitted, V1 export behavior "
+            "is preserved (schema_version v0.1.0, no delivery event). "
+            "May be combined with --bundle-dir and --report-dir."
+        ),
+    )
     return p
 
 
@@ -888,6 +1002,7 @@ def main() -> None:
         pipeline_run_id=args.pipeline_run_id,
         report_dir=args.report_dir,
         bundle_dir=args.bundle_dir,
+        delivery_dir=args.delivery_dir,
     )
 
 

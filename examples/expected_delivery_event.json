@@ -1,0 +1,22 @@
+{
+  "delivery_event_id": "a3f2c1d4-e5b6-7890-abcd-ef1234567890",
+  "pipeline_run_id": "local-run-b7e8c9d0-1234-5678-abcd-ef9012345678",
+  "batch_id": "local-run-b7e8c9d0-1234-5678-abcd-ef9012345678",
+  "generated_at": "2026-04-12T10:30:00.000000+00:00",
+  "delivery_mechanism": "delta_sharing",
+  "share_name": "caseops_handoff",
+  "shared_object_name": "gold_ai_ready_assets",
+  "eligible_record_count": 4,
+  "exported_record_count": 3,
+  "quarantined_record_count": 1,
+  "contract_blocked_count": 0,
+  "routing_labels": [
+    "regulatory_review"
+  ],
+  "bundle_artifact_path": "output/reports/handoff_bundle_local-run-b7e8c9d0-1234-5678-abcd-ef9012345678.json",
+  "report_artifact_path": "output/reports/handoff_report_local-run-b7e8c9d0-1234-5678-abcd-ef9012345678.json",
+  "status": "prepared",
+  "status_reason": "Producer-side delivery layer complete. Runtime validation (share query + consumer receipt) is pending (C-2).",
+  "schema_version": "v0.2.0",
+  "notes": null
+}

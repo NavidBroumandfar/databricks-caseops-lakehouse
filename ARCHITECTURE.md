@@ -346,17 +346,41 @@ Phases B-1 through B-6 converted the B-0 contract from documentation into a full
 | Batch bundle packaging | `src/pipelines/handoff_bundle.py` | Packages per-record artifact references and B-4 report into a single `HandoffBatchManifest` (B-5) |
 | Bundle integrity validation | `src/pipelines/handoff_bundle_validation.py` | 24 explicit checks: structural, count consistency, reference integrity, identifier uniqueness, path existence (B-6) |
 
-**Module boundary:**
+### Phase C-1 Delivery Layer — Implementation Status
+
+Phase C-1 implements the upstream producer-side delivery augmentation on top of the B-phase handoff layer. The V1 file export path is preserved and augmented. The following modules are complete:
+
+| Module | Path | Role |
+|---|---|---|
+| Delivery event schema | `src/schemas/delivery_event.py` | Pydantic model for `DeliveryEvent`; constants for mechanism, status, schema version |
+| Delivery event pipeline | `src/pipelines/delivery_events.py` | Builds, writes, and loads per-batch delivery event artifacts (JSON + text) |
+| Delta Share prep layer | `src/pipelines/delta_share_handoff.py` | `DeltaShareConfig`, `SharePreparationManifest`, SQL templates, handoff surface definition, C-2 validation queries |
+
+**Module boundary (C-1 additions):**
 
 ```
-classify_gold.py              → assembles GoldRecord → calls execute_export → derives outcome → writes Gold artifact → builds bundle
+classify_gold.py              → [existing] + generates delivery_event_id → assembles v0.2.0 payloads → writes C-1 delivery event → writes share prep manifest
+delivery_events.py            → builds DeliveryEvent from summaries → writes event artifacts (JSON + text)
+delta_share_handoff.py        → defines DeltaShareConfig → generates SQL templates → writes share prep manifest
+```
+
+**C-1 implementation status**: Producer-side delivery layer is complete. Runtime provisioning (Unity Catalog share creation and recipient configuration) and end-to-end validation are Phase C-2 concerns. All C-1 delivery events carry `status = 'prepared'`.
+
+**What C-1 does not include:** No live Unity Catalog API calls, no Delta Sharing SDK, no real share provisioning, no Bedrock consumer simulation. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
+
+**Module boundary (full B through C-1):**
+
+```
+classify_gold.py              → assembles GoldRecord → calls execute_export → derives outcome → writes Gold artifact → builds bundle → writes C-1 delivery event
 export_handoff.py             → validates contract → writes export artifact → returns ExportResult
 handoff_report.py             → derives outcome categories → aggregates batch report → writes report artifacts
 handoff_bundle.py             → packages batch into manifest/review bundle → writes bundle artifacts (JSON + text)
 handoff_bundle_validation.py  → validates the bundle is internally consistent and trustworthy
+delivery_events.py            → builds DeliveryEvent from summaries → writes delivery event artifacts
+delta_share_handoff.py        → defines share config → generates SQL templates → writes share prep manifest
 ```
 
-**What this layer does not include:** No live Bedrock/AWS integration, no Bedrock SDK, no S3 wiring, no vector index, no agent workflows. The repo remains the upstream-only governed document intelligence and handoff preparation layer. Live integration is a future phase beyond B-6.
+**What this layer does not include:** No live Bedrock/AWS integration, no Bedrock SDK, no S3 wiring, no vector index, no agent workflows, no real Delta Share provisioning. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
 
 ---
 
