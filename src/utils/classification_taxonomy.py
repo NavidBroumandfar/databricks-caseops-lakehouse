@@ -1,23 +1,23 @@
 """
-classification_taxonomy.py — Gold classification label taxonomy (Phase A-3 / D-0)
+classification_taxonomy.py — Gold classification label taxonomy (Phase A-3 / D-0 / D-1)
 
 Defines the closed-set document type labels and routing labels used by the
 Gold classification stage. All label values in Gold records must come from
 the constants defined here.
 
 D-0 Multi-domain framework additions:
-    DOMAIN_ROUTING_MAP replaces the commented-out V1_ROUTING_MAP entries with
-    a declarative per-domain routing map covering all registered domains.
-    Active domains (FDA) are mapped to their routing labels.
-    Planned domains (CISA, incident) are present but guarded by their domain
-    status — callers should use is_domain_executable() before routing.
+    DOMAIN_ROUTING_MAP is the declarative per-domain routing map covering all
+    registered domains. Active domains are mapped to their routing labels.
+    Planned domains are guarded by their domain status.
 
     resolve_routing_label_for_domain(domain_key, document_type_label) provides
     domain-aware routing. is_domain_executable(domain_key) checks registry status.
 
-    All V1 constants and behavior are unchanged. FDA warning letters still route
-    exactly as before. The V1_ROUTING_MAP is preserved alongside DOMAIN_ROUTING_MAP
-    for backward compatibility.
+D-1 CISA advisory activation:
+    'cisa_advisory' → 'security_ops' is now active in V1_ROUTING_MAP.
+    ROUTING_LABEL_SECURITY_OPS is now an active routing path.
+    V1_EXECUTABLE_DOCUMENT_TYPES and V1_EXECUTABLE_ROUTING_LABELS updated.
+    FDA behavior is unchanged.
 
 Authoritative contract: docs/data-contracts.md § Classification Labels
 Domain registry: src/utils/domain_registry.py
@@ -54,10 +54,11 @@ ALL_DOCUMENT_TYPE_LABELS: list[str] = [
     DOCUMENT_TYPE_UNKNOWN,
 ]
 
-# V1-only executable document type labels
-# Classification logic in classify_gold.py only assigns these labels.
+# Executable document type labels (V1 FDA + D-1 CISA)
+# Classification logic in classify_gold.py assigns these labels.
 V1_EXECUTABLE_DOCUMENT_TYPES: list[str] = [
     DOCUMENT_TYPE_FDA_WARNING_LETTER,
+    DOCUMENT_TYPE_CISA_ADVISORY,  # D-1 active
     DOCUMENT_TYPE_UNKNOWN,
 ]
 
@@ -86,10 +87,11 @@ ALL_ROUTING_LABELS: list[str] = [
     ROUTING_LABEL_KNOWLEDGE_BASE,
 ]
 
-# V1-only executable routing labels
-# Routing logic in classify_gold.py only assigns these labels.
+# Active routing labels (V1 regulatory_review + D-1 security_ops + quarantine governance)
+# Routing logic in classify_gold.py assigns these labels.
 V1_EXECUTABLE_ROUTING_LABELS: list[str] = [
     ROUTING_LABEL_REGULATORY_REVIEW,
+    ROUTING_LABEL_SECURITY_OPS,  # D-1 active
     ROUTING_LABEL_QUARANTINE,
 ]
 
@@ -103,9 +105,11 @@ V1_EXECUTABLE_ROUTING_LABELS: list[str] = [
 # ---------------------------------------------------------------------------
 
 V1_ROUTING_MAP: dict[str, str] = {
+    # V1 active
     DOCUMENT_TYPE_FDA_WARNING_LETTER: ROUTING_LABEL_REGULATORY_REVIEW,
-    # Planned V2+ entries — not active until D-1 / D-2:
-    # DOCUMENT_TYPE_CISA_ADVISORY:      ROUTING_LABEL_SECURITY_OPS,
+    # D-1 active
+    DOCUMENT_TYPE_CISA_ADVISORY: ROUTING_LABEL_SECURITY_OPS,
+    # Planned D-2 entries — not active until D-2:
     # DOCUMENT_TYPE_INCIDENT_REPORT:    ROUTING_LABEL_INCIDENT_MANAGEMENT,
     # DOCUMENT_TYPE_SOP:                ROUTING_LABEL_KNOWLEDGE_BASE,
     # DOCUMENT_TYPE_QUALITY_AUDIT:      ROUTING_LABEL_QUALITY_MANAGEMENT,

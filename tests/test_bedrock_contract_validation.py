@@ -409,13 +409,17 @@ class TestFDAExtractedFieldsValidation:
         payload = make_valid_export_payload()
         payload["document_type"] = "cisa_advisory"
         payload["routing_label"] = "security_ops"
-        # Replace extracted_fields with non-FDA content
+        # D-1: CISA advisory now has its own field validation. Provide valid CISA fields
+        # to confirm FDA field checks do not fire for cisa_advisory documents.
         payload["extracted_fields"] = {
             "advisory_id": "AA-2024-001",
+            "title": "Test Advisory",
+            "published_date": "2024-01-01",
             "severity_level": "High",
+            "remediation_available": True,
         }
         result = validate_export_payload(payload)
-        # Should pass — FDA field checks must not fire for non-FDA document types.
+        # FDA field checks must not fire for non-FDA document types.
         assert result.valid is True, (
             f"Non-FDA document type should not be rejected for missing FDA fields; "
             f"got: {result.errors}"

@@ -136,7 +136,7 @@ class DomainNotImplementedError(NotImplementedError):
     Provides an explicit, informative message that distinguishes 'registered
     but not yet implemented' from 'not registered at all'.
 
-    D-1 will resolve this for the 'cisa_advisory' domain.
+    D-1 resolved this for the 'cisa_advisory' domain (now ACTIVE).
     D-2 will resolve this for the 'incident_report' domain.
     """
 
@@ -175,23 +175,24 @@ DOMAIN_REGISTRY: dict[str, DomainConfig] = {
         ),
     ),
     # ------------------------------------------------------------------
-    # CISA Advisory — PLANNED (D-1)
-    # Draft schema in docs/data-contracts.md § CISA Advisory Fields.
-    # Classification label and routing label are defined in the taxonomy.
-    # Full implementation (Pydantic model, prompt, extractor, classifier)
-    # is the scope of Phase D-1.
+    # CISA Advisory — ACTIVE (D-1)
+    # Field contract: docs/data-contracts.md § CISA Advisory Fields.
+    # Pydantic model: src/schemas/silver_schema.py CISAAdvisoryFields
+    # Prompt: src/utils/extraction_prompts.py CISA_ADVISORY_PROMPT
+    # Extractor: src/pipelines/extract_silver.py LocalCISAAdvisoryExtractor
+    # Classifier: src/pipelines/classify_gold.py LocalCISAAdvisoryClassifier
     # ------------------------------------------------------------------
     "cisa_advisory": DomainConfig(
         domain_key="cisa_advisory",
         document_type_label="cisa_advisory",
         routing_label="security_ops",
         source_family="security",
-        extraction_prompt_id=None,  # D-1: prompt not yet registered
+        extraction_prompt_id="cisa_advisory_extract_v1",
         schema_family="cisa_advisory",
-        status=DomainStatus.PLANNED,
+        status=DomainStatus.ACTIVE,
         description=(
             "CISA-issued cybersecurity advisory or bulletin. "
-            "Planned for D-1 implementation. Routing target: security_ops."
+            "D-1 active domain. Routing target: security_ops."
         ),
     ),
     # ------------------------------------------------------------------

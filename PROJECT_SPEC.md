@@ -367,7 +367,7 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ## V2 Scope
 
-**V2 has started. Phase C is complete. Phase D-0 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 is the next phase not yet started. The phases below reflect the current delivery state.
+**V2 has started. Phase C is complete. Phase D-0 is complete. Phase D-1 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report) is the next phase not yet started. The phases below reflect the current delivery state.
 
 ### V2 Objective
 
@@ -423,11 +423,11 @@ Subphases:
 
 **Goal**: Extend the pipeline beyond FDA warning letters. CISA cybersecurity advisories are the first V2-D domain (draft schema in `docs/data-contracts.md`, `security_ops` routing label already defined). Incident reports are the second.
 
-**Status**: Not started.
+**Status**: D-0 and D-1 complete. D-2 not started.
 
 Subphases:
-- **D-0** — Multi-domain framework. **Complete (April 2026).** Domain registry (`src/utils/domain_registry.py`), per-domain prompt routing (`extraction_prompts.py`), domain schema registry (`src/schemas/domain_schema_registry.py`), multi-domain classification/routing framework (`classification_taxonomy.py`). FDA remains the only fully executable domain. CISA and incident are registered as `planned`. 123 new tests; 870 total.
-- **D-1** — CISA advisory domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, evaluation pass
+- **D-0** — Multi-domain framework. **Complete (April 2026).** Domain registry (`src/utils/domain_registry.py`), per-domain prompt routing (`extraction_prompts.py`), domain schema registry (`src/schemas/domain_schema_registry.py`), multi-domain classification/routing framework (`classification_taxonomy.py`). FDA remains the only fully executable domain post-D-0. CISA and incident registered as `planned`. 123 new tests; 870 total.
+- **D-1** — CISA advisory domain. **Complete (April 2026).** `CISAAdvisoryFields` schema, `LocalCISAAdvisoryExtractor`, `LocalCISAAdvisoryClassifier`, `cisa_advisory_extract_v1` prompt, `security_ops` routing active, Bedrock contract CISA validation, CISA fixtures. 123 new tests; 978 total.
 - **D-2** — Incident report domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, evaluation pass
 
 **Scope boundary**: Domain expansion adds schemas, prompts, labels, and routing to this repo. It does not add retrieval indexes or agent workflows.

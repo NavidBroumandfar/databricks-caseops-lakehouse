@@ -446,7 +446,7 @@ The single authoritative registry for all document domains lives at `src/utils/d
 | Domain Key | Document Type | Routing Label | Status | Phase |
 |---|---|---|---|---|
 | `fda_warning_letter` | `fda_warning_letter` | `regulatory_review` | `active` | V1 |
-| `cisa_advisory` | `cisa_advisory` | `security_ops` | `planned` | D-1 |
+| `cisa_advisory` | `cisa_advisory` | `security_ops` | `active` | D-1 ✅ |
 | `incident_report` | `incident_report` | `incident_management` | `planned` | D-2 |
 
 ### Prompt Routing Framework
@@ -471,7 +471,8 @@ The single authoritative registry for all document domains lives at `src/utils/d
 `select_extractor()` in `extract_silver.py` and `select_classifier()` in `classify_gold.py` now route through the domain registry:
 - `None` → defaults to `fda_warning_letter` (backward compatible)
 - `fda_warning_letter` → dispatches to V1 extractor/classifier (unchanged)
-- `cisa_advisory` / `incident_report` → raises `DomainNotImplementedError` (planned)
+- `cisa_advisory` → dispatches to `LocalCISAAdvisoryExtractor` / `LocalCISAAdvisoryClassifier` (D-1 active)
+- `incident_report` → raises `DomainNotImplementedError` (planned, D-2)
 - Unregistered keys → raises `ValueError` with registry context
 
 ### D-0 Boundary (What Was Not Changed)

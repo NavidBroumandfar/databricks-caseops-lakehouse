@@ -68,13 +68,22 @@ REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
 )
 
 # Required extracted_fields for document_type = 'fda_warning_letter' per B-0 §4.4.
-# These are the V1 required fields for the single executable domain.
 REQUIRED_FDA_EXTRACTED_FIELDS: tuple[str, ...] = (
     "issuing_office",
     "recipient_company",
     "issue_date",
     "violation_type",
     "corrective_action_requested",
+)
+
+# Required extracted_fields for document_type = 'cisa_advisory' (D-1).
+# Mirrors docs/data-contracts.md § CISA Advisory Fields (required set).
+REQUIRED_CISA_EXTRACTED_FIELDS: tuple[str, ...] = (
+    "advisory_id",
+    "title",
+    "published_date",
+    "severity_level",
+    "remediation_available",
 )
 
 # Document types that are valid for a handoff unit (not 'unknown').
@@ -199,9 +208,14 @@ def validate_export_payload(payload: Any) -> ContractValidationResult:
     if not isinstance(extracted_fields, dict):
         errors.append("'extracted_fields' must be an object")
     else:
-        # V1 FDA warning letter specific field validation (B-0 §4.4)
-        if isinstance(document_type, str) and document_type == "fda_warning_letter":
-            errors.extend(_validate_fda_extracted_fields(extracted_fields))
+        # Domain-specific required extracted_fields validation
+        if isinstance(document_type, str):
+            if document_type == "fda_warning_letter":
+                # V1 FDA warning letter field validation (B-0 §4.4)
+                errors.extend(_validate_fda_extracted_fields(extracted_fields))
+            elif document_type == "cisa_advisory":
+                # D-1 CISA advisory field validation
+                errors.extend(_validate_cisa_extracted_fields(extracted_fields))
 
     # --- parsed_text_excerpt: must be a string ---
     excerpt = payload["parsed_text_excerpt"]
@@ -297,6 +311,41 @@ def _validate_provenance(provenance: dict) -> list[str]:
             errors.append(
                 f"provenance.classification_confidence {confidence} out of range [0.0, 1.0]"
             )
+
+    return errors
+
+
+def _validate_cisa_extracted_fields(extracted_fields: dict) -> list[str]:
+    """
+    Validate required extracted_fields for document_type = 'cisa_advisory' (D-1).
+
+    Required CISA fields: advisory_id, title, published_date, severity_level,
+    remediation_available (boolean).
+    """
+    errors: list[str] = []
+
+    for req_field in REQUIRED_CISA_EXTRACTED_FIELDS:
+        if req_field not in extracted_fields:
+            errors.append(
+                f"Missing required CISA advisory extracted_field: '{req_field}'"
+            )
+            continue
+
+        value = extracted_fields[req_field]
+
+        if value is None:
+            errors.append(
+                f"Required CISA advisory extracted_field '{req_field}' is null"
+            )
+        elif req_field == "remediation_available":
+            if not isinstance(value, bool):
+                errors.append("'remediation_available' must be a boolean")
+        elif req_field == "severity_level":
+            valid_severities = {"Critical", "High", "Medium", "Low"}
+            if value not in valid_severities:
+                errors.append(
+                    f"'severity_level' must be one of {sorted(valid_severities)}; got '{value}'"
+                )
 
     return errors
 

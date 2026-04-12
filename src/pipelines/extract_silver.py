@@ -1,5 +1,5 @@
 """
-extract_silver.py — Silver extraction pipeline (Phase A-2 / D-0)
+extract_silver.py — Silver extraction pipeline (Phase A-2 / D-0 / D-1)
 
 Reads Bronze JSON artifacts produced by ingest_bronze.py, extracts structured
 fields into Silver records, validates them against the Silver schema, and writes
@@ -10,11 +10,14 @@ Records that produce invalid or partial extractions are still written —
 no silent drops. All extraction outcomes are captured as Silver records.
 
 D-0 multi-domain framework:
-    select_extractor() now uses the domain registry to validate the requested
+    select_extractor() uses the domain registry to validate the requested
     domain before dispatching to the extractor. ACTIVE domains are dispatched;
-    PLANNED domains (cisa_advisory, incident_report) raise DomainNotImplementedError.
-    FDA behavior is unchanged. Domain-aware prompt selection is available via
-    get_prompt_for_domain() in extraction_prompts.py.
+    PLANNED domains (incident_report) raise DomainNotImplementedError.
+
+D-1 CISA advisory domain:
+    LocalCISAAdvisoryExtractor implements deterministic rule-based extraction
+    for CISA advisory documents. select_extractor() dispatches 'cisa_advisory'
+    to this extractor. FDA behavior is unchanged.
 
 Usage:
     # Process all Bronze artifacts in the default directory
@@ -49,16 +52,24 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.schemas.silver_schema import (
+    CISA_ALL_FIELDS,
+    CISA_OPTIONAL_FIELDS,
+    CISA_REQUIRED_FIELDS,
+    CISAAdvisoryFields,
     FDA_ALL_FIELDS,
     FDA_OPTIONAL_FIELDS,
     FDA_REQUIRED_FIELDS,
     FDAWarningLetterFields,
+    SCHEMA_VERSION,
     SilverRecord,
     ValidationStatus,
+    compute_cisa_field_coverage,
     compute_field_coverage,
-    SCHEMA_VERSION,
 )
-from src.utils.extraction_prompts import FDA_WARNING_LETTER_PROMPT_ID
+from src.utils.extraction_prompts import (
+    CISA_ADVISORY_PROMPT_ID,
+    FDA_WARNING_LETTER_PROMPT_ID,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -441,6 +452,292 @@ class DatabricksAiExtractAdapter(FieldExtractor):
 
 
 # ---------------------------------------------------------------------------
+# Local deterministic CISA advisory extractor (D-1)
+# ---------------------------------------------------------------------------
+
+class LocalCISAAdvisoryExtractor(FieldExtractor):
+    """
+    Deterministic rule-based extractor for CISA cybersecurity advisories.
+
+    Uses regex and simple string parsing against the parsed text.
+    No LLM or external service is called. Produces a valid Silver record
+    from CISA advisory text following the common CISA advisory format.
+
+    CISA advisories typically include:
+      - Advisory ID near the title (ICSA-YY-NNN-NN, AA24-NNNA, etc.)
+      - "Release Date:" or "Published:" for the date
+      - Explicit CVSS score or severity label
+      - "Affected Products:" section
+      - CVE identifiers in the body
+      - "Mitigations:" or "Recommendations:" section
+
+    D-1 implementation. Active in the domain registry.
+    """
+
+    _MODEL_ID = "local_rule_extractor/v1"
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def extract(self, parsed_text: str) -> dict:
+        return {
+            "advisory_id": self._extract_advisory_id(parsed_text),
+            "title": self._extract_title(parsed_text),
+            "published_date": self._extract_published_date(parsed_text),
+            "severity_level": self._extract_severity_level(parsed_text),
+            "remediation_available": self._extract_remediation_available(parsed_text),
+            "affected_products": self._extract_affected_products(parsed_text),
+            "cve_ids": self._extract_cve_ids(parsed_text),
+            "remediation_summary": self._extract_remediation_summary(parsed_text),
+            "summary": self._extract_summary(parsed_text),
+        }
+
+    def _extract_advisory_id(self, text: str) -> Optional[str]:
+        """
+        Extract the CISA advisory identifier.
+        Patterns: ICSA-YY-NNN-NN, AA24-NNNA, CISA-YYYY-NNNN
+        """
+        patterns = [
+            r"\b(ICSA-\d{2}-\d{3}-\d{2}[A-Z]?)\b",
+            r"\b(AA\d{2}-\d{3}[A-Z])\b",
+            r"\b(CISA-\d{4}-\d{4})\b",
+            r"Advisory\s+(?:ID|Number)[:\s]+([A-Z0-9\-]+)",
+            r"Alert\s+(?:ID|Code)[:\s]+([A-Z0-9\-]+)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return None
+
+    def _extract_title(self, text: str) -> Optional[str]:
+        """
+        Extract the advisory title.
+        Often on the first non-blank line or after a 'Title:' label.
+        """
+        title_match = re.search(r"^(?:#\s+|Title[:\s]+)(.+)$", text, re.MULTILINE)
+        if title_match:
+            return title_match.group(1).strip().strip("#").strip()
+
+        # First meaningful non-blank line that isn't a date or ID
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped and len(stripped) > 10 and not re.match(
+                r"^(Release Date|Published|ICSA|AA\d|CVE|https?://)", stripped, re.IGNORECASE
+            ):
+                # Avoid lines that look like metadata
+                if re.search(r"[A-Za-z]{3,}", stripped):
+                    return stripped[:200]
+        return None
+
+    def _extract_published_date(self, text: str) -> Optional[str]:
+        """
+        Extract the advisory publication date.
+        Patterns: 'Release Date:', 'Published:', or a standalone date near the top.
+        """
+        date_patterns = [
+            r"(?:Release Date|Published|Date)[:\s*]+([A-Z][a-z]+ \d{1,2},?\s*\d{4})",
+            r"(?:Release Date|Published|Date)[:\s*]+(\d{1,2}/\d{1,2}/\d{4})",
+            r"(?:Release Date|Published|Date)[:\s*]+(\d{4}-\d{2}-\d{2})",
+        ]
+        for pattern in date_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return self._normalize_date(match.group(1).strip())
+
+        # Fallback: find a date in the top 500 characters
+        top = text[:500]
+        month_match = re.search(r"([A-Z][a-z]+ \d{1,2},?\s*\d{4})", top)
+        if month_match:
+            return self._normalize_date(month_match.group(1).strip())
+        iso_match = re.search(r"(\d{4}-\d{2}-\d{2})", top)
+        if iso_match:
+            return iso_match.group(1)
+        return None
+
+    def _normalize_date(self, raw: str) -> str:
+        """Best-effort normalization to YYYY-MM-DD."""
+        month_map = {
+            "january": "01", "february": "02", "march": "03", "april": "04",
+            "may": "05", "june": "06", "july": "07", "august": "08",
+            "september": "09", "october": "10", "november": "11", "december": "12",
+        }
+        match = re.match(r"([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})", raw)
+        if match:
+            month_name, day, year = match.groups()
+            month_num = month_map.get(month_name.lower())
+            if month_num:
+                return f"{year}-{month_num}-{int(day):02d}"
+        # MM/DD/YYYY
+        match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+        if match:
+            month, day, year = match.groups()
+            return f"{year}-{int(month):02d}-{int(day):02d}"
+        return raw
+
+    def _extract_severity_level(self, text: str) -> Optional[str]:
+        """
+        Extract severity level: Critical / High / Medium / Low.
+        Sources: explicit label, CVSS score range, or section heading.
+        """
+        # Explicit severity label
+        explicit_match = re.search(
+            r"(?:Severity|Risk Level|Criticality)[:\s]+\*{0,2}(Critical|High|Medium|Low)\b",
+            text,
+            re.IGNORECASE,
+        )
+        if explicit_match:
+            return explicit_match.group(1).capitalize()
+
+        # CVSS base score
+        cvss_match = re.search(r"CVSS(?:\s+v\d)?\s+(?:Base\s+)?Score[:\s]+(\d+\.?\d*)", text, re.IGNORECASE)
+        if not cvss_match:
+            cvss_match = re.search(r"(?:Base\s+)?Score[:\s]+(\d+\.?\d*)\s*/\s*10", text, re.IGNORECASE)
+        if cvss_match:
+            try:
+                score = float(cvss_match.group(1))
+                if score >= 9.0:
+                    return "Critical"
+                elif score >= 7.0:
+                    return "High"
+                elif score >= 4.0:
+                    return "Medium"
+                else:
+                    return "Low"
+            except ValueError:
+                pass
+
+        # Keyword presence fallback
+        if re.search(r"\bcritical\b", text[:2000], re.IGNORECASE):
+            return "Critical"
+        if re.search(r"\bhigh\s+(?:severity|risk|impact)\b", text[:2000], re.IGNORECASE):
+            return "High"
+        return None
+
+    def _extract_remediation_available(self, text: str) -> Optional[bool]:
+        """
+        Determine if remediation (patches, mitigations, workarounds) is available.
+        """
+        # Check for explicit "no fix" phrasing first
+        no_fix_patterns = [
+            r"no\s+(?:known\s+)?(?:patch|fix|mitigation|workaround)\s+(?:is\s+)?(?:available|exists)",
+            r"no\s+known\s+\w+\s+(?:or\s+\w+\s+)?(?:is\s+)?(?:available|exists)",
+            r"(?:patch|fix|mitigation)\s+(?:is\s+)?not\s+(?:yet\s+)?available",
+        ]
+        for pattern in no_fix_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                return False
+
+        available_patterns = [
+            r"patch(?:es)?\s+(?:are\s+)?available",
+            r"update(?:s)?\s+(?:are\s+)?available",
+            r"mitigation(?:s)?\s+(?:are\s+)?available",
+            r"workaround(?:s)?\s+(?:are\s+)?available",
+            r"CISA\s+(?:recommends|urges)\s+users?",
+            r"vendor\s+has\s+(?:released|issued)\s+(?:a\s+)?(?:patch|update|fix|firmware)",
+            r"(?:has\s+)?released\s+(?:firmware|patch|update|fix)",
+            r"apply\s+(?:the\s+)?(?:following\s+)?(?:patch|update|mitigation)",
+            r"(?:update|upgrade)\s+(?:to\s+)?(?:firmware|version|v)\s*\w",
+        ]
+        for pattern in available_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+
+        # Presence of a Mitigations / Recommendations section implies availability
+        if re.search(
+            r"(?:^|[\n#\s])(?:Mitigation|Recommendation|Patch|Remediation)s?\s*[:\n]",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        ):
+            return True
+        return None
+
+    def _extract_affected_products(self, text: str) -> Optional[list]:
+        """
+        Extract affected product names and versions.
+        Looks for an 'Affected Products:' section listing items.
+        """
+        section_match = re.search(
+            r"Affected\s+Products?[:\s]*\n((?:[-•*]?\s*.+\n?){1,20})",
+            text,
+            re.IGNORECASE,
+        )
+        if section_match:
+            lines = section_match.group(1).splitlines()
+            products = []
+            for line in lines:
+                cleaned = re.sub(r"^[-•*]\s*", "", line.strip())
+                if cleaned and len(cleaned) > 2:
+                    products.append(cleaned)
+                if len(products) >= 10:
+                    break
+            if products:
+                return products
+
+        # Inline: "affects [Product Name] versions X.X through Y.Y"
+        inline_matches = re.findall(
+            r"(?:affects?|vulnerable)\s+(?:to\s+)?([A-Z][^\n,;.]{3,50})",
+            text,
+            re.IGNORECASE,
+        )
+        if inline_matches:
+            return [m.strip() for m in inline_matches[:5]]
+
+        return None
+
+    def _extract_cve_ids(self, text: str) -> Optional[list]:
+        """
+        Extract all CVE identifiers in CVE-YYYY-NNNNN format.
+        """
+        found = set(re.findall(r"\bCVE-\d{4}-\d{4,7}\b", text, re.IGNORECASE))
+        return sorted(found) if found else None
+
+    def _extract_remediation_summary(self, text: str) -> Optional[str]:
+        """
+        Extract the key mitigation or remediation recommendation text.
+        Looks for Mitigations / Recommendations / Patches sections.
+        """
+        section_match = re.search(
+            r"(?:Mitigation|Recommendation|Patch|Remediation)s?\s*[:\n]\s*\n?((?:.+\n?){1,8})",
+            text,
+            re.IGNORECASE,
+        )
+        if section_match:
+            body = section_match.group(1).strip()
+            # Trim to first 500 characters to keep it concise
+            if len(body) > 500:
+                body = body[:500].rsplit(" ", 1)[0] + "..."
+            return body if len(body) > 10 else None
+        return None
+
+    def _extract_summary(self, text: str) -> Optional[str]:
+        """
+        Generate a brief summary from the executive summary or opening paragraph.
+        """
+        # Executive summary section
+        exec_match = re.search(
+            r"(?:Executive\s+)?Summary[:\s]*\n((?:.+\n?){1,5})",
+            text,
+            re.IGNORECASE,
+        )
+        if exec_match:
+            summary = exec_match.group(1).strip()
+            sentences = re.split(r"(?<=[.!?])\s+", summary)
+            return " ".join(sentences[:3]).strip() or None
+
+        # First substantive paragraph
+        paragraphs = [p.strip() for p in re.split(r"\n{2,}", text) if len(p.strip()) > 50]
+        if paragraphs:
+            first = paragraphs[0]
+            sentences = re.split(r"(?<=[.!?])\s+", first)
+            candidate = " ".join(sentences[:3]).strip()
+            if len(candidate) > 20:
+                return candidate
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Extractor selection
 # ---------------------------------------------------------------------------
 
@@ -448,14 +745,14 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
     """
     Return the appropriate field extractor for the given document class.
 
-    D-0 domain-registry routing:
+    Domain-registry routing (D-0 framework, D-1 CISA active):
       - None or 'fda_warning_letter' → LocalFDAWarningLetterExtractor (ACTIVE)
-      - 'cisa_advisory' / 'incident_report' → DomainNotImplementedError (PLANNED)
-      - Any other registered domain that is ACTIVE: would be dispatched here in D-1/D-2
-      - Unregistered domain keys → raises ValueError with registry context
+      - 'cisa_advisory'              → LocalCISAAdvisoryExtractor (ACTIVE, D-1)
+      - 'incident_report'            → DomainNotImplementedError (PLANNED, D-2)
+      - Unregistered domain keys     → raises ValueError with registry context
 
-    FDA behavior is preserved exactly. The domain registry provides the authoritative
-    status check; extractor dispatch remains explicit and auditable.
+    FDA behavior is preserved exactly. CISA is now the second active domain.
+    Incident report remains planned until D-2.
     """
     from src.utils.domain_registry import (
         DOMAIN_REGISTRY,
@@ -468,9 +765,13 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
     # that do not supply a document_class_hint).
     effective_key = document_class_hint if document_class_hint is not None else "fda_warning_letter"
 
-    # FDA warning letter — ACTIVE, V1 extractor
+    # FDA warning letter — ACTIVE, V1 extractor (unchanged)
     if effective_key == "fda_warning_letter":
         return LocalFDAWarningLetterExtractor()
+
+    # CISA advisory — ACTIVE, D-1 extractor
+    if effective_key == "cisa_advisory":
+        return LocalCISAAdvisoryExtractor()
 
     # Check registry status for all other keys
     if effective_key not in DOMAIN_REGISTRY:
@@ -480,10 +781,9 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
         )
 
     if not is_domain_active(effective_key):
-        # Registered but PLANNED — clear error before D-1 / D-2 implements it
+        # Registered but PLANNED — clear error before D-2 implements it
         raise DomainNotImplementedError(effective_key, "extraction")
 
-    # Future ACTIVE domains (D-1, D-2) will add dispatch cases here before this line.
     raise ValueError(
         f"Domain '{effective_key}' is registered as ACTIVE in the domain registry "
         "but no extractor has been implemented yet. "
@@ -519,9 +819,45 @@ def validate_extracted_fields(
     if errors:
         return ValidationStatus.invalid, errors
 
-    # All required fields are present. Check if optional fields are populated.
     optional_missing = [
         f for f in FDA_OPTIONAL_FIELDS
+        if fields_dict.get(f) is None or fields_dict.get(f) == [] or fields_dict.get(f) == ""
+    ]
+
+    if optional_missing:
+        return ValidationStatus.partial, [
+            f"Optional field '{f}' is not populated." for f in optional_missing
+        ]
+
+    return ValidationStatus.valid, []
+
+
+def validate_cisa_extracted_fields(
+    fields: CISAAdvisoryFields,
+) -> tuple[ValidationStatus, list[str]]:
+    """
+    Determine the ValidationStatus for a set of extracted CISA advisory fields.
+
+    Rules mirror the FDA logic — sourced from docs/data-contracts.md § CISA Advisory Fields:
+    - valid:   all required fields are non-null and non-empty
+    - partial: required fields present but some optional fields are missing
+    - invalid: one or more required fields are null or empty
+
+    Returns (status, list_of_error_messages).
+    """
+    fields_dict = fields.model_dump()
+    errors = []
+
+    for field_name in CISA_REQUIRED_FIELDS:
+        value = fields_dict.get(field_name)
+        if value is None or value == [] or value == "":
+            errors.append(f"Required field '{field_name}' is missing or null.")
+
+    if errors:
+        return ValidationStatus.invalid, errors
+
+    optional_missing = [
+        f for f in CISA_OPTIONAL_FIELDS
         if fields_dict.get(f) is None or fields_dict.get(f) == [] or fields_dict.get(f) == ""
     ]
 
@@ -542,22 +878,41 @@ def assemble_silver_record(
     extracted_raw: dict,
     extraction_model: str,
     pipeline_run_id: str,
+    domain_key: str = "fda_warning_letter",
 ) -> SilverRecord:
     """
     Build a SilverRecord from a Bronze record dict and raw extraction output.
 
     Handles all three validation outcomes (valid / partial / invalid) and
     always produces a record — no silent drops.
+
+    domain_key controls which field model, coverage calculator, and validator
+    are used. Defaults to 'fda_warning_letter' for backward compatibility
+    with callers that do not supply a domain_key.
+
+    D-1: 'cisa_advisory' is now a fully supported domain_key.
     """
     extraction_id = str(uuid.uuid4())
     extracted_at = datetime.now(tz=timezone.utc)
 
+    # Resolve domain-specific prompt_id, field builder, coverage, and validator
+    if domain_key == "cisa_advisory":
+        prompt_id = CISA_ADVISORY_PROMPT_ID
+        known_fields = CISA_ALL_FIELDS
+        fields_cls = CISAAdvisoryFields
+        coverage_fn = compute_cisa_field_coverage
+        validate_fn = validate_cisa_extracted_fields
+    else:
+        # Default: FDA warning letter (also explicit for fda_warning_letter key)
+        prompt_id = FDA_WARNING_LETTER_PROMPT_ID
+        known_fields = FDA_ALL_FIELDS
+        fields_cls = FDAWarningLetterFields
+        coverage_fn = compute_field_coverage
+        validate_fn = validate_extracted_fields
+
     # Build the extracted fields model — coerce types where possible
     try:
-        fields = FDAWarningLetterFields(**{
-            k: v for k, v in extracted_raw.items()
-            if k in FDA_ALL_FIELDS
-        })
+        fields = fields_cls(**{k: v for k, v in extracted_raw.items() if k in known_fields})
     except Exception as exc:  # noqa: BLE001
         # Field construction itself failed — produce an invalid record
         return SilverRecord(
@@ -567,7 +922,7 @@ def assemble_silver_record(
             pipeline_run_id=pipeline_run_id,
             extracted_at=extracted_at,
             document_class_hint=bronze.get("document_class_hint"),
-            extraction_prompt_id=FDA_WARNING_LETTER_PROMPT_ID,
+            extraction_prompt_id=prompt_id,
             extraction_model=extraction_model,
             extracted_fields=None,
             field_coverage_pct=0.0,
@@ -576,8 +931,8 @@ def assemble_silver_record(
             schema_version=SCHEMA_VERSION,
         )
 
-    coverage = compute_field_coverage(fields)
-    status, errors = validate_extracted_fields(fields)
+    coverage = coverage_fn(fields)
+    status, errors = validate_fn(fields)
 
     return SilverRecord(
         document_id=bronze["document_id"],
@@ -586,7 +941,7 @@ def assemble_silver_record(
         pipeline_run_id=pipeline_run_id,
         extracted_at=extracted_at,
         document_class_hint=bronze.get("document_class_hint"),
-        extraction_prompt_id=FDA_WARNING_LETTER_PROMPT_ID,
+        extraction_prompt_id=prompt_id,
         extraction_model=extraction_model,
         extracted_fields=fields,
         field_coverage_pct=coverage,
@@ -663,6 +1018,9 @@ def run_extract_silver(
 
         extractor = select_extractor(document_class_hint)
 
+        # Resolve effective domain key for assembly (None defaults to fda_warning_letter)
+        effective_domain_key = document_class_hint or "fda_warning_letter"
+
         try:
             extracted_raw = extractor.extract(parsed_text)
         except NotImplementedError as exc:
@@ -677,6 +1035,7 @@ def run_extract_silver(
             extracted_raw=extracted_raw,
             extraction_model=extractor.model_id,
             pipeline_run_id=run_id,
+            domain_key=effective_domain_key,
         )
 
         artifact_path = write_silver_artifact(record, output_dir_path)

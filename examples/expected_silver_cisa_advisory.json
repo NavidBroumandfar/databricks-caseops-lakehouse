@@ -1,0 +1,33 @@
+{
+  "document_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "bronze_record_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "extraction_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "pipeline_run_id": "local-run-d1-cisa-demo",
+  "extracted_at": "2024-02-15T12:00:00+00:00",
+  "document_class_hint": "cisa_advisory",
+  "extraction_prompt_id": "cisa_advisory_extract_v1",
+  "extraction_model": "local_rule_extractor/v1",
+  "extracted_fields": {
+    "advisory_id": "ICSA-24-046-01",
+    "title": "Siemens SCALANCE W Products Vulnerabilities",
+    "published_date": "2024-02-15",
+    "severity_level": "Critical",
+    "remediation_available": true,
+    "affected_products": [
+      "Siemens SCALANCE W700 Series (all versions prior to V6.5.0)",
+      "Siemens SCALANCE W1700 Series (all versions prior to V2.0.1)",
+      "Siemens SCALANCE WAM763-1 (all versions prior to V3.0.0)"
+    ],
+    "cve_ids": [
+      "CVE-2024-23814",
+      "CVE-2024-23815",
+      "CVE-2024-23816"
+    ],
+    "remediation_summary": "Siemens has released firmware updates to address these vulnerabilities. CISA recommends users apply the following mitigations as soon as possible: Update all affected SCALANCE W-700 devices to firmware version V6.5.0 or later.",
+    "summary": "CISA is aware of multiple critical vulnerabilities in Siemens SCALANCE W-700 and W-1700 series industrial wireless access points. Successful exploitation of these vulnerabilities could allow an unauthenticated remote attacker to execute arbitrary code, gain full administrative control of the affected device, or cause a denial-of-service condition."
+  },
+  "field_coverage_pct": 1.0,
+  "validation_status": "valid",
+  "validation_errors": [],
+  "schema_version": "v0.1.0"
+}

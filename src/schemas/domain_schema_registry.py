@@ -1,9 +1,10 @@
 """
-domain_schema_registry.py — Per-domain Silver schema family registry (Phase D-0)
+domain_schema_registry.py — Per-domain Silver schema family registry (Phase D-0 / D-1)
 
 Provides the architectural home for per-domain Silver schema selection,
-validation routing, and field set access. D-0 establishes this framework;
-D-1 and D-2 will fill in the CISA advisory and incident report schema families.
+validation routing, and field set access. D-0 established this framework;
+D-1 activates the CISA advisory schema family. D-2 will fill in the
+incident report schema family.
 
 Design:
     One DomainSchemaInfo per domain, keyed by domain_key.
@@ -16,7 +17,7 @@ Design:
       - status: mirrors the domain's DomainStatus in domain_registry.py
 
     This module does NOT own the Pydantic models themselves — those live in
-    src/schemas/silver_schema.py (and future D-1/D-2 schema files).
+    src/schemas/silver_schema.py.
     It provides the routing layer that connects domain_key → schema family.
 
 Usage:
@@ -26,23 +27,19 @@ Usage:
         list_schema_domain_keys,
     )
 
-    # Inspect metadata for a domain (works for PLANNED too):
-    info = get_schema_info("fda_warning_letter")
-    required_fields = info.required_fields   # ['issuing_office', ...]
-    optional_fields = info.optional_fields   # ['recipient_name', ...]
-
-    # Inspect planned domain metadata (field contract without model):
-    cisa_info = get_schema_info("cisa_advisory")  # returns info; status=PLANNED
-    print(cisa_info.required_fields)  # ['advisory_id', 'title', ...]
+    # Inspect metadata (works for ACTIVE and PLANNED):
+    info = get_schema_info("cisa_advisory")
+    required_fields = info.required_fields   # ['advisory_id', 'title', ...]
 
     # Build a fields model (ACTIVE domains only):
     model = build_fields_for_domain("fda_warning_letter", raw_dict)
+    model = build_fields_for_domain("cisa_advisory", raw_dict)    # D-1 active
 
-    # This raises DomainNotImplementedError:
-    build_fields_for_domain("cisa_advisory", raw_dict)
+    # This raises DomainNotImplementedError (D-2 pending):
+    build_fields_for_domain("incident_report", raw_dict)
 
 Architecture context: ARCHITECTURE.md § Multi-Domain Framework (D-0)
-D-1 will implement: cisa_advisory Pydantic schema model and build_fields_model
+D-1 implements: cisa_advisory Pydantic schema model and build_fields_model
 D-2 will implement: incident_report Pydantic schema model and build_fields_model
 """
 
@@ -113,6 +110,17 @@ def _build_fda_fields(raw: dict[str, Any]) -> Any:
     return FDAWarningLetterFields(**{k: v for k, v in raw.items() if k in FDA_ALL_FIELDS})
 
 
+def _build_cisa_fields(raw: dict[str, Any]) -> Any:
+    """
+    Construct CISAAdvisoryFields from a raw extraction dict.
+    Filters raw to known CISA fields to prevent unexpected keyword errors.
+    D-1 implementation.
+    """
+    from src.schemas.silver_schema import CISA_ALL_FIELDS, CISAAdvisoryFields
+
+    return CISAAdvisoryFields(**{k: v for k, v in raw.items() if k in CISA_ALL_FIELDS})
+
+
 def _planned_domain_factory(domain_key: str) -> Callable[[dict[str, Any]], Any]:
     """
     Return a factory function that raises DomainNotImplementedError.
@@ -168,10 +176,10 @@ _DOMAIN_SCHEMA_REGISTRY: dict[str, DomainSchemaInfo] = {
         notes="FDA warning letter schema — V1 active, D-0 framework-registered.",
     ),
     # ------------------------------------------------------------------
-    # CISA Advisory — PLANNED (D-1)
-    # Field contract defined in docs/data-contracts.md § CISA Advisory Fields.
-    # Pydantic model and extractor will be implemented in Phase D-1.
-    # build_fields_model raises DomainNotImplementedError until D-1.
+    # CISA Advisory — ACTIVE (D-1)
+    # Field contract: docs/data-contracts.md § CISA Advisory Fields.
+    # Pydantic model: src/schemas/silver_schema.py CISAAdvisoryFields
+    # Implemented in Phase D-1. Routing target: security_ops.
     # ------------------------------------------------------------------
     "cisa_advisory": DomainSchemaInfo(
         domain_key="cisa_advisory",
@@ -199,11 +207,11 @@ _DOMAIN_SCHEMA_REGISTRY: dict[str, DomainSchemaInfo] = {
             "remediation_summary",
             "summary",
         ],
-        build_fields_model=_planned_domain_factory("cisa_advisory"),
-        status=DomainStatus.PLANNED,
+        build_fields_model=_build_cisa_fields,
+        status=DomainStatus.ACTIVE,
         notes=(
-            "CISA advisory schema — field contract defined per data-contracts.md; "
-            "Pydantic model pending D-1."
+            "CISA advisory schema — D-1 active. "
+            "Pydantic model: CISAAdvisoryFields in silver_schema.py."
         ),
     ),
     # ------------------------------------------------------------------

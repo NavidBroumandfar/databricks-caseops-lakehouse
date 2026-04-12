@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete. V2 Phase D-0 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), a local-safe bundle integrity and consistency validation layer (B-6), a Delta Sharing-oriented delivery augmentation layer with per-batch delivery events (C-1), a bounded runtime validation and observability layer with 15 explicit checks and an honest 4-state integration health model (C-2), and the D-0 multi-domain framework layer with domain registry, per-domain prompt routing, domain schema registry, and multi-domain classification/routing framework.
+**V1 is complete. V2 Phase C is complete. V2 Phase D-0 is complete. V2 Phase D-1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete — the pipeline now executes two active domains: FDA warning letters and CISA cybersecurity advisories. CISA advisory records flow through extraction (`LocalCISAAdvisoryExtractor`), Silver assembly with `CISAAdvisoryFields` schema validation, classification (`LocalCISAAdvisoryClassifier`), and routing to `security_ops`. The Bedrock handoff contract (`bedrock_contract.py`) validates CISA extracted_fields. The D-0 framework established this architecture; D-1 is the first real domain built on top of it.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation). Phase D-0 is complete (multi-domain framework). Phase D-1 is next.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0 and D-1 are complete. Phase D-2 (incident_report) is next.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -270,11 +270,29 @@ Integration health states (C-2): `not_provisioned` (share designed, not yet in U
 | Prompt routing framework | `src/utils/extraction_prompts.py` (`get_prompt_for_domain`) | ✅ Updated D-0 |
 | Taxonomy D-0 extensions | `src/utils/classification_taxonomy.py` (`DOMAIN_ROUTING_MAP`, `is_domain_executable`, `resolve_routing_label_for_domain`) | ✅ Updated D-0 |
 | Pipeline domain routing | `extract_silver.py`, `classify_gold.py` (`select_extractor`, `select_classifier`) | ✅ Updated D-0 |
-| D-0 test suite | `tests/test_domain_registry.py` (123 tests) | ✅ New D-0 |
+| D-0 test suite | `tests/test_domain_registry.py` | ✅ New D-0 |
 
-D-0 domain state: `fda_warning_letter` → `active`; `cisa_advisory` → `planned` (D-1); `incident_report` → `planned` (D-2). Planned domains are structurally registered but operations on them raise `DomainNotImplementedError`.
+D-0 domain state post-D-0: `fda_warning_letter` → `active`; `cisa_advisory` → `planned` (D-1); `incident_report` → `planned` (D-2).
 
-Total test count: **870 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, and D-0 multi-domain framework.
+**Phase D-1 — CISA Advisory Domain** is complete. D-1 is the first real multi-domain expansion built on the D-0 framework. CISA advisory records are now fully executable through the entire pipeline.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| `CISAAdvisoryFields` Pydantic schema + coverage helper | `src/schemas/silver_schema.py` | ✅ New D-1 |
+| CISA schema registry activation | `src/schemas/domain_schema_registry.py` | ✅ Updated D-1 |
+| CISA extraction prompt (`cisa_advisory_extract_v1`) | `src/utils/extraction_prompts.py` | ✅ New D-1 |
+| CISA domain activation (status: ACTIVE) | `src/utils/domain_registry.py` | ✅ Updated D-1 |
+| `security_ops` routing activation in V1_ROUTING_MAP | `src/utils/classification_taxonomy.py` | ✅ Updated D-1 |
+| `LocalCISAAdvisoryExtractor` + `validate_cisa_extracted_fields` | `src/pipelines/extract_silver.py` | ✅ New D-1 |
+| `LocalCISAAdvisoryClassifier` | `src/pipelines/classify_gold.py` | ✅ New D-1 |
+| CISA Bedrock contract validation (`REQUIRED_CISA_EXTRACTED_FIELDS`) | `src/schemas/bedrock_contract.py` | ✅ Updated D-1 |
+| CISA sample advisory fixture | `examples/cisa_advisory_sample.md` | ✅ New D-1 |
+| Expected Silver/Gold CISA output fixtures | `examples/expected_silver_cisa_advisory.json`, `examples/expected_gold_cisa_advisory.json` | ✅ New D-1 |
+| D-1 test suite (123 tests) | `tests/test_d1_cisa_domain.py` | ✅ New D-1 |
+
+D-1 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `planned` (D-2). `security_ops` is now an active routing label alongside `regulatory_review`.
+
+Total test count: **978 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, and D-1 CISA advisory domain.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 

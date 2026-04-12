@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 has started. Phase C is complete. Phase D-0 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 is the next phase not yet started.
+**V2 has started. Phase C is complete. Phase D-0 is complete. Phase D-1 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report) is the next phase not yet started.
 
 ### V2 Boundary Rules
 
@@ -638,7 +638,7 @@ V1 is complete as of April 2026. This means:
 | C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
 | C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 | D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
-| D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
+| D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
 | D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
 | E-0 | Human Review and Reprocessing | 🔲 Not Started | Human review queue for quarantined records; reprocessing-on-failure path |
 | E-1 | Environment Separation | 🔲 Not Started | Dev/staging/prod Databricks environment structure; environment-aware configuration |
@@ -787,7 +787,7 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 | Domain | Status | Extraction | Classification | Routing | Phase |
 |---|---|---|---|---|---|
 | `fda_warning_letter` | `active` | ✅ Implemented | ✅ Implemented | `regulatory_review` | V1 |
-| `cisa_advisory` | `planned` | 🔲 D-1 | 🔲 D-1 | `security_ops` | D-1 |
+| `cisa_advisory` | `active` | ✅ D-1 | ✅ D-1 | `security_ops` | D-1 ✅ |
 | `incident_report` | `planned` | 🔲 D-2 | 🔲 D-2 | `incident_management` | D-2 |
 
 **What D-0 explicitly does NOT deliver:**
@@ -799,7 +799,7 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 **Completion criteria met:**
 - ✅ Domain registry established as single source of truth for domain status
 - ✅ FDA is the only ACTIVE domain — behavior unchanged
-- ✅ CISA and incident are PLANNED — registered structurally, not executable
+- ✅ CISA and incident are PLANNED post-D-0 — registered structurally, not executable
 - ✅ Prompt selection routes through domain registry
 - ✅ Schema branching has a clean architectural home
 - ✅ Classification/routing framework is structurally multi-domain-aware
@@ -810,9 +810,25 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ### Phase D-1 — CISA Advisory Domain
 
-**Status**: Not started.
+**Status**: ✅ Complete (April 2026).
 
-**Goal**: Implement the CISA advisory domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, and evaluation pass. This activates the `security_ops` routing label for the first time.
+**Goal**: Implement the CISA advisory domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, and Bedrock contract validation. This activates the `security_ops` routing label for the first time.
+
+**What D-1 delivers:**
+- `CISAAdvisoryFields` Pydantic schema with 5 required + 4 optional fields (`src/schemas/silver_schema.py`)
+- `_build_cisa_fields` factory and CISA schema registry activated (`src/schemas/domain_schema_registry.py`)
+- `CISA_ADVISORY_PROMPT` prompt template (`cisa_advisory_extract_v1`) registered (`src/utils/extraction_prompts.py`)
+- `cisa_advisory` domain set to `ACTIVE` with extraction_prompt_id (`src/utils/domain_registry.py`)
+- `LocalCISAAdvisoryExtractor` — deterministic rule-based CISA field extractor (`src/pipelines/extract_silver.py`)
+- `validate_cisa_extracted_fields` — CISA validation logic parallel to FDA (`src/pipelines/extract_silver.py`)
+- `assemble_silver_record` made domain-aware via `domain_key` parameter (backward-compatible default)
+- `LocalCISAAdvisoryClassifier` — deterministic CISA classifier (`src/pipelines/classify_gold.py`)
+- `security_ops` activated in `V1_ROUTING_MAP` and `V1_EXECUTABLE_ROUTING_LABELS` (`src/utils/classification_taxonomy.py`)
+- `REQUIRED_CISA_EXTRACTED_FIELDS` + `_validate_cisa_extracted_fields` added to Bedrock contract (`src/schemas/bedrock_contract.py`)
+- CISA fixture + expected Silver/Gold output artifacts (`examples/`)
+- D-1 test suite: 123 new tests in `tests/test_d1_cisa_domain.py`; 978 total; zero regressions
+
+**D-1 domain state:** `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `planned` (D-2).
 
 ---
 

@@ -1,5 +1,5 @@
 """
-classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3 / D-0)
+classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3 / D-0 / D-1)
 
 Reads Silver JSON artifacts produced by extract_silver.py, classifies each
 record into a Gold record (document type label + routing label), assembles
@@ -97,6 +97,7 @@ from src.schemas.gold_schema import (
     SCHEMA_VERSION_V2,
 )
 from src.utils.classification_taxonomy import (
+    DOCUMENT_TYPE_CISA_ADVISORY,
     DOCUMENT_TYPE_FDA_WARNING_LETTER,
     DOCUMENT_TYPE_UNKNOWN,
     ROUTING_LABEL_QUARANTINE,
@@ -306,6 +307,102 @@ class LocalFDAWarningLetterClassifier(DocumentClassifier):
 
 
 # ---------------------------------------------------------------------------
+# Local deterministic CISA advisory classifier (D-1)
+# ---------------------------------------------------------------------------
+
+
+class LocalCISAAdvisoryClassifier(DocumentClassifier):
+    """
+    Deterministic rule-based classifier for CISA cybersecurity advisories.
+
+    Classification logic is based on explicit, readable heuristics:
+      1. document_class_hint field from Silver
+      2. Presence and shape of CISA-specific extracted fields
+         (advisory_id, severity_level, cve_ids, affected_products)
+      3. Silver validation_status
+      4. Silver field_coverage_pct
+
+    Confidence scoring mirrors the FDA classifier pattern:
+      - Base confidence: 0.60 if at least 2 positive signals present
+      - +0.20 if document_class_hint == 'cisa_advisory'
+      - +0.10 if validation_status is 'valid'
+      - +0.10 if field_coverage_pct >= 0.70
+      - Maximum: 1.0
+
+    D-1 active domain. routing_label = 'security_ops'.
+    """
+
+    _MODEL_ID = LOCAL_CLASSIFICATION_MODEL
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def classify(self, silver: dict) -> dict:
+        extracted_fields = silver.get("extracted_fields") or {}
+        class_hint = silver.get("document_class_hint") or ""
+        validation_status = silver.get("validation_status") or ""
+        coverage = silver.get("field_coverage_pct") or 0.0
+
+        signals = []
+
+        if class_hint == "cisa_advisory":
+            signals.append("class_hint_match")
+
+        # CISA-specific field presence checks
+        cisa_fields = {
+            "advisory_id": extracted_fields.get("advisory_id"),
+            "severity_level": extracted_fields.get("severity_level"),
+            "cve_ids": extracted_fields.get("cve_ids"),
+            "affected_products": extracted_fields.get("affected_products"),
+            "remediation_available": extracted_fields.get("remediation_available"),
+        }
+        populated_cisa_fields = [
+            k for k, v in cisa_fields.items()
+            if v is not None and v != [] and v != ""
+        ]
+        if len(populated_cisa_fields) >= 2:
+            signals.append("cisa_fields_populated")
+
+        if validation_status in ("valid", "partial"):
+            signals.append("valid_or_partial_extraction")
+
+        if coverage >= 0.50:
+            signals.append("adequate_coverage")
+
+        if len(signals) >= 2:
+            document_type_label = DOCUMENT_TYPE_CISA_ADVISORY
+            confidence = self._compute_confidence(
+                class_hint=class_hint,
+                validation_status=validation_status,
+                coverage=coverage,
+            )
+        else:
+            document_type_label = DOCUMENT_TYPE_UNKNOWN
+            confidence = 0.0
+
+        return {
+            "document_type_label": document_type_label,
+            "classification_confidence": confidence,
+        }
+
+    def _compute_confidence(
+        self,
+        class_hint: str,
+        validation_status: str,
+        coverage: float,
+    ) -> float:
+        score = 0.60
+        if class_hint == "cisa_advisory":
+            score += 0.20
+        if validation_status == "valid":
+            score += 0.10
+        if coverage >= 0.70:
+            score += 0.10
+        return round(min(score, 1.0), 4)
+
+
+# ---------------------------------------------------------------------------
 # Databricks ai_classify adapter (placeholder)
 # ---------------------------------------------------------------------------
 
@@ -348,14 +445,14 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
     """
     Return the appropriate classifier for the given document class.
 
-    D-0 domain-registry routing:
+    Domain-registry routing (D-0 framework, D-1 CISA active):
       - None or 'fda_warning_letter' → LocalFDAWarningLetterClassifier (ACTIVE)
-      - 'cisa_advisory' / 'incident_report' → DomainNotImplementedError (PLANNED)
-      - Any other registered domain that is ACTIVE: would be dispatched here in D-1/D-2
-      - Unregistered domain keys → raises ValueError with registry context
+      - 'cisa_advisory'              → LocalCISAAdvisoryClassifier (ACTIVE, D-1)
+      - 'incident_report'            → DomainNotImplementedError (PLANNED, D-2)
+      - Unregistered domain keys     → raises ValueError with registry context
 
-    FDA behavior is preserved exactly. The domain registry provides the authoritative
-    status check; classifier dispatch remains explicit and auditable.
+    FDA behavior is preserved exactly. CISA is now the second active domain.
+    Incident report remains planned until D-2.
     """
     from src.utils.domain_registry import (
         DOMAIN_REGISTRY,
@@ -368,9 +465,13 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
     # that do not supply a document_class_hint).
     effective_key = document_class_hint if document_class_hint is not None else "fda_warning_letter"
 
-    # FDA warning letter — ACTIVE, V1 classifier
+    # FDA warning letter — ACTIVE, V1 classifier (unchanged)
     if effective_key == "fda_warning_letter":
         return LocalFDAWarningLetterClassifier()
+
+    # CISA advisory — ACTIVE, D-1 classifier
+    if effective_key == "cisa_advisory":
+        return LocalCISAAdvisoryClassifier()
 
     # Check registry status for all other keys
     if effective_key not in DOMAIN_REGISTRY:
@@ -380,10 +481,9 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
         )
 
     if not is_domain_active(effective_key):
-        # Registered but PLANNED — clear error before D-1 / D-2 implements it
+        # Registered but PLANNED — clear error before D-2 implements it
         raise DomainNotImplementedError(effective_key, "classification")
 
-    # Future ACTIVE domains (D-1, D-2) will add dispatch cases here before this line.
     raise ValueError(
         f"Domain '{effective_key}' is registered as ACTIVE in the domain registry "
         "but no classifier has been implemented yet. "

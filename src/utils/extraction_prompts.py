@@ -1,5 +1,5 @@
 """
-extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2 / D-0)
+extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2 / D-0 / D-1)
 
 This module contains prompt templates for structured field extraction.
 These prompts are designed for future integration with Databricks ai_extract.
@@ -20,10 +20,13 @@ The ID written into Silver records must match the constant defined here.
 D-0 Multi-domain framework additions:
     get_prompt_for_domain(domain_key) routes prompt selection through the domain
     registry. For ACTIVE domains, it returns the registered ExtractionPrompt.
-    For PLANNED domains (cisa_advisory, incident_report), it raises
-    DomainNotImplementedError — the prompt has not been authored yet.
-    FDA behavior is unchanged: get_prompt(FDA_WARNING_LETTER_PROMPT_ID) and
-    get_prompt_for_domain("fda_warning_letter") are equivalent.
+    For PLANNED domains (incident_report), it raises DomainNotImplementedError.
+    FDA behavior is unchanged.
+
+D-1 CISA advisory prompt:
+    CISA_ADVISORY_PROMPT_ID and CISA_ADVISORY_PROMPT are now registered.
+    get_prompt_for_domain("cisa_advisory") returns the CISA prompt.
+    incident_report remains planned (D-2).
 """
 
 from __future__ import annotations
@@ -96,11 +99,64 @@ Respond with only the JSON object. Do not include any explanation or preamble.
 
 
 # ---------------------------------------------------------------------------
+# CISA Advisory — D-1 extraction prompt
+# ---------------------------------------------------------------------------
+
+CISA_ADVISORY_PROMPT_ID = "cisa_advisory_extract_v1"
+
+CISA_ADVISORY_PROMPT = ExtractionPrompt(
+    prompt_id=CISA_ADVISORY_PROMPT_ID,
+    document_domain="cisa_advisory",
+    description=(
+        "Extract structured fields from a CISA cybersecurity advisory. "
+        "Returns a JSON object with required and optional fields as defined in "
+        "the CISA advisory Silver schema (docs/data-contracts.md)."
+    ),
+    template="""You are a cybersecurity document extraction assistant.
+
+Extract the following structured fields from the CISA advisory text provided below.
+Return a valid JSON object. Use null for any field you cannot find in the text.
+Do not infer or hallucinate values — extract only what is explicitly stated.
+
+Fields to extract:
+
+REQUIRED:
+- advisory_id (string): The CISA advisory identifier (e.g., 'ICSA-24-046-01',
+  'AA24-046A', 'CISA-2024-0001'). Look for an ID near the title or in the header.
+- title (string): The full title of the advisory as stated in the document.
+- published_date (string): The date the advisory was published, in YYYY-MM-DD format.
+  Look for 'Release Date:', 'Published:', or a date near the title.
+- severity_level (string): Must be exactly one of: 'Critical', 'High', 'Medium', 'Low'.
+  Look for an explicit severity rating, CVSS score range (9.0–10.0 = Critical,
+  7.0–8.9 = High, 4.0–6.9 = Medium, 0.1–3.9 = Low), or severity classification section.
+- remediation_available (boolean): true if the advisory describes available patches,
+  mitigations, updates, or workarounds; false if no remediation is available.
+
+OPTIONAL:
+- affected_products (array of strings): List of affected vendor/product combinations
+  and version ranges explicitly named in the advisory.
+- cve_ids (array of strings): All CVE identifiers referenced (e.g., 'CVE-2024-12345').
+  Extract the full CVE-YYYY-NNNNN format for each one found.
+- remediation_summary (string): A concise description of the recommended mitigation
+  steps, patches, or workarounds described in the advisory.
+- summary (string): A concise 1–3 sentence summary of the advisory's key findings
+  and security impact.
+
+Document text:
+{parsed_text}
+
+Respond with only the JSON object. Do not include any explanation or preamble.
+""",
+)
+
+
+# ---------------------------------------------------------------------------
 # Prompt registry
 # ---------------------------------------------------------------------------
 
 _PROMPT_REGISTRY: dict[str, ExtractionPrompt] = {
     FDA_WARNING_LETTER_PROMPT_ID: FDA_WARNING_LETTER_PROMPT,
+    CISA_ADVISORY_PROMPT_ID: CISA_ADVISORY_PROMPT,
 }
 
 
