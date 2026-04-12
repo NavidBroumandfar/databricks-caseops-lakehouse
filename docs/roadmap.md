@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E (enterprise operational hardening) is next.
+**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phases E-0 and E-1 are complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E-0 (human review and reprocessing) is complete as of April 2026. Phase E-1 (environment separation) is complete as of April 2026. Phase E-2 (governance monitoring) is not yet started.
 
 ### V2 Boundary Rules
 
@@ -641,7 +641,7 @@ V1 is complete as of April 2026. This means:
 | D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
 | D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
 | E-0 | Human Review and Reprocessing | ✅ Complete (V2) | Review queue schema, review decision schema, reprocessing request schema, queue derivation pipeline, pipeline integration via --review-queue-dir; 111 new tests; 1215 total |
-| E-1 | Environment Separation | 🔲 Not Started | Dev/staging/prod Databricks environment structure; environment-aware configuration |
+| E-1 | Environment Separation | ✅ Complete (V2) | `Environment` enum, `EnvironmentConfig`, `get_environment_config()`; deterministic catalog/table/volume/MLflow naming; env-aware `mlflow_experiment_paths.py`; 3 per-env example configs; 106 new tests; 1321 total |
 | E-2 | Governance Monitoring | 🔲 Not Started | Pipeline health views; quality trend artifacts; schema drift detection |
 
 ---
@@ -895,11 +895,63 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ### Phase E-1 — Environment Separation
 
-**Status**: Not started.
+**Status**: ✅ Complete (April 2026).
 
-**Goal**: Define and implement dev/staging/prod environment separation for the Databricks deployment. Includes Unity Catalog catalog-level separation, environment-aware configuration, and deployment patterns.
+**Goal**: Implement a bounded, explicit environment-separation layer. The same codebase must be able to target multiple named Databricks environments (dev, staging, prod) without configuration collision, hardcoded workspace values, or committed secrets.
 
-**Scope boundary**: Environment separation design only. No production credentials, no enterprise organizational deployment configuration committed to the repo.
+**What E-1 delivers:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Environment model | `src/utils/environment_config.py` | ✅ New E-1 | `Environment` enum, `EnvironmentConfig` frozen dataclass, `get_environment_config()` factory, `parse_environment()` helper |
+| MLflow path helper (updated) | `src/evaluation/mlflow_experiment_paths.py` | ✅ Updated E-1 | Optional `env_name` parameter on all convenience functions; `CASEOPS_ENV` env-var support; backward-compatible |
+| Dev environment example config | `config/databricks.resources.dev.example.yml` | ✅ New E-1 | Reference layout for dev catalog (`caseops_dev`); no credentials |
+| Staging environment example config | `config/databricks.resources.staging.example.yml` | ✅ New E-1 | Reference layout for staging catalog (`caseops_staging`); no credentials |
+| Prod environment example config | `config/databricks.resources.prod.example.yml` | ✅ New E-1 | Reference layout for prod catalog (`caseops_prod`); no credentials; explicitly labelled as not-deployed |
+| Base config update | `config/databricks.resources.example.yml` | ✅ Updated E-1 | Cross-references per-env files; adds env naming convention reference table |
+| Catalog config note | `src/pipelines/catalog_config.yaml` | ✅ Updated E-1 | Note on E-1 env separation and per-env file references |
+| E-1 test suite | `tests/test_environment_config.py` | ✅ New E-1 | 106 tests: enum validation, resource naming, volume paths, table FQNs, MLflow suffix naming, factory resolution, env-var wiring, isolation invariants, module safety |
+
+**Environment naming convention:**
+
+| Environment | Catalog | Volume base | MLflow local prefix |
+|---|---|---|---|
+| `dev` | `caseops_dev` | `/Volumes/caseops_dev/raw/documents` | `dev/` |
+| `staging` | `caseops_staging` | `/Volumes/caseops_staging/raw/documents` | `staging/` |
+| `prod` | `caseops_prod` | `/Volumes/caseops_prod/raw/documents` | `prod/` |
+
+Schema and table names are identical across environments — isolation is at the catalog level.
+
+**Runtime usage (no commit required):**
+
+```bash
+export CASEOPS_ENV=staging
+# Optional: for Databricks MLflow logging
+export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
+```
+
+**What E-1 explicitly does NOT deliver:**
+
+- Real production deployment (this repo is not production-deployed)
+- Enterprise IaC or automated catalog provisioning
+- Secrets or real workspace credentials
+- Monitoring dashboards (that is E-2)
+- Any change to existing pipeline behavior (additive only)
+
+**Scope boundary**: Environment separation is an upstream configuration layer only. No Bedrock runtime logic, no production credentials, no live workspace required to run or test the E-1 layer.
+
+**Completion criteria met:**
+
+- ✅ Explicit, bounded environment model: `dev`, `staging`, `prod`
+- ✅ Deterministic resource naming from environment name alone
+- ✅ Unity Catalog naming: `caseops_{env}` catalog, same schema/table names in each
+- ✅ MLflow experiment names are environment-qualified: `{env}/{suffix}`
+- ✅ `CASEOPS_ENV` env var wiring — no committed workspace values required
+- ✅ Backward-compatible: existing callers of `mlflow_experiment_paths` are unaffected
+- ✅ Per-environment example configs are public-repo-safe (no secrets)
+- ✅ Prod config explicitly labelled as reference only — not deployed
+- ✅ 106 new tests; 1321 total; zero regressions
+- ✅ No secrets, tokens, workspace URLs, or personal values introduced
 
 ---
 
@@ -920,6 +972,6 @@ V2 is complete when all of the following are true:
 - A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C)
 - CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D)
 - ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
-- Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1)
+- ✅ Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)
 - The Databricks / Bedrock boundary remains explicit throughout — no retrieval, RAG, agent, or escalation logic enters this repo
 - No production credentials or enterprise configuration committed at any V2 phase

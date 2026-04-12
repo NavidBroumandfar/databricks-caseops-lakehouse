@@ -531,17 +531,89 @@ review_queue.py    → derives queue from summaries → writes review queue arti
 
 ---
 
+## Phase E-1 — Environment Separation Layer
+
+Phase E-1 adds a bounded, explicit environment-separation layer. The same codebase now supports dev, staging, and prod environments cleanly and deterministically without committing any workspace-specific values, secrets, or credentials.
+
+### Environment Model
+
+The single authoritative environment model lives at `src/utils/environment_config.py`.
+
+| Module | Path | Role |
+|---|---|---|
+| Environment config | `src/utils/environment_config.py` | `Environment` enum, `EnvironmentConfig` frozen dataclass, `get_environment_config()` factory, `parse_environment()` helper |
+| MLflow path helper (updated) | `src/evaluation/mlflow_experiment_paths.py` | E-1: optional `env_name` parameter + `CASEOPS_ENV` env-var awareness; backward-compatible |
+
+**Environment vocabulary (bounded):**
+
+| Environment | Key | Catalog Name | MLflow Prefix |
+|---|---|---|---|
+| Development | `dev` | `caseops_dev` | `dev/` |
+| Staging | `staging` | `caseops_staging` | `staging/` |
+| Production | `prod` | `caseops_prod` | `prod/` |
+
+**Unity Catalog isolation strategy**: one catalog per environment. Schema names (`raw`, `bronze`, `silver`, `gold`) and table names (`parsed_documents`, `extracted_records`, `ai_ready_assets`) are identical in every catalog — isolation is at the catalog level, which is the standard Unity Catalog multi-environment pattern.
+
+**MLflow experiment isolation**: the environment name is prefixed to every experiment suffix:
+
+| Environment | Bronze experiment (local) | Bronze experiment (Databricks) |
+|---|---|---|
+| dev | `dev/bronze/parse_quality` | `{root}/dev/bronze/parse_quality` |
+| staging | `staging/bronze/parse_quality` | `{root}/staging/bronze/parse_quality` |
+| prod | `prod/bronze/parse_quality` | `{root}/prod/bronze/parse_quality` |
+
+**Runtime configuration:**
+
+```bash
+# Set the active environment — do not commit
+export CASEOPS_ENV=staging
+
+# For Databricks MLflow, also set the experiment root — do not commit
+export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
+```
+
+**Programmatic usage:**
+
+```python
+from src.utils.environment_config import get_environment_config
+
+config = get_environment_config()          # reads CASEOPS_ENV, defaults to dev
+config = get_environment_config("staging") # explicit
+
+config.catalog_name          # "caseops_staging"
+config.bronze_table          # "caseops_staging.bronze.parsed_documents"
+config.raw_volume_path       # "/Volumes/caseops_staging/raw/documents"
+config.mlflow_bronze_suffix() # "staging/bronze/parse_quality"
+```
+
+**What E-1 is NOT:**
+
+- Not a production deployment — this repo is not production-deployed at any E-1 phase
+- Not enterprise IaC — Unity Catalog catalog provisioning is outside this repo's scope
+- Not a secrets management system — all values remain public-safe placeholder conventions
+- Not a monitoring layer — that is E-2
+
+**Per-environment example configs (E-1):**
+
+| File | Environment |
+|---|---|
+| `config/databricks.resources.dev.example.yml` | `dev` |
+| `config/databricks.resources.staging.example.yml` | `staging` |
+| `config/databricks.resources.prod.example.yml` | `prod` (reference only — not deployed) |
+
+---
+
 ## Future Evolution
 
 | Capability | Current State | Future Direction |
 |---|---|---|
 | Multi-domain extraction | Three active domains (D-2 complete) — FDA, CISA, incident all executable | Phase E hardening |
-| Human review loop | E-0 complete: structured review queue, review decisions, reprocessing requests | E-1: environment separation; downstream review tooling at Bedrock CaseOps |
+| Human review loop | E-0 complete: structured review queue, review decisions, reprocessing requests | Downstream review tooling at Bedrock CaseOps |
+| Environment separation | E-1 complete: dev/staging/prod model, deterministic resource naming, env-aware MLflow | E-2: governance monitoring |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
 | Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
-| Environment separation | Single environment | E-1: dev/staging/prod Databricks environment structure |
 | Governance monitoring | Pipeline-level artifacts (B-4 report, B-5 bundle, E-0 review queue) | E-2: pipeline health views, quality trend artifacts, schema drift detection |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.

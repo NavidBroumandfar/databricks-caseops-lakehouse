@@ -1,0 +1,82 @@
+# ============================================================
+# databricks.resources.dev.example.yml
+# Development environment — Unity Catalog resource layout.
+#
+# Use this environment for:
+#   - local iteration and sandbox development
+#   - personal Databricks workspace experimentation
+#   - integration smoke tests against non-production data
+#
+# Runtime:
+#   export CASEOPS_ENV=dev
+#
+# Do NOT add workspace URLs, account IDs, tokens, or personal auth
+# values to this file. This file is safe to commit as-is.
+# All workspace-specific values are injected at runtime via env vars.
+# ============================================================
+
+environment: dev
+
+# ---------------------------------------------------------------------------
+# Unity Catalog — dev catalog
+# Convention: caseops_{env} → caseops_dev
+# ---------------------------------------------------------------------------
+
+catalog: caseops_dev
+
+schemas:
+  raw: raw
+  bronze: bronze
+  silver: silver
+  gold: gold
+
+volumes:
+  raw_documents: documents
+
+# ---------------------------------------------------------------------------
+# Fully-qualified Unity Catalog paths (derived from catalog above)
+# ---------------------------------------------------------------------------
+
+paths:
+  raw_volume: "/Volumes/caseops_dev/raw/documents"
+  bronze_table: "caseops_dev.bronze.parsed_documents"
+  silver_table: "caseops_dev.silver.extracted_records"
+  gold_table: "caseops_dev.gold.ai_ready_assets"
+  gold_exports: "/Volumes/caseops_dev/gold/exports"
+
+# ---------------------------------------------------------------------------
+# MLflow experiment naming (E-1 environment separation)
+#
+# Local (non-Databricks): experiments named dev/bronze/parse_quality, etc.
+# Databricks: set CASEOPS_MLFLOW_EXPERIMENT_ROOT at runtime (do not commit).
+#   The helper resolves: {root}/dev/bronze/parse_quality, etc.
+# ---------------------------------------------------------------------------
+
+mlflow:
+  env_prefix: dev
+  experiment_suffixes:
+    bronze: "dev/bronze/parse_quality"
+    silver: "dev/silver/extraction_quality"
+    gold: "dev/gold/classification_quality"
+    traceability: "dev/pipeline/traceability"
+    end_to_end: "dev/pipeline/end_to_end"
+
+# ---------------------------------------------------------------------------
+# Domain configuration
+# ---------------------------------------------------------------------------
+
+domain:
+  active_domains:
+    - fda_warning_letter
+    - cisa_advisory
+    - incident_report
+
+# ---------------------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------------------
+
+# - This catalog (caseops_dev) is isolated from staging and prod.
+# - Unity Catalog must be provisioned separately for each environment.
+# - See src/utils/environment_config.py for the programmatic resource model.
+# - See docs/databricks-bootstrap.md for workspace setup guidance.
+# - No secrets, tokens, or workspace URLs should be added here.

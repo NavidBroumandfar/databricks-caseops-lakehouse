@@ -1,0 +1,86 @@
+# ============================================================
+# databricks.resources.prod.example.yml
+# Production environment — Unity Catalog resource layout reference.
+#
+# This is a REFERENCE EXAMPLE only.
+#
+# This repo is NOT production-deployed. This file documents the resource
+# layout that a production deployment WOULD use, without committing any
+# workspace-specific values, credentials, or organizational configuration.
+#
+# Runtime (when targeting prod):
+#   export CASEOPS_ENV=prod
+#
+# Do NOT add workspace URLs, account IDs, tokens, or personal auth
+# values to this file. This file is safe to commit as-is.
+# All workspace-specific values are injected at runtime via env vars.
+# ============================================================
+
+environment: prod
+
+# ---------------------------------------------------------------------------
+# Unity Catalog — prod catalog
+# Convention: caseops_{env} → caseops_prod
+# ---------------------------------------------------------------------------
+
+catalog: caseops_prod
+
+schemas:
+  raw: raw
+  bronze: bronze
+  silver: silver
+  gold: gold
+
+volumes:
+  raw_documents: documents
+
+# ---------------------------------------------------------------------------
+# Fully-qualified Unity Catalog paths (derived from catalog above)
+# ---------------------------------------------------------------------------
+
+paths:
+  raw_volume: "/Volumes/caseops_prod/raw/documents"
+  bronze_table: "caseops_prod.bronze.parsed_documents"
+  silver_table: "caseops_prod.silver.extracted_records"
+  gold_table: "caseops_prod.gold.ai_ready_assets"
+  gold_exports: "/Volumes/caseops_prod/gold/exports"
+
+# ---------------------------------------------------------------------------
+# MLflow experiment naming (E-1 environment separation)
+#
+# Local (non-Databricks): experiments named prod/bronze/parse_quality, etc.
+# Databricks: set CASEOPS_MLFLOW_EXPERIMENT_ROOT at runtime (do not commit).
+#   The helper resolves: {root}/prod/bronze/parse_quality, etc.
+# ---------------------------------------------------------------------------
+
+mlflow:
+  env_prefix: prod
+  experiment_suffixes:
+    bronze: "prod/bronze/parse_quality"
+    silver: "prod/silver/extraction_quality"
+    gold: "prod/gold/classification_quality"
+    traceability: "prod/pipeline/traceability"
+    end_to_end: "prod/pipeline/end_to_end"
+
+# ---------------------------------------------------------------------------
+# Domain configuration
+# ---------------------------------------------------------------------------
+
+domain:
+  active_domains:
+    - fda_warning_letter
+    - cisa_advisory
+    - incident_report
+
+# ---------------------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------------------
+
+# - This catalog (caseops_prod) is isolated from dev and staging.
+# - This repo is NOT currently production-deployed. This file documents the
+#   intended resource layout for a future production deployment only.
+# - Unity Catalog must be provisioned separately for each environment.
+#   That provisioning is not automated in this repo and is not in scope for E-1.
+# - See src/utils/environment_config.py for the programmatic resource model.
+# - See docs/databricks-bootstrap.md for workspace setup guidance.
+# - No secrets, tokens, or workspace URLs should be added here.

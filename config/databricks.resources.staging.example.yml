@@ -1,0 +1,82 @@
+# ============================================================
+# databricks.resources.staging.example.yml
+# Staging environment — Unity Catalog resource layout.
+#
+# Use this environment for:
+#   - pre-production validation
+#   - integration testing against representative data
+#   - handoff artifact verification before prod promotion
+#
+# Runtime:
+#   export CASEOPS_ENV=staging
+#
+# Do NOT add workspace URLs, account IDs, tokens, or personal auth
+# values to this file. This file is safe to commit as-is.
+# All workspace-specific values are injected at runtime via env vars.
+# ============================================================
+
+environment: staging
+
+# ---------------------------------------------------------------------------
+# Unity Catalog — staging catalog
+# Convention: caseops_{env} → caseops_staging
+# ---------------------------------------------------------------------------
+
+catalog: caseops_staging
+
+schemas:
+  raw: raw
+  bronze: bronze
+  silver: silver
+  gold: gold
+
+volumes:
+  raw_documents: documents
+
+# ---------------------------------------------------------------------------
+# Fully-qualified Unity Catalog paths (derived from catalog above)
+# ---------------------------------------------------------------------------
+
+paths:
+  raw_volume: "/Volumes/caseops_staging/raw/documents"
+  bronze_table: "caseops_staging.bronze.parsed_documents"
+  silver_table: "caseops_staging.silver.extracted_records"
+  gold_table: "caseops_staging.gold.ai_ready_assets"
+  gold_exports: "/Volumes/caseops_staging/gold/exports"
+
+# ---------------------------------------------------------------------------
+# MLflow experiment naming (E-1 environment separation)
+#
+# Local (non-Databricks): experiments named staging/bronze/parse_quality, etc.
+# Databricks: set CASEOPS_MLFLOW_EXPERIMENT_ROOT at runtime (do not commit).
+#   The helper resolves: {root}/staging/bronze/parse_quality, etc.
+# ---------------------------------------------------------------------------
+
+mlflow:
+  env_prefix: staging
+  experiment_suffixes:
+    bronze: "staging/bronze/parse_quality"
+    silver: "staging/silver/extraction_quality"
+    gold: "staging/gold/classification_quality"
+    traceability: "staging/pipeline/traceability"
+    end_to_end: "staging/pipeline/end_to_end"
+
+# ---------------------------------------------------------------------------
+# Domain configuration
+# ---------------------------------------------------------------------------
+
+domain:
+  active_domains:
+    - fda_warning_letter
+    - cisa_advisory
+    - incident_report
+
+# ---------------------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------------------
+
+# - This catalog (caseops_staging) is isolated from dev and prod.
+# - Unity Catalog must be provisioned separately for each environment.
+# - See src/utils/environment_config.py for the programmatic resource model.
+# - See docs/databricks-bootstrap.md for workspace setup guidance.
+# - No secrets, tokens, or workspace URLs should be added here.

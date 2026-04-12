@@ -57,7 +57,7 @@ When starting any task in this repository, always read files in this exact order
 
 **V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
 
-**V2 HAS STARTED. PHASE C IS COMPLETE. PHASES D-0, D-1, AND D-2 ARE COMPLETE. PHASE E-0 IS COMPLETE.** C-0 (design), C-1 (producer-side implementation), and C-2 (producer-side validation layer) are all complete. D-0 (multi-domain framework) is complete. D-1 (CISA advisory domain) is complete — CISA advisories are fully executable. D-2 (incident report domain) is complete — incident reports are now fully executable through the pipeline. E-0 (human review queue and reprocessing) is complete — the pipeline gains a structured upstream review queue layer (`ReviewQueueArtifact`, `ReviewDecision`, `ReprocessingRequest` schemas; `--review-queue-dir` pipeline integration; 111 new tests; 1215 total). All three reference domains remain `ACTIVE`: `fda_warning_letter`, `cisa_advisory`, and `incident_report`. **Phases E-1 and E-2 are not yet started.**
+**V2 HAS STARTED. PHASE C IS COMPLETE. PHASES D-0, D-1, AND D-2 ARE COMPLETE. PHASES E-0 AND E-1 ARE COMPLETE.** C-0 (design), C-1 (producer-side implementation), and C-2 (producer-side validation layer) are all complete. D-0 (multi-domain framework) is complete. D-1 (CISA advisory domain) is complete — CISA advisories are fully executable. D-2 (incident report domain) is complete — incident reports are now fully executable through the pipeline. E-0 (human review queue and reprocessing) is complete — the pipeline gains a structured upstream review queue layer (`ReviewQueueArtifact`, `ReviewDecision`, `ReprocessingRequest` schemas; `--review-queue-dir` pipeline integration; 111 new tests). E-1 (environment separation) is complete — the pipeline gains an explicit `dev`/`staging`/`prod` environment model with deterministic resource naming (`src/utils/environment_config.py`), environment-aware MLflow experiment paths, and three per-environment example configs; 106 new tests; 1321 total. All three reference domains remain `ACTIVE`: `fda_warning_letter`, `cisa_advisory`, and `incident_report`. **Phase E-2 is not yet started.**
 
 **Phases A-0 through B-6, C-1, C-2, and D-0 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
@@ -70,7 +70,7 @@ When starting any task in this repository, always read files in this exact order
 - A D-2 incident report domain: `IncidentReportFields`, `LocalIncidentReportExtractor`, `LocalIncidentReportClassifier`, `incident_management` routing active
 - 1215 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, and D-2 incident report domain
 
-**V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phases E-1 and E-2 are not yet started.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
+**V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 is complete. Phase E-2 is not yet started.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
@@ -207,6 +207,7 @@ The module boundary (through D-0) is:
   `extraction_prompts.py`         → D-0: `get_prompt_for_domain()` domain-aware prompt selection
   `classification_taxonomy.py`    → D-0: `DOMAIN_ROUTING_MAP`, `is_domain_executable()`, `resolve_routing_label_for_domain()`
   `review_queue.py`               → E-0: derives `ReviewQueueArtifact` from pipeline summaries; writes review queue artifacts
+  `environment_config.py`         → E-1: `Environment` enum, `EnvironmentConfig` frozen dataclass, `get_environment_config()` factory; deterministic catalog/table/volume/MLflow naming per env
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

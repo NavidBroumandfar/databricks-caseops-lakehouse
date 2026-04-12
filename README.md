@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phase E-0 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete — the pipeline now produces a structured human review queue for quarantined and contract-blocked records, and the repo gains a governed review decision and reprocessing request artifact layer. Phases E-1 and E-2 are not yet started.
+**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phases E-0 and E-1 are complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete. Phase E-1 (Environment Separation) is complete — the pipeline now has a bounded dev/staging/prod environment model with deterministic resource naming and environment-aware MLflow experiment paths. Phase E-2 is not yet started.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 (Environment Separation) is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -310,6 +310,17 @@ D-1 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `a
 
 D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `active` (D-2 ✅). All three reference domains are now executable. `incident_management` is now an active routing label alongside `regulatory_review` and `security_ops`. No planned domains remain.
 
+**Phase E-1 — Environment Separation** is complete. E-1 adds a bounded, explicit environment-separation layer that makes the pipeline configuration-aware across dev, staging, and prod environments. All resource names (Unity Catalog catalog, table FQNs, Volume paths, MLflow experiment paths) are derived deterministically from the environment name. No secrets, credentials, or workspace-specific values are required or introduced. The pipeline is not production-deployed; this phase documents what a multi-environment deployment would look like without claiming it.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Environment model | `src/utils/environment_config.py` | ✅ New E-1 |
+| MLflow path environment awareness | `src/evaluation/mlflow_experiment_paths.py` | ✅ Updated E-1 |
+| Dev environment config example | `config/databricks.resources.dev.example.yml` | ✅ New E-1 |
+| Staging environment config example | `config/databricks.resources.staging.example.yml` | ✅ New E-1 |
+| Prod environment config example | `config/databricks.resources.prod.example.yml` | ✅ New E-1 |
+| E-1 test suite | `tests/test_environment_config.py` (106 tests) | ✅ New E-1 |
+
 **Phase E-0 — Human Review and Reprocessing** is complete. E-0 adds a structured, upstream human review queue layer for records that should not flow cleanly through the automated path without human attention.
 
 | Deliverable | Path | Status |
@@ -325,7 +336,7 @@ D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `a
 
 The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`. Phases E-1 (environment separation) and E-2 (governance monitoring) are not yet started.
 
-Total test count: **1215 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, and E-0 human review queue and reprocessing layer.
+Total test count: **1321 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue and reprocessing layer, and E-1 environment separation layer.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -687,7 +698,10 @@ databricks-caseops-lakehouse/
 ├── PROJECT_SPEC.md          # Scope and roadmap source of truth
 ├── ARCHITECTURE.md          # Technical design source of truth
 ├── config/
-│   └── databricks.resources.example.yml   # Unity Catalog layout reference (no credentials)
+│   ├── databricks.resources.example.yml          # Unity Catalog layout reference (base, no credentials)
+│   ├── databricks.resources.dev.example.yml      # E-1: Dev environment layout (no credentials)
+│   ├── databricks.resources.staging.example.yml  # E-1: Staging environment layout (no credentials)
+│   └── databricks.resources.prod.example.yml     # E-1: Prod environment layout reference (no credentials)
 ├── docs/
 │   ├── CURSOR_CONTEXT.md    # Agent orientation guide
 │   ├── roadmap.md
@@ -716,11 +730,13 @@ databricks-caseops-lakehouse/
 │   │   ├── eval_traceability.py  # Cross-layer traceability (A-4)
 │   │   ├── run_evaluation.py     # Full-pipeline orchestrator (A-4)
 │   │   ├── report_models.py      # Structured report dataclasses (A-4)
-│   │   └── report_writer.py      # JSON + text report writer (A-4)
+│   │   ├── report_writer.py      # JSON + text report writer (A-4)
+│   │   └── mlflow_experiment_paths.py  # Environment-aware MLflow path resolution (E-1 updated)
 │   └── utils/               # Shared helpers
+│       └── environment_config.py         # E-1: Environment model and resource naming
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 1215 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0
+├── tests/                   # 1321 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0, E-1
 └── examples/
     ├── evaluation/                       # A-4 usage guide
     ├── expected_delivery_event.json      # C-1: Reference delivery event fixture

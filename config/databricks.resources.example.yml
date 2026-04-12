@@ -1,14 +1,31 @@
 # ============================================================
 # databricks.resources.example.yml
-# Unity Catalog resource layout for the CaseOps Lakehouse pipeline.
+# Unity Catalog resource layout reference — base (environment-agnostic).
 #
-# This is an example/reference configuration only.
-# It documents the governed object layout validated during the A-3B
-# personal Databricks bootstrap pass.
+# This is the original single-environment reference, retained for
+# backward compatibility and as a general overview.
+#
+# Phase E-1 adds per-environment example files:
+#   config/databricks.resources.dev.example.yml      (dev)
+#   config/databricks.resources.staging.example.yml  (staging)
+#   config/databricks.resources.prod.example.yml     (prod)
+#
+# For multi-environment operation, use the per-environment files above and
+# set CASEOPS_ENV at runtime (do not commit):
+#   export CASEOPS_ENV=dev        # or staging, prod
+#
+# The programmatic environment model lives at:
+#   src/utils/environment_config.py
+#
+# This file documents the governed object layout validated during the A-3B
+# personal Databricks bootstrap pass (single environment, catalog: caseops).
 #
 # Do NOT add workspace URLs, account IDs, tokens, or personal auth
 # values to this file. This file is safe to commit as-is.
 # ============================================================
+
+# Original single-environment layout (A-3B bootstrap reference)
+# For E-1 environment-aware layout, see per-environment files above.
 
 catalog: caseops
 
@@ -26,3 +43,16 @@ paths:
 
 domain:
   default_document_class: fda_warning_letter
+
+# ---------------------------------------------------------------------------
+# E-1 Environment separation — naming convention reference
+#
+# Environment | Catalog         | Volume root                       | MLflow prefix
+# ------------|-----------------|-----------------------------------|--------------
+# dev         | caseops_dev     | /Volumes/caseops_dev/raw/documents    | dev/
+# staging     | caseops_staging | /Volumes/caseops_staging/raw/documents | staging/
+# prod        | caseops_prod    | /Volumes/caseops_prod/raw/documents   | prod/
+#
+# Schema and table names are identical in each catalog — isolation is at the
+# catalog level, which is the standard Unity Catalog multi-environment pattern.
+# ---------------------------------------------------------------------------

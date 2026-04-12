@@ -5,12 +5,20 @@
 # Safe to commit to version control.
 #
 # Authoritative design: ARCHITECTURE.md § Unity Catalog Governance Layout
+#
+# Phase E-1 — Environment separation:
+# This file shows the single-environment reference layout (catalog: caseops).
+# In a multi-environment deployment, the catalog name is derived from the
+# environment: caseops_dev, caseops_staging, caseops_prod.
+# The programmatic model is at src/utils/environment_config.py.
+# Per-environment example configs are at config/databricks.resources.{env}.example.yml.
+# Set CASEOPS_ENV at runtime to select the active environment — do not commit.
 
 # ---------------------------------------------------------------------------
 # Unity Catalog identifiers
 # ---------------------------------------------------------------------------
 
-catalog_name: caseops                  # Replace with your Unity Catalog name
+catalog_name: caseops                  # Replace with caseops_{env} for multi-environment
 
 schemas:
   raw: raw                             # Schema holding the raw document Volume
