@@ -486,15 +486,62 @@ D-0 is a framework phase. It does NOT:
 
 ---
 
+## Phase E-0 — Human Review Queue Layer
+
+Phase E-0 adds the upstream human review queue layer on top of the completed D-phase multi-domain pipeline. The review queue is derived deterministically from per-record pipeline summaries produced by `run_classify_gold()`. It is additive and optional — the automated pipeline path is unchanged.
+
+### Review Queue Design
+
+| Module | Path | Role |
+|---|---|---|
+| Review queue schema | `src/schemas/review_queue.py` | `ReviewQueueEntry`, `ReviewQueueArtifact`, review reason vocabulary |
+| Review decision schema | `src/schemas/review_decision.py` | `ReviewDecision`, `ReprocessingRequest`, decision vocabulary, validation helpers |
+| Review queue pipeline | `src/pipelines/review_queue.py` | `build_review_queue_from_summaries()`, `write_review_queue()`, `format_review_queue_text()` |
+
+**Review reason categories (bounded vocabulary):**
+
+| Category | Trigger |
+|---|---|
+| `quarantined` | `outcome_category == 'quarantined'` |
+| `contract_blocked` | `outcome_category == 'contract_blocked'` |
+| `extraction_failed` | `outcome_category == 'skipped_not_export_ready'` AND `document_type_label == 'unknown'` |
+
+**Review decisions (bounded vocabulary):**
+
+| Decision | Meaning |
+|---|---|
+| `approve_for_export` | Reviewer approves the record for export; record should be re-submitted |
+| `confirm_quarantine` | Reviewer confirms quarantine is correct; no further pipeline action |
+| `request_reprocessing` | Reviewer requests re-extraction or re-classification; a `ReprocessingRequest` is produced |
+| `reject_unresolved` | Record cannot be resolved at this time; treated as unresolved |
+
+**Module boundary (E-0 addition):**
+
+```
+classify_gold.py   → [existing] + --review-queue-dir → calls build_review_queue_from_summaries
+review_queue.py    → derives queue from summaries → writes review queue artifacts (JSON + text)
+```
+
+**E-0 upstream boundary (what this phase is NOT):**
+- Not a review UI or case management tool
+- Not a downstream analyst workflow tool
+- Not an automated re-run orchestrator
+- Not a Bedrock runtime layer
+- The `ReprocessingRequest` artifact defines intent — re-run execution is operator-triggered
+
+---
+
 ## Future Evolution
 
 | Capability | Current State | Future Direction |
 |---|---|---|
 | Multi-domain extraction | Three active domains (D-2 complete) — FDA, CISA, incident all executable | Phase E hardening |
+| Human review loop | E-0 complete: structured review queue, review decisions, reprocessing requests | E-1: environment separation; downstream review tooling at Bedrock CaseOps |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
-| Human review loop | Not implemented | Disagreement queue surfaced to a review tool |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
 | Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
+| Environment separation | Single environment | E-1: dev/staging/prod Databricks environment structure |
+| Governance monitoring | Pipeline-level artifacts (B-4 report, B-5 bundle, E-0 review queue) | E-2: pipeline health views, quality trend artifacts, schema drift detection |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.

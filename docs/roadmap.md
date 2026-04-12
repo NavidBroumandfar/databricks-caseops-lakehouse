@@ -640,7 +640,7 @@ V1 is complete as of April 2026. This means:
 | D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
 | D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
 | D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
-| E-0 | Human Review and Reprocessing | 🔲 Not Started | Human review queue for quarantined records; reprocessing-on-failure path |
+| E-0 | Human Review and Reprocessing | ✅ Complete (V2) | Review queue schema, review decision schema, reprocessing request schema, queue derivation pipeline, pipeline integration via --review-queue-dir; 111 new tests; 1215 total |
 | E-1 | Environment Separation | 🔲 Not Started | Dev/staging/prod Databricks environment structure; environment-aware configuration |
 | E-2 | Governance Monitoring | 🔲 Not Started | Pipeline health views; quality trend artifacts; schema drift detection |
 
@@ -868,9 +868,28 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ### Phase E-0 — Human Review and Reprocessing
 
-**Status**: Not started.
+**Status**: ✅ Complete (April 2026).
 
 **Goal**: Design and implement a structured human review queue for quarantined or low-confidence records. Define the reprocessing path — how a reviewed record re-enters the pipeline with an updated classification or routing decision.
+
+**What E-0 delivers:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Review queue schema | `src/schemas/review_queue.py` | ✅ New E-0 | `ReviewQueueEntry`, `ReviewQueueArtifact`, `REVIEW_QUEUE_SCHEMA_VERSION`, review reason vocabulary |
+| Review decision schema | `src/schemas/review_decision.py` | ✅ New E-0 | `ReviewDecision`, `ReprocessingRequest`, decision vocabulary, `validate_review_decision()`, `validate_reprocessing_request()`, `build_reprocessing_request()` |
+| Review queue pipeline | `src/pipelines/review_queue.py` | ✅ New E-0 | `build_review_queue_from_summaries()`, `write_review_queue()`, `format_review_queue_text()`, `compute_review_queue_path()`, `load_review_queue()` |
+| Pipeline integration | `src/pipelines/classify_gold.py` | ✅ Updated E-0 | `review_queue_dir` parameter; `--review-queue-dir` CLI arg; E-0 queue written after batch when requested; automated path unchanged |
+| Review queue fixture | `examples/expected_review_queue.json` | ✅ New E-0 | Reference `ReviewQueueArtifact` with quarantined and contract-blocked entries |
+| Review decision fixture | `examples/expected_review_decision.json` | ✅ New E-0 | Reference `ReviewDecision` with `request_reprocessing` decision |
+| Reprocessing request fixture | `examples/expected_reprocessing_request.json` | ✅ New E-0 | Reference `ReprocessingRequest` with suggested class hint and extraction notes |
+| E-0 test suite | `tests/test_e0_review_queue.py` | ✅ New E-0 | 111 tests covering queue schema, derivation, decision validation, reprocessing request validation, write/read, boundary, and fixture correctness |
+
+**Review reason categories**: `quarantined`, `contract_blocked`, `extraction_failed`
+
+**Review decisions**: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`
+
+**Scope boundary**: E-0 is upstream-only. The `ReprocessingRequest` artifact defines intent — re-run execution is operator-triggered, not automated in E-0. No UI, no case management tooling, no Bedrock runtime logic.
 
 ---
 
@@ -900,7 +919,7 @@ V2 is complete when all of the following are true:
 
 - A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C)
 - CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D)
-- Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0)
+- ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 - Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1)
 - The Databricks / Bedrock boundary remains explicit throughout — no retrieval, RAG, agent, or escalation logic enters this repo
 - No production credentials or enterprise configuration committed at any V2 phase

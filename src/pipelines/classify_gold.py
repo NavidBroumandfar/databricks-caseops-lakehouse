@@ -1,5 +1,5 @@
 """
-classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3 / D-0 / D-1)
+classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3 / D-0 / D-1 / E-0)
 
 Reads Silver JSON artifacts produced by extract_silver.py, classifies each
 record into a Gold record (document type label + routing label), assembles
@@ -893,6 +893,7 @@ def run_classify_gold(
     report_dir: Optional[str] = None,
     bundle_dir: Optional[str] = None,
     delivery_dir: Optional[str] = None,
+    review_queue_dir: Optional[str] = None,
 ) -> list[dict]:
     """
     Run the Gold classification and routing pipeline.
@@ -911,6 +912,17 @@ def run_classify_gold(
     as JSON + text artifacts under that directory. The bundle references all
     per-record artifact paths and the B-4 report artifacts (if report_dir was
     also provided). The bundle_dir may be the same as report_dir.
+
+    If review_queue_dir is provided (E-0 human review queue):
+        After the batch, build_review_queue_from_summaries() is called to
+        derive the review queue from the per-record summaries. Records with
+        outcome_category == 'quarantined', 'contract_blocked', or
+        'skipped_not_export_ready' with an unknown document type are added
+        to the queue. The queue is written as JSON + text artifacts under
+        review_queue_dir. When bundle_dir and report_dir are also provided,
+        the queue entries reference those artifact paths for traceability.
+        The review_queue_dir may be the same as bundle_dir or report_dir.
+        The automated pipeline path is unchanged — this is additive.
 
     If delivery_dir is provided (C-1 delivery augmentation):
         - A delivery_event_id is generated before the classification loop.
@@ -932,6 +944,7 @@ def run_classify_gold(
     report_dir_path = Path(report_dir) if report_dir else None
     bundle_dir_path = Path(bundle_dir) if bundle_dir else None
     delivery_dir_path = Path(delivery_dir) if delivery_dir else None
+    review_queue_dir_path = Path(review_queue_dir) if review_queue_dir else None
     run_id = pipeline_run_id or generate_pipeline_run_id()
 
     # C-1: Generate delivery_event_id before the loop so it can be embedded in
@@ -1133,6 +1146,31 @@ def run_classify_gold(
         share_manifest_path = write_share_manifest(share_manifest, delivery_dir_path)
         print(f"[classify_gold] Delta Share manifest → {share_manifest_path}")
 
+    # E-0: Build and optionally write the human review queue.
+    # Derives the queue from per-record summaries (additive; automated path unchanged).
+    if review_queue_dir_path is not None:
+        from src.pipelines.review_queue import (
+            build_review_queue_from_summaries,
+            write_review_queue,
+        )
+        review_queue = build_review_queue_from_summaries(
+            summaries=summaries,
+            pipeline_run_id=run_id,
+            bundle_path=str(bundle_json_path) if bundle_json_path else None,
+            report_path=(
+                report_artifact_paths["json_path"] if report_artifact_paths else None
+            ),
+        )
+        rq_json_path, rq_text_path = write_review_queue(review_queue, review_queue_dir_path)
+        print(f"[classify_gold] Review queue (JSON) → {rq_json_path}")
+        print(f"[classify_gold] Review queue (text) → {rq_text_path}")
+        if review_queue.total_entries > 0:
+            print(
+                f"[classify_gold] {review_queue.total_entries} record(s) added to "
+                f"the review queue (E-0). Entries by reason: "
+                f"{review_queue.entries_by_reason}"
+            )
+
     return summaries
 
 
@@ -1219,6 +1257,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "May be combined with --bundle-dir and --report-dir."
         ),
     )
+    p.add_argument(
+        "--review-queue-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "E-0: Directory to write the human review queue artifacts (JSON + text). "
+            "When provided, records that require human attention (quarantined, "
+            "contract-blocked, or extraction-failed) are collected into a structured "
+            "ReviewQueueArtifact and written after the batch. If omitted, no review "
+            "queue is written — the automated pipeline path is unchanged. "
+            "May be combined with --bundle-dir and --report-dir."
+        ),
+    )
     return p
 
 
@@ -1234,6 +1285,7 @@ def main() -> None:
         report_dir=args.report_dir,
         bundle_dir=args.bundle_dir,
         delivery_dir=args.delivery_dir,
+        review_queue_dir=args.review_queue_dir,
     )
 
 

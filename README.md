@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Incident report records flow through extraction (`LocalIncidentReportExtractor`), Silver assembly with `IncidentReportFields` schema validation, classification (`LocalIncidentReportClassifier`), and routing to `incident_management`. The Bedrock handoff contract (`bedrock_contract.py`) validates incident extracted_fields. The D-0 framework established this architecture; D-1 and D-2 are the first two real domains built on top of it.
+**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phase E-0 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete — the pipeline now produces a structured human review queue for quarantined and contract-blocked records, and the repo gains a governed review decision and reprocessing request artifact layer. Phases E-1 and E-2 are not yet started.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -310,7 +310,22 @@ D-1 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `a
 
 D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `active` (D-2 ✅). All three reference domains are now executable. `incident_management` is now an active routing label alongside `regulatory_review` and `security_ops`. No planned domains remain.
 
-Total test count: **1104 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, and D-2 incident report domain.
+**Phase E-0 — Human Review and Reprocessing** is complete. E-0 adds a structured, upstream human review queue layer for records that should not flow cleanly through the automated path without human attention.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Review queue schema | `src/schemas/review_queue.py` | ✅ New E-0 |
+| Review decision schema | `src/schemas/review_decision.py` | ✅ New E-0 |
+| Review queue derivation pipeline | `src/pipelines/review_queue.py` | ✅ New E-0 |
+| Pipeline integration | `src/pipelines/classify_gold.py` (`--review-queue-dir`) | ✅ Updated E-0 |
+| Review queue fixture | `examples/expected_review_queue.json` | ✅ New E-0 |
+| Review decision fixture | `examples/expected_review_decision.json` | ✅ New E-0 |
+| Reprocessing request fixture | `examples/expected_reprocessing_request.json` | ✅ New E-0 |
+| E-0 test suite | `tests/test_e0_review_queue.py` (111 tests) | ✅ New E-0 |
+
+The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`. Phases E-1 (environment separation) and E-2 (governance monitoring) are not yet started.
+
+Total test count: **1215 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, and E-0 human review queue and reprocessing layer.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -493,6 +508,78 @@ When `--delivery-dir` is omitted, V1 export behavior (v0.1.0) is fully preserved
 
 ---
 
+## Running the E-0 Review Queue
+
+Requires Python 3.9+ and `pydantic` (v2). Run the Gold Demo first to generate pipeline artifacts.
+
+```bash
+# Run the Gold pipeline with full report, bundle, and review queue output
+python src/pipelines/classify_gold.py \
+  --input-dir output/silver \
+  --bronze-dir output/bronze \
+  --report-dir output/reports \
+  --bundle-dir output/reports \
+  --review-queue-dir output/review_queue
+
+# E-0 artifacts:
+#   output/review_queue/review_queue_<run_id>.json  — ReviewQueueArtifact (machine-readable)
+#   output/review_queue/review_queue_<run_id>.txt   — Human-readable review queue summary
+```
+
+The review queue collects records with:
+- `outcome_category == 'quarantined'` → reason: `quarantined`
+- `outcome_category == 'contract_blocked'` → reason: `contract_blocked`
+- `outcome_category == 'skipped_not_export_ready'` AND `document_type_label == 'unknown'` → reason: `extraction_failed`
+
+To record a review decision and produce a reprocessing request:
+
+```python
+from src.schemas.review_decision import (
+    ReviewDecision,
+    DECISION_REQUEST_REPROCESSING,
+    REVIEW_DECISION_SCHEMA_VERSION,
+    build_reprocessing_request,
+    make_decision_id,
+    validate_review_decision,
+    validate_reprocessing_request,
+)
+from datetime import datetime, timezone
+
+# Load a queue entry (from the review queue JSON)
+# ... queue_entry = loaded_queue["queue_entries"][0] ...
+
+decision = ReviewDecision(
+    decision_id=make_decision_id(),
+    queue_entry_id=queue_entry["queue_entry_id"],
+    document_id=queue_entry["document_id"],
+    gold_record_id=queue_entry["gold_record_id"],
+    pipeline_run_id=queue_entry["pipeline_run_id"],
+    decided_at=datetime.now(tz=timezone.utc).isoformat(),
+    schema_version=REVIEW_DECISION_SCHEMA_VERSION,
+    decision=DECISION_REQUEST_REPROCESSING,
+    decision_rationale="Reviewer identified this as an FDA warning letter. Re-extract with explicit class hint.",
+    reprocessing_request_id="placeholder-to-be-replaced",
+)
+
+reprocessing_req = build_reprocessing_request(
+    decision=decision,
+    reprocessing_reason="Document classified as unknown but contains FDA warning letter structure.",
+    suggested_document_class_hint="fda_warning_letter",
+)
+
+# Update decision with the real reprocessing_request_id
+decision.reprocessing_request_id = reprocessing_req.reprocessing_request_id
+
+errors = validate_review_decision(decision)
+assert not errors, errors
+errors = validate_reprocessing_request(reprocessing_req)
+assert not errors, errors
+```
+
+See `examples/expected_review_queue.json`, `examples/expected_review_decision.json`, and `examples/expected_reprocessing_request.json` for reference artifacts.
+
+---
+
 ## Running the C-2 Delivery Validation
 
 Requires Python 3.9+ and `pydantic` (v2). Run the C-1 Delivery Demo first to generate delivery artifacts.
@@ -611,14 +698,17 @@ databricks-caseops-lakehouse/
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
 │   │   ├── bedrock_contract.py   # B-1: Gold export payload contract validator
-│   │   └── delivery_event.py     # C-1: Delivery event schema (v0.2.0)
+│   │   ├── delivery_event.py     # C-1: Delivery event schema (v0.2.0)
+│   │   ├── review_queue.py       # E-0: Human review queue schema
+│   │   └── review_decision.py    # E-0: Review decision and reprocessing request schemas
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   │   ├── export_handoff.py             # B-3: Export packaging and handoff service boundary
 │   │   ├── handoff_report.py             # B-4: Export outcome observability and handoff reporting
 │   │   ├── handoff_bundle.py             # B-5: Batch manifest and review bundle packaging
 │   │   ├── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
 │   │   ├── delivery_events.py            # C-1: Delivery event materialization
-│   │   └── delta_share_handoff.py        # C-1: Delta Sharing producer-side preparation layer
+│   │   ├── delta_share_handoff.py        # C-1: Delta Sharing producer-side preparation layer
+│   │   └── review_queue.py               # E-0: Human review queue derivation and materialization
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -630,7 +720,7 @@ databricks-caseops-lakehouse/
 │   └── utils/               # Shared helpers
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 1104 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2
+├── tests/                   # 1215 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0
 └── examples/
     ├── evaluation/                       # A-4 usage guide
     ├── expected_delivery_event.json      # C-1: Reference delivery event fixture

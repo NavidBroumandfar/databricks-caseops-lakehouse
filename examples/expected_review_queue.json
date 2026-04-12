@@ -1,0 +1,56 @@
+{
+  "review_queue_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "pipeline_run_id": "local-run-11111111-1111-1111-1111-111111111111",
+  "generated_at": "2026-04-12T00:00:00+00:00",
+  "schema_version": "v0.1.0",
+  "total_records_reviewed": 3,
+  "total_entries": 2,
+  "entries_by_reason": {
+    "quarantined": 1,
+    "contract_blocked": 1,
+    "extraction_failed": 0
+  },
+  "queue_entries": [
+    {
+      "queue_entry_id": "e0e0e0e0-0000-0000-0000-000000000001",
+      "document_id": "doc-aaaa-1111-2222-3333-444444444444",
+      "gold_record_id": "gold-bbbb-1111-2222-3333-444444444444",
+      "pipeline_run_id": "local-run-11111111-1111-1111-1111-111111111111",
+      "document_type_label": "unknown",
+      "routing_label": "quarantine",
+      "review_reason": "Record quarantined during pipeline classification. document_type='unknown', routing='quarantine'. Causes include: unknown document type, low classification confidence, low Silver field coverage, or invalid Silver extraction.",
+      "review_reason_category": "quarantined",
+      "gold_artifact_path": "output/gold/gold-bbbb-1111-2222-3333-444444444444.json",
+      "export_artifact_path": null,
+      "bundle_path": "output/reports/handoff_bundle_local-run-11111111-1111-1111-1111-111111111111.json",
+      "report_path": "output/reports/handoff_report_local-run-11111111-1111-1111-1111-111111111111.json",
+      "contract_validation_errors": []
+    },
+    {
+      "queue_entry_id": "e0e0e0e0-0000-0000-0000-000000000002",
+      "document_id": "doc-cccc-1111-2222-3333-444444444444",
+      "gold_record_id": "gold-dddd-1111-2222-3333-444444444444",
+      "pipeline_run_id": "local-run-11111111-1111-1111-1111-111111111111",
+      "document_type_label": "fda_warning_letter",
+      "routing_label": "regulatory_review",
+      "review_reason": "Record failed Bedrock contract validation (B-1). Export payload was not written. Validation errors: violation_type is required and was empty or null; corrective_action_requested is required and was empty or null Review the Gold artifact and correct the extraction or contract fields.",
+      "review_reason_category": "contract_blocked",
+      "gold_artifact_path": "output/gold/gold-dddd-1111-2222-3333-444444444444.json",
+      "export_artifact_path": null,
+      "bundle_path": "output/reports/handoff_bundle_local-run-11111111-1111-1111-1111-111111111111.json",
+      "report_path": "output/reports/handoff_report_local-run-11111111-1111-1111-1111-111111111111.json",
+      "contract_validation_errors": [
+        "violation_type is required and was empty or null",
+        "corrective_action_requested is required and was empty or null"
+      ]
+    }
+  ],
+  "review_notes": [
+    "Review queue generated for 3 eligible pipeline records. 2 record(s) added to the review queue.",
+    "1 record(s) quarantined during pipeline classification. Review the Gold artifact for classification context and routing reason.",
+    "1 record(s) blocked by B-1 Bedrock contract validation. Review the Gold artifact and contract_validation_errors for field-level detail.",
+    "B-5 batch manifest referenced at: output/reports/handoff_bundle_local-run-11111111-1111-1111-1111-111111111111.json. The manifest contains full per-record artifact paths for this batch.",
+    "Review decisions should be recorded using the ReviewDecision schema (src/schemas/review_decision.py). For records requiring reprocessing, a ReprocessingRequest artifact should be produced alongside the decision.",
+    "This is an upstream review queue artifact. Human review workflows, case management tooling, and downstream decisioning are outside this repo's boundary."
+  ]
+}

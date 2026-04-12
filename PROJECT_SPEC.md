@@ -367,7 +367,7 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ## V2 Scope
 
-**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E (enterprise operational hardening) is next. The phases below reflect the current delivery state.
+**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E-0 (human review queue and reprocessing) is complete as of April 2026. Phases E-1 and E-2 are not yet started. The phases below reflect the current delivery state.
 
 ### V2 Objective
 
@@ -436,10 +436,10 @@ Subphases:
 
 **Goal**: Add selected operational hardening: structured human review for quarantined and low-confidence records, environment separation for safe multi-environment iteration, and governance monitoring views for pipeline health visibility.
 
-**Status**: Not started.
+**Status**: E-0 complete. E-1 and E-2 not started.
 
 Subphases:
-- **E-0** — Human review queue and reprocessing design: review queue structure for quarantined records; reprocessing-on-failure path design; review outcome recording
+- **E-0** — Human review queue and reprocessing. **Complete (April 2026).** `ReviewQueueArtifact` schema (`src/schemas/review_queue.py`), `ReviewDecision` and `ReprocessingRequest` schemas (`src/schemas/review_decision.py`), queue derivation pipeline (`src/pipelines/review_queue.py`), pipeline integration via `--review-queue-dir` in `classify_gold.py`, three example fixtures, 111 new tests. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is unchanged — this is additive.
 - **E-1** — Environment separation: dev/staging/prod Databricks environment structure; environment-aware Unity Catalog configuration; deployment patterns without production credentials
 - **E-2** — Governance monitoring: pipeline health views; batch-level quality trend artifacts; schema drift detection; governance reporting outputs
 
@@ -451,7 +451,7 @@ V2 is complete when all of the following are true:
 
 1. A live delivery mechanism exists and is validated: Gold export payloads can be delivered to a Bedrock CaseOps consumer endpoint without a manual copy step (Phase C)
 2. At least two additional document domains (CISA advisories, incident reports) can be processed end-to-end through the pipeline alongside FDA warning letters (Phase D)
-3. Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0)
+3. ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 4. The pipeline can be deployed in at least two distinct Databricks environments without configuration collision (Phase E-1)
 5. The Databricks / Bedrock ownership boundary remains explicit throughout V2 — no retrieval, RAG, agent, or escalation logic enters this repo
 6. No production credentials or enterprise organizational configuration is committed to this repo at any V2 phase
