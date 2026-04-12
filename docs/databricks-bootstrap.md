@@ -233,4 +233,4 @@ The only Databricks-specific artifact committed to this repo is the example reso
 - A-3B (this document) = SQL AI Functions bootstrap validation in a personal Databricks workspace; used manual SQL evaluation; no MLflow automation
 - V1 closeout MLflow checkpoint = end-to-end local pipeline run against the sample FDA warning letter fixture, with all four evaluation stages (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability) logged to a real Databricks-hosted MLflow tracking server using `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified experiment paths; see `docs/v1-closeout-mlflow-checkpoint.md` for the runbook
 
-**V1 is complete. V2 (multi-domain pipelines, live Bedrock integration) has not started.**
+**V1 is complete. V2 is complete.** Multi-domain expansion (D-0, D-1, D-2), Delta Sharing producer-side delivery (C-0, C-1, C-2), and enterprise operational hardening (E-0, E-1, E-2) are all complete. See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./roadmap.md) § V2 for full detail.

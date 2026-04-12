@@ -111,7 +111,7 @@ Written after `ai_extract` completes and Pydantic validation runs. One record pe
 
 ### Domain-Specific Extracted Fields
 
-V1 implements the FDA warning letter field set only. CISA advisory and incident report schemas are drafted below as planned extensions (V2+) to establish contract structure early. They are not part of the V1 executable pipeline.
+V1 implements the FDA warning letter field set only. CISA advisory and incident report schemas were implemented in V2 (Phase D-1 and D-2 respectively). All three domains are now active and executable. The field contracts below reflect the implemented schemas.
 
 #### FDA Warning Letter Fields — V1
 
@@ -128,7 +128,7 @@ V1 implements the FDA warning letter field set only. CISA advisory and incident 
 | `product_involved` | string | No |
 | `summary` | string | No |
 
-#### CISA Advisory Fields — Planned (V2+)
+#### CISA Advisory Fields — V2 (D-1 complete)
 
 | Field | Type | Required |
 |---|---|---|
@@ -142,7 +142,7 @@ V1 implements the FDA warning letter field set only. CISA advisory and incident 
 | `remediation_summary` | string | No |
 | `summary` | string | No |
 
-#### Incident Report Fields — Planned (V2+)
+#### Incident Report Fields — V2 (D-2 complete)
 
 | Field | Type | Required |
 |---|---|---|
@@ -167,8 +167,8 @@ Used by `ai_classify` in the Gold stage. Both label sets are closed-set and vers
 | Label | Description | V1 Pipeline Status |
 |---|---|---|
 | `fda_warning_letter` | FDA-issued warning letter to a regulated company | **V1 — executable** |
-| `cisa_advisory` | CISA-issued cybersecurity advisory or bulletin | Planned V2+ |
-| `incident_report` | Internal or regulatory incident report | Planned V2+ |
+| `cisa_advisory` | CISA-issued cybersecurity advisory or bulletin | **V2 active (D-1 ✅)** |
+| `incident_report` | Internal or regulatory incident report | **V2 active (D-2 ✅)** |
 | `standard_operating_procedure` | Procedural document (SOP, work instruction) | Planned V2+ |
 | `quality_audit_record` | Quality management audit or review record | Planned V2+ |
 | `technical_case_record` | Technical support or case review document | Planned V2+ |
@@ -181,8 +181,8 @@ Routing labels determine which Bedrock CaseOps downstream consumer receives the 
 | Routing Label | Downstream Consumer | V1 Execution Status |
 |---|---|---|
 | `regulatory_review` | Bedrock regulatory intelligence index | **V1 active** — FDA warning letters only |
-| `security_ops` | Bedrock security operations index | Planned V2+ |
-| `incident_management` | Bedrock incident management workflow | Planned V2+ |
+| `security_ops` | Bedrock security operations index | **V2 active (D-1 ✅)** — CISA advisories |
+| `incident_management` | Bedrock incident management workflow | **V2 active (D-2 ✅)** — incident reports |
 | `quality_management` | Bedrock quality assurance workflow | Planned V2+ |
 | `knowledge_base` | General Bedrock knowledge base index | Planned V2+ |
 | `quarantine` | Human review queue — record NOT forwarded to Bedrock | Active (governance path) |

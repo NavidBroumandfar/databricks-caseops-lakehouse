@@ -34,7 +34,7 @@ This is the Databricks-native upstream layer of the **Bedrock CaseOps** system. 
 | Retrieval and RAG | No | Yes |
 | Agent reasoning and orchestration | No | Yes |
 | Escalation and case-support workflows | No | Yes |
-| KPI reporting or cross-case analytics | No | Out of scope for both in V1 |
+| KPI reporting or cross-case analytics | No | Out of scope for both |
 
 This repo is the **governed upstream structuring layer**. It does not reason over documents, orchestrate decisions, or produce operational dashboards. Its contract is: raw document in, structured AI-ready record out.
 
@@ -95,7 +95,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phases E-0, E-1, and E-2 are complete. Phase E (Enterprise Operational Hardening) is complete. V2 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete. Phase E-1 (Environment Separation) is complete. Phase E-2 (Governance Monitoring) is complete — the pipeline now produces a structured, deterministic governance monitoring artifact that summarizes pipeline quality, handoff health, review queue pressure, schema/contract drift signals, and bounded governance flags across batches.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 (Environment Separation) is complete. Phase E-2 (Governance Monitoring) is complete. V2 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -345,7 +345,7 @@ Governance signal categories (bounded vocabulary): `quality_degradation`, `trace
 | Reprocessing request fixture | `examples/expected_reprocessing_request.json` | ✅ New E-0 |
 | E-0 test suite | `tests/test_e0_review_queue.py` (111 tests) | ✅ New E-0 |
 
-The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`. Phases E-1 (environment separation) and E-2 (governance monitoring) are not yet started.
+The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`.
 
 Total test count: **1425 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue and reprocessing layer, E-1 environment separation layer, and E-2 governance monitoring layer.
 

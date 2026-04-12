@@ -613,12 +613,11 @@ V1 is complete as of April 2026. This means:
 - Gold → Bedrock handoff preparation layer complete: contract, repo-enforced validator, materialization gate, outcome reporting, batch bundle, bundle integrity validation
 - Databricks-safe MLflow experiment path resolution implemented (`src/evaluation/mlflow_experiment_paths.py`)
 - V1 remains single-domain and controlled — no enterprise deployment, no production credentials, no live Bedrock integration
-- Downstream Bedrock live integration is future work (V2+)
-- V2 is formally defined and has not started
+- Downstream Bedrock live integration: Delta Sharing producer-side delivery layer implemented in V2-C; live consumer-side provisioning remains a manual workspace step
 
 ---
 
-## V2 — Future Work
+## V2
 
 **V2 is complete. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phases E-0, E-1, and E-2 are complete. Phase E is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E-0 (human review and reprocessing) is complete as of April 2026. Phase E-1 (environment separation) is complete as of April 2026. Phase E-2 (governance monitoring) is complete as of April 2026. V2 is complete.
 
@@ -627,8 +626,8 @@ V1 is complete as of April 2026. This means:
 - V2 may deepen the Bedrock handoff and operational readiness of this repo
 - V2 must not turn this repo into Bedrock CaseOps
 - The Databricks / Bedrock ownership split remains explicit in all V2 phases
-- V2 introduces no production credentials, no enterprise deployment, and no implementation work until a phase is formally started with an explicit spec
-- V2 begins when Phase C-0 is formally started
+- V2 introduced no production credentials, no enterprise deployment, and no Bedrock runtime logic
+- V2 began with Phase C-0 and is now complete through Phase E-2
 
 ### V2 Phase Summary
 
@@ -642,13 +641,13 @@ V1 is complete as of April 2026. This means:
 | D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
 | E-0 | Human Review and Reprocessing | ✅ Complete (V2) | Review queue schema, review decision schema, reprocessing request schema, queue derivation pipeline, pipeline integration via --review-queue-dir; 111 new tests; 1215 total |
 | E-1 | Environment Separation | ✅ Complete (V2) | `Environment` enum, `EnvironmentConfig`, `get_environment_config()`; deterministic catalog/table/volume/MLflow naming; env-aware `mlflow_experiment_paths.py`; 3 per-env example configs; 106 new tests; 1321 total |
-| E-2 | Governance Monitoring | 🔲 Not Started | Pipeline health views; quality trend artifacts; schema drift detection |
+| E-2 | Governance Monitoring | ✅ Complete (V2) | `GovernanceReport` schema, deterministic governance monitoring aggregation, bounded flag vocabulary, 104 new tests; 1425 total |
 
 ---
 
 ## Phase C — Live Handoff Integration and Export Delivery
 
-**Status**: Complete. C-0, C-1, and C-2 are all complete. Phase D-0 is next.
+**Status**: Complete. C-0, C-1, and C-2 are all complete.
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
 
@@ -751,9 +750,9 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ## Phase D — Multi-Domain Pipeline Expansion
 
-**Status**: Not started.
+**Status**: Complete. D-0, D-1, and D-2 are all complete. All three reference domains (FDA, CISA, incident) are active.
 
-**Goal**: Extend the pipeline beyond FDA warning letters. V1 is single-domain by design. V2-D adds CISA cybersecurity advisories and incident reports — both have draft schemas in `docs/data-contracts.md` § 3 and routing labels already defined in `ARCHITECTURE.md` and `docs/data-contracts.md` § 4.
+**Goal**: Extend the pipeline beyond FDA warning letters. V2-D added CISA cybersecurity advisories and incident reports alongside the V1 FDA domain.
 
 **Domain expansion priority**: CISA advisories are the first V2-D domain because:
 - Draft extraction schema exists in `docs/data-contracts.md` § 3 (CISA Advisory Fields)
@@ -858,7 +857,7 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ## Phase E — Enterprise Operational Hardening
 
-**Status**: Not started.
+**Status**: Complete. E-0, E-1, and E-2 are all complete.
 
 **Goal**: Add selected operational hardening that makes the pipeline more robust for non-trivial batch operations: structured human review for quarantined and low-confidence records, environment separation for safe multi-environment iteration, and governance monitoring for pipeline health visibility.
 

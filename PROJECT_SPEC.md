@@ -400,7 +400,7 @@ This boundary remains explicit and non-negotiable in V2:
 | Classification, routing, and export | Yes | No |
 | Live export delivery to Bedrock | Yes — V2-C (Delta Sharing + delivery events) | Receives via Delta Share |
 | Multi-domain extraction and classification | Yes — V2-D (complete: FDA, CISA, incident) | No |
-| Human review queue (upstream intake side) | Yes — V2-E (planned) | Downstream review tools: No |
+| Human review queue (upstream intake side) | Yes — V2-E (complete) | Downstream review tools: No |
 | Retrieval, RAG, and agent reasoning | No | Yes |
 | Escalation and case-support workflows | No | Yes |
 
@@ -449,8 +449,8 @@ Subphases:
 
 V2 is complete. All of the following are true:
 
-1. A live delivery mechanism exists and is validated: Gold export payloads can be delivered to a Bedrock CaseOps consumer endpoint without a manual copy step (Phase C — complete)
-2. At least two additional document domains (CISA advisories, incident reports) can be processed end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
+1. ✅ A live delivery mechanism exists and is validated: Gold export payloads can be delivered to a Bedrock CaseOps consumer endpoint without a manual copy step (Phase C — complete)
+2. ✅ At least two additional document domains (CISA advisories, incident reports) can be processed end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
 3. ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 4. ✅ The pipeline can be deployed in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)
 5. ✅ The repo surfaces its own operational health in a disciplined, upstream-safe way via governance monitoring (Phase E-2 — complete)

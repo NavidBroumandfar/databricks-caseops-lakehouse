@@ -288,7 +288,7 @@ The `routing_label` field determines which downstream Bedrock system is the inte
 | Routing Label | Bedrock Consumer | V1 Status |
 |---|---|---|
 | `regulatory_review` | Bedrock regulatory intelligence index | **V1 active** — FDA warning letters only |
-| `security_ops` | Bedrock security operations index | Planned V2+ |
+| `security_ops` | Bedrock security operations index | Active (D-1 ✅) |
 | `incident_management` | Bedrock incident management workflow | Active (D-2 ✅) |
 | `quality_management` | Bedrock quality assurance workflow | Planned V2+ |
 | `knowledge_base` | General Bedrock knowledge base index | Planned V2+ |
