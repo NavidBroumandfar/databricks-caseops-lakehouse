@@ -1,5 +1,5 @@
 """
-classification_taxonomy.py — Gold classification label taxonomy (Phase A-3 / D-0 / D-1)
+classification_taxonomy.py — Gold classification label taxonomy (Phase A-3 / D-0 / D-1 / D-2)
 
 Defines the closed-set document type labels and routing labels used by the
 Gold classification stage. All label values in Gold records must come from
@@ -18,6 +18,12 @@ D-1 CISA advisory activation:
     ROUTING_LABEL_SECURITY_OPS is now an active routing path.
     V1_EXECUTABLE_DOCUMENT_TYPES and V1_EXECUTABLE_ROUTING_LABELS updated.
     FDA behavior is unchanged.
+
+D-2 Incident report activation:
+    'incident_report' → 'incident_management' is now active in V1_ROUTING_MAP.
+    ROUTING_LABEL_INCIDENT_MANAGEMENT is now an active routing path.
+    V1_EXECUTABLE_DOCUMENT_TYPES and V1_EXECUTABLE_ROUTING_LABELS updated.
+    FDA and CISA behavior is unchanged.
 
 Authoritative contract: docs/data-contracts.md § Classification Labels
 Domain registry: src/utils/domain_registry.py
@@ -54,11 +60,12 @@ ALL_DOCUMENT_TYPE_LABELS: list[str] = [
     DOCUMENT_TYPE_UNKNOWN,
 ]
 
-# Executable document type labels (V1 FDA + D-1 CISA)
+# Executable document type labels (V1 FDA + D-1 CISA + D-2 Incident)
 # Classification logic in classify_gold.py assigns these labels.
 V1_EXECUTABLE_DOCUMENT_TYPES: list[str] = [
     DOCUMENT_TYPE_FDA_WARNING_LETTER,
-    DOCUMENT_TYPE_CISA_ADVISORY,  # D-1 active
+    DOCUMENT_TYPE_CISA_ADVISORY,    # D-1 active
+    DOCUMENT_TYPE_INCIDENT_REPORT,  # D-2 active
     DOCUMENT_TYPE_UNKNOWN,
 ]
 
@@ -87,11 +94,12 @@ ALL_ROUTING_LABELS: list[str] = [
     ROUTING_LABEL_KNOWLEDGE_BASE,
 ]
 
-# Active routing labels (V1 regulatory_review + D-1 security_ops + quarantine governance)
+# Active routing labels (V1 regulatory_review + D-1 security_ops + D-2 incident_management + quarantine)
 # Routing logic in classify_gold.py assigns these labels.
 V1_EXECUTABLE_ROUTING_LABELS: list[str] = [
     ROUTING_LABEL_REGULATORY_REVIEW,
-    ROUTING_LABEL_SECURITY_OPS,  # D-1 active
+    ROUTING_LABEL_SECURITY_OPS,        # D-1 active
+    ROUTING_LABEL_INCIDENT_MANAGEMENT, # D-2 active
     ROUTING_LABEL_QUARANTINE,
 ]
 
@@ -109,8 +117,9 @@ V1_ROUTING_MAP: dict[str, str] = {
     DOCUMENT_TYPE_FDA_WARNING_LETTER: ROUTING_LABEL_REGULATORY_REVIEW,
     # D-1 active
     DOCUMENT_TYPE_CISA_ADVISORY: ROUTING_LABEL_SECURITY_OPS,
-    # Planned D-2 entries — not active until D-2:
-    # DOCUMENT_TYPE_INCIDENT_REPORT:    ROUTING_LABEL_INCIDENT_MANAGEMENT,
+    # D-2 active
+    DOCUMENT_TYPE_INCIDENT_REPORT: ROUTING_LABEL_INCIDENT_MANAGEMENT,
+    # Future planned entries (not yet active):
     # DOCUMENT_TYPE_SOP:                ROUTING_LABEL_KNOWLEDGE_BASE,
     # DOCUMENT_TYPE_QUALITY_AUDIT:      ROUTING_LABEL_QUALITY_MANAGEMENT,
     # DOCUMENT_TYPE_TECHNICAL_CASE:     ROUTING_LABEL_KNOWLEDGE_BASE,
@@ -132,9 +141,8 @@ V1_ROUTING_MAP: dict[str, str] = {
 DOMAIN_ROUTING_MAP: dict[str, str] = {
     # ACTIVE — fully executable
     DOCUMENT_TYPE_FDA_WARNING_LETTER: ROUTING_LABEL_REGULATORY_REVIEW,
-    # PLANNED — registered but not yet executable (D-1 / D-2 will activate)
-    DOCUMENT_TYPE_CISA_ADVISORY: ROUTING_LABEL_SECURITY_OPS,
-    DOCUMENT_TYPE_INCIDENT_REPORT: ROUTING_LABEL_INCIDENT_MANAGEMENT,
+    DOCUMENT_TYPE_CISA_ADVISORY: ROUTING_LABEL_SECURITY_OPS,      # D-1 active
+    DOCUMENT_TYPE_INCIDENT_REPORT: ROUTING_LABEL_INCIDENT_MANAGEMENT,  # D-2 active
 }
 
 

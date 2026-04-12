@@ -1,0 +1,30 @@
+{
+  "document_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "bronze_record_id": "b1c2d3e4-f5a6-7890-bcde-fa1234567891",
+  "extraction_id": "c1d2e3f4-a5b6-7890-cdef-ab1234567892",
+  "pipeline_run_id": "local-run-d2-incident-demo",
+  "extracted_at": "2025-03-14T11:00:00+00:00",
+  "document_class_hint": "incident_report",
+  "extraction_prompt_id": "incident_report_extract_v1",
+  "extraction_model": "local_rule_extractor/v1",
+  "extracted_fields": {
+    "incident_id": "INC-2025-042",
+    "incident_date": "2025-03-14",
+    "incident_type": "Service Outage",
+    "severity": "High",
+    "status": "resolved",
+    "affected_systems": [
+      "Payment API (primary)",
+      "Order Management Service",
+      "Customer Notification Service",
+      "Transaction Database cluster"
+    ],
+    "root_cause": "The root cause was a misconfigured database connection pool parameter introduced during a routine deployment at 09:30 UTC. The `max_connections` parameter was incorrectly set to 10 (down from the production value of 200) in the deployment configuration manifest.",
+    "resolution_summary": "Immediate rollback of the Payment API deployment configuration to the previous known-good state (connection pool max_connections = 200). Manual validation of Payment API health endpoints confirmed service recovery.",
+    "reported_by": "Platform Operations Team"
+  },
+  "field_coverage_pct": 1.0,
+  "validation_status": "valid",
+  "validation_errors": [],
+  "schema_version": "v0.1.0"
+}

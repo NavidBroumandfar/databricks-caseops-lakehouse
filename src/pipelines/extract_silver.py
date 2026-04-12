@@ -1,5 +1,5 @@
 """
-extract_silver.py — Silver extraction pipeline (Phase A-2 / D-0 / D-1)
+extract_silver.py — Silver extraction pipeline (Phase A-2 / D-0 / D-1 / D-2)
 
 Reads Bronze JSON artifacts produced by ingest_bronze.py, extracts structured
 fields into Silver records, validates them against the Silver schema, and writes
@@ -12,12 +12,17 @@ no silent drops. All extraction outcomes are captured as Silver records.
 D-0 multi-domain framework:
     select_extractor() uses the domain registry to validate the requested
     domain before dispatching to the extractor. ACTIVE domains are dispatched;
-    PLANNED domains (incident_report) raise DomainNotImplementedError.
+    PLANNED domains raise DomainNotImplementedError.
 
 D-1 CISA advisory domain:
     LocalCISAAdvisoryExtractor implements deterministic rule-based extraction
     for CISA advisory documents. select_extractor() dispatches 'cisa_advisory'
     to this extractor. FDA behavior is unchanged.
+
+D-2 Incident report domain:
+    LocalIncidentReportExtractor implements deterministic rule-based extraction
+    for incident report documents. select_extractor() dispatches 'incident_report'
+    to this extractor. FDA and CISA behavior is unchanged.
 
 Usage:
     # Process all Bronze artifacts in the default directory
@@ -60,15 +65,21 @@ from src.schemas.silver_schema import (
     FDA_OPTIONAL_FIELDS,
     FDA_REQUIRED_FIELDS,
     FDAWarningLetterFields,
+    INCIDENT_ALL_FIELDS,
+    INCIDENT_OPTIONAL_FIELDS,
+    INCIDENT_REQUIRED_FIELDS,
+    IncidentReportFields,
     SCHEMA_VERSION,
     SilverRecord,
     ValidationStatus,
     compute_cisa_field_coverage,
     compute_field_coverage,
+    compute_incident_field_coverage,
 )
 from src.utils.extraction_prompts import (
     CISA_ADVISORY_PROMPT_ID,
     FDA_WARNING_LETTER_PROMPT_ID,
+    INCIDENT_REPORT_PROMPT_ID,
 )
 
 
@@ -738,6 +749,312 @@ class LocalCISAAdvisoryExtractor(FieldExtractor):
 
 
 # ---------------------------------------------------------------------------
+# Local deterministic incident report extractor (D-2)
+# ---------------------------------------------------------------------------
+
+class LocalIncidentReportExtractor(FieldExtractor):
+    """
+    Deterministic rule-based extractor for incident reports and post-mortems.
+
+    Uses regex and simple string parsing against the parsed text.
+    No LLM or external service is called. Produces a valid Silver record
+    from incident report text following common incident report formats.
+
+    Incident reports typically include:
+      - Incident ID or ticket number near the top
+      - 'Incident Date:', 'Date of Occurrence:', or similar date label
+      - Severity or priority level (P1/P2/P3/P4 or Critical/High/Medium/Low)
+      - Status label: open, resolved, under_review
+      - 'Affected Systems:', 'Impacted Services:'
+      - 'Root Cause:' or 'Root Cause Analysis:' section
+      - 'Resolution:' or 'Remediation:' section
+      - 'Reported by:' or 'Filed by:' attribution
+
+    D-2 implementation. Active in the domain registry.
+    """
+
+    _MODEL_ID = "local_rule_extractor/v1"
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def extract(self, parsed_text: str) -> dict:
+        return {
+            "incident_id": self._extract_incident_id(parsed_text),
+            "incident_date": self._extract_incident_date(parsed_text),
+            "incident_type": self._extract_incident_type(parsed_text),
+            "severity": self._extract_severity(parsed_text),
+            "status": self._extract_status(parsed_text),
+            "affected_systems": self._extract_affected_systems(parsed_text),
+            "root_cause": self._extract_root_cause(parsed_text),
+            "resolution_summary": self._extract_resolution_summary(parsed_text),
+            "reported_by": self._extract_reported_by(parsed_text),
+        }
+
+    def _extract_incident_id(self, text: str) -> Optional[str]:
+        """
+        Extract the incident ID or ticket reference number.
+        Patterns: INC-YYYY-NNN, INC-YYYYMMDD-NNN, or explicit ID labels.
+        """
+        patterns = [
+            r"\b(INC[-_]\d{4}[-_]\d{3,6})\b",
+            r"\b(INC[-_]\d{8}[-_]\d{3,6})\b",
+            r"\b(INC-\d+)\b",
+            r"(?:Incident\s+(?:ID|Number|#|Ticket)[:\s]+)([A-Z0-9\-_]+)",
+            r"(?:Ticket\s+(?:ID|#)[:\s]+)([A-Z0-9\-_]+)",
+            r"(?:Reference[:\s]+)([A-Z]{2,5}-\d{4,8})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return None
+
+    def _extract_incident_date(self, text: str) -> Optional[str]:
+        """
+        Extract the date the incident occurred.
+        Looks for 'Incident Date:', 'Date of Occurrence:', 'Date:', etc.
+        """
+        date_patterns = [
+            r"(?:Incident\s+Date|Date\s+of\s+(?:Occurrence|Incident)|Occurred|Date\s+Reported)[:\s*]+([A-Z][a-z]+ \d{1,2},?\s*\d{4})",
+            r"(?:Incident\s+Date|Date\s+of\s+(?:Occurrence|Incident)|Occurred|Date\s+Reported)[:\s*]+(\d{1,2}/\d{1,2}/\d{4})",
+            r"(?:Incident\s+Date|Date\s+of\s+(?:Occurrence|Incident)|Occurred|Date\s+Reported)[:\s*]+(\d{4}-\d{2}-\d{2})",
+        ]
+        for pattern in date_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return self._normalize_date(match.group(1).strip())
+
+        # Fallback: generic 'Date:' label near the top
+        generic = re.search(
+            r"^Date[:\s]+([A-Z][a-z]+ \d{1,2},?\s*\d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})",
+            text[:1000],
+            re.IGNORECASE | re.MULTILINE,
+        )
+        if generic:
+            return self._normalize_date(generic.group(1).strip())
+
+        # Final fallback: first ISO-format date in the top 500 chars
+        iso_match = re.search(r"(\d{4}-\d{2}-\d{2})", text[:500])
+        if iso_match:
+            return iso_match.group(1)
+
+        return None
+
+    def _normalize_date(self, raw: str) -> str:
+        """Best-effort normalization to YYYY-MM-DD."""
+        month_map = {
+            "january": "01", "february": "02", "march": "03", "april": "04",
+            "may": "05", "june": "06", "july": "07", "august": "08",
+            "september": "09", "october": "10", "november": "11", "december": "12",
+        }
+        match = re.match(r"([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})", raw)
+        if match:
+            month_name, day, year = match.groups()
+            month_num = month_map.get(month_name.lower())
+            if month_num:
+                return f"{year}-{month_num}-{int(day):02d}"
+        match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+        if match:
+            month, day, year = match.groups()
+            return f"{year}-{int(month):02d}-{int(day):02d}"
+        return raw
+
+    def _extract_incident_type(self, text: str) -> Optional[str]:
+        """
+        Extract the incident type or category label.
+        Looks for 'Incident Type:', 'Type:', 'Category:', or keyword detection.
+        """
+        # Explicit label
+        type_match = re.search(
+            r"(?:Incident\s+Type|Type|Category)[:\s]+([^\n]+)",
+            text,
+            re.IGNORECASE,
+        )
+        if type_match:
+            candidate = type_match.group(1).strip().rstrip(".,")
+            if len(candidate) < 100:
+                return candidate
+
+        # Keyword detection for common incident types
+        type_keywords = [
+            (r"\b(?:service\s+)?outage\b", "Service Outage"),
+            (r"\bsecurity\s+breach\b", "Security Breach"),
+            (r"\bdata\s+(?:loss|breach|leak)\b", "Data Loss"),
+            (r"\bperformance\s+degradation\b", "Performance Degradation"),
+            (r"\bnetwork\s+failure\b", "Network Failure"),
+            (r"\bunauthorized\s+access\b", "Unauthorized Access"),
+            (r"\bsystem\s+failure\b", "System Failure"),
+            (r"\bdatabase\s+(?:failure|outage|crash)\b", "Database Failure"),
+            (r"\bAPI\s+(?:failure|error|outage)\b", "API Failure"),
+        ]
+        for pattern, label in type_keywords:
+            if re.search(pattern, text, re.IGNORECASE):
+                return label
+
+        return None
+
+    def _extract_severity(self, text: str) -> Optional[str]:
+        """
+        Extract severity level: Critical / High / Medium / Low.
+        Also handles P1/P2/P3/P4 priority notation.
+        """
+        # Explicit severity label
+        explicit_match = re.search(
+            r"(?:Severity|Priority\s+Level|Criticality|Impact\s+Level)[:\s]+\*{0,2}(Critical|High|Medium|Low)\b",
+            text,
+            re.IGNORECASE,
+        )
+        if explicit_match:
+            return explicit_match.group(1).capitalize()
+
+        # Priority notation P1/P2/P3/P4
+        priority_match = re.search(
+            r"(?:Priority|Sev|Severity)[:\s]+\*{0,2}P(\d)\b",
+            text,
+            re.IGNORECASE,
+        )
+        if priority_match:
+            p_num = int(priority_match.group(1))
+            priority_map = {1: "Critical", 2: "High", 3: "Medium", 4: "Low"}
+            return priority_map.get(p_num)
+
+        # Bare P1/P2/P3/P4 near the top of the document
+        bare_priority = re.search(r"\b(P[1-4])\b", text[:500])
+        if bare_priority:
+            p_map = {"P1": "Critical", "P2": "High", "P3": "Medium", "P4": "Low"}
+            return p_map.get(bare_priority.group(1).upper())
+
+        # Keyword fallback in the top 1500 chars
+        top = text[:1500]
+        if re.search(r"\bcritical\b", top, re.IGNORECASE):
+            return "Critical"
+        if re.search(r"\bhigh\s+(?:severity|priority|impact)\b", top, re.IGNORECASE):
+            return "High"
+        if re.search(r"\bmedium\s+(?:severity|priority|impact)\b", top, re.IGNORECASE):
+            return "Medium"
+        if re.search(r"\blow\s+(?:severity|priority|impact)\b", top, re.IGNORECASE):
+            return "Low"
+
+        return None
+
+    def _extract_status(self, text: str) -> Optional[str]:
+        """
+        Extract incident status: 'open', 'resolved', or 'under_review'.
+        """
+        # Explicit status label
+        status_match = re.search(
+            r"(?:Status|Resolution\s+Status|Incident\s+Status)[:\s]+\*{0,2}(open|resolved|closed|under\s*review|in\s*progress|investigating)\b",
+            text,
+            re.IGNORECASE,
+        )
+        if status_match:
+            raw = status_match.group(1).strip().lower()
+            if raw in ("resolved", "closed"):
+                return "resolved"
+            elif raw in ("open", "in progress", "investigating"):
+                return "open"
+            elif raw in ("under review", "under_review"):
+                return "under_review"
+
+        # Keyword fallback
+        if re.search(r"\b(?:resolved|closed|mitigated|fixed)\b", text, re.IGNORECASE):
+            return "resolved"
+        if re.search(r"\bunder\s+(?:review|investigation)\b", text, re.IGNORECASE):
+            return "under_review"
+        if re.search(r"\b(?:open|ongoing|active|investigating|in\s+progress)\b", text, re.IGNORECASE):
+            return "open"
+
+        return None
+
+    def _extract_affected_systems(self, text: str) -> Optional[list]:
+        """
+        Extract list of affected systems, services, or components.
+        Looks for 'Affected Systems:', 'Impacted Services:', etc.
+        """
+        section_match = re.search(
+            r"(?:Affected\s+(?:Systems?|Services?|Components?)|Impacted\s+(?:Systems?|Services?))[:\s]*\n((?:[-•*]?\s*.+\n?){1,15})",
+            text,
+            re.IGNORECASE,
+        )
+        if section_match:
+            lines = section_match.group(1).splitlines()
+            systems = []
+            for line in lines:
+                cleaned = re.sub(r"^[-•*]\s*", "", line.strip())
+                if cleaned and len(cleaned) > 2 and not cleaned.startswith("#"):
+                    systems.append(cleaned)
+                if len(systems) >= 10:
+                    break
+            if systems:
+                return systems
+
+        # Inline: "affected X, Y, and Z"
+        inline = re.search(
+            r"(?:affected|impacted)\s+(?:system[s]?|service[s]?)[:]\s*([^\n.]+)",
+            text,
+            re.IGNORECASE,
+        )
+        if inline:
+            raw = inline.group(1).strip()
+            items = [s.strip().rstrip(".,") for s in re.split(r",\s*(?:and\s+)?", raw) if s.strip()]
+            if items:
+                return items
+
+        return None
+
+    def _extract_root_cause(self, text: str) -> Optional[str]:
+        """
+        Extract root cause description from a 'Root Cause:' or 'RCA:' section.
+        """
+        section_match = re.search(
+            r"(?:Root\s+Cause(?:\s+Analysis)?|RCA)[:\s]*\n?((?:.+\n?){1,8})",
+            text,
+            re.IGNORECASE,
+        )
+        if section_match:
+            body = section_match.group(1).strip()
+            # Stop at the next section heading
+            body = re.split(r"\n(?:[A-Z][^\n:]{3,40}:)", body)[0]
+            if len(body) > 500:
+                body = body[:500].rsplit(" ", 1)[0] + "..."
+            return body if len(body) > 10 else None
+        return None
+
+    def _extract_resolution_summary(self, text: str) -> Optional[str]:
+        """
+        Extract the resolution or remediation description.
+        """
+        section_match = re.search(
+            r"(?:Resolution|Remediation|Mitigation|Fix|Corrective\s+Action)[:\s]*\n?((?:.+\n?){1,8})",
+            text,
+            re.IGNORECASE,
+        )
+        if section_match:
+            body = section_match.group(1).strip()
+            body = re.split(r"\n(?:[A-Z][^\n:]{3,40}:)", body)[0]
+            if len(body) > 500:
+                body = body[:500].rsplit(" ", 1)[0] + "..."
+            return body if len(body) > 10 else None
+        return None
+
+    def _extract_reported_by(self, text: str) -> Optional[str]:
+        """
+        Extract who reported or filed the incident.
+        """
+        patterns = [
+            r"(?:Reported\s+by|Filed\s+by|Submitted\s+by|Detected\s+by|Identified\s+by)[:\s]+([^\n]+)",
+            r"(?:Reporter|Author)[:\s]+([^\n]+)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip().rstrip(".,")
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Extractor selection
 # ---------------------------------------------------------------------------
 
@@ -745,14 +1062,13 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
     """
     Return the appropriate field extractor for the given document class.
 
-    Domain-registry routing (D-0 framework, D-1 CISA active):
+    Domain-registry routing (D-0 framework, D-1 CISA active, D-2 incident active):
       - None or 'fda_warning_letter' → LocalFDAWarningLetterExtractor (ACTIVE)
       - 'cisa_advisory'              → LocalCISAAdvisoryExtractor (ACTIVE, D-1)
-      - 'incident_report'            → DomainNotImplementedError (PLANNED, D-2)
+      - 'incident_report'            → LocalIncidentReportExtractor (ACTIVE, D-2)
       - Unregistered domain keys     → raises ValueError with registry context
 
-    FDA behavior is preserved exactly. CISA is now the second active domain.
-    Incident report remains planned until D-2.
+    FDA and CISA behavior is preserved exactly.
     """
     from src.utils.domain_registry import (
         DOMAIN_REGISTRY,
@@ -773,6 +1089,10 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
     if effective_key == "cisa_advisory":
         return LocalCISAAdvisoryExtractor()
 
+    # Incident report — ACTIVE, D-2 extractor
+    if effective_key == "incident_report":
+        return LocalIncidentReportExtractor()
+
     # Check registry status for all other keys
     if effective_key not in DOMAIN_REGISTRY:
         raise ValueError(
@@ -781,7 +1101,6 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
         )
 
     if not is_domain_active(effective_key):
-        # Registered but PLANNED — clear error before D-2 implements it
         raise DomainNotImplementedError(effective_key, "extraction")
 
     raise ValueError(
@@ -869,6 +1188,43 @@ def validate_cisa_extracted_fields(
     return ValidationStatus.valid, []
 
 
+def validate_incident_extracted_fields(
+    fields: IncidentReportFields,
+) -> tuple[ValidationStatus, list[str]]:
+    """
+    Determine the ValidationStatus for a set of extracted incident report fields.
+
+    Rules mirror the FDA/CISA logic — sourced from docs/data-contracts.md § Incident Report Fields:
+    - valid:   all required fields are non-null and non-empty
+    - partial: required fields present but some optional fields are missing
+    - invalid: one or more required fields are null or empty
+
+    Returns (status, list_of_error_messages).
+    """
+    fields_dict = fields.model_dump()
+    errors = []
+
+    for field_name in INCIDENT_REQUIRED_FIELDS:
+        value = fields_dict.get(field_name)
+        if value is None or value == [] or value == "":
+            errors.append(f"Required field '{field_name}' is missing or null.")
+
+    if errors:
+        return ValidationStatus.invalid, errors
+
+    optional_missing = [
+        f for f in INCIDENT_OPTIONAL_FIELDS
+        if fields_dict.get(f) is None or fields_dict.get(f) == [] or fields_dict.get(f) == ""
+    ]
+
+    if optional_missing:
+        return ValidationStatus.partial, [
+            f"Optional field '{f}' is not populated." for f in optional_missing
+        ]
+
+    return ValidationStatus.valid, []
+
+
 # ---------------------------------------------------------------------------
 # Silver record assembly
 # ---------------------------------------------------------------------------
@@ -891,6 +1247,7 @@ def assemble_silver_record(
     with callers that do not supply a domain_key.
 
     D-1: 'cisa_advisory' is now a fully supported domain_key.
+    D-2: 'incident_report' is now a fully supported domain_key.
     """
     extraction_id = str(uuid.uuid4())
     extracted_at = datetime.now(tz=timezone.utc)
@@ -902,6 +1259,12 @@ def assemble_silver_record(
         fields_cls = CISAAdvisoryFields
         coverage_fn = compute_cisa_field_coverage
         validate_fn = validate_cisa_extracted_fields
+    elif domain_key == "incident_report":
+        prompt_id = INCIDENT_REPORT_PROMPT_ID
+        known_fields = INCIDENT_ALL_FIELDS
+        fields_cls = IncidentReportFields
+        coverage_fn = compute_incident_field_coverage
+        validate_fn = validate_incident_extracted_fields
     else:
         # Default: FDA warning letter (also explicit for fda_warning_letter key)
         prompt_id = FDA_WARNING_LETTER_PROMPT_ID

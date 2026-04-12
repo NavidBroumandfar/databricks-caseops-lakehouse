@@ -289,7 +289,7 @@ The `routing_label` field determines which downstream Bedrock system is the inte
 |---|---|---|
 | `regulatory_review` | Bedrock regulatory intelligence index | **V1 active** — FDA warning letters only |
 | `security_ops` | Bedrock security operations index | Planned V2+ |
-| `incident_management` | Bedrock incident management workflow | Planned V2+ |
+| `incident_management` | Bedrock incident management workflow | Active (D-2 ✅) |
 | `quality_management` | Bedrock quality assurance workflow | Planned V2+ |
 | `knowledge_base` | General Bedrock knowledge base index | Planned V2+ |
 | `quarantine` | Human review queue — not forwarded | Active (governance path) |
@@ -423,7 +423,7 @@ delta_share_handoff.py        → defines share config → generates SQL templat
 
 ## Multi-Domain Framework (Phase D-0)
 
-Phase D-0 introduces the multi-domain framework layer that removes single-domain hardcoding and provides clean architectural homes for D-1 (CISA) and D-2 (incident) domain expansion. FDA warning letters remain the only fully executable domain after D-0.
+Phase D-0 introduces the multi-domain framework layer that removes single-domain hardcoding and provides clean architectural homes for D-1 (CISA) and D-2 (incident) domain expansion. FDA warning letters remain the only fully executable domain after D-0. D-1 and D-2 have since completed: all three reference domains are now `active`.
 
 ### Domain Registry
 
@@ -441,13 +441,13 @@ The single authoritative registry for all document domains lives at `src/utils/d
 | `active` | Fully executable — extraction, classification, routing, export all implemented |
 | `planned` | Registered in framework but not yet implemented; operations raise `DomainNotImplementedError` |
 
-**D-0 registry state:**
+**Registry state (post-D-2):**
 
 | Domain Key | Document Type | Routing Label | Status | Phase |
 |---|---|---|---|---|
 | `fda_warning_letter` | `fda_warning_letter` | `regulatory_review` | `active` | V1 |
 | `cisa_advisory` | `cisa_advisory` | `security_ops` | `active` | D-1 ✅ |
-| `incident_report` | `incident_report` | `incident_management` | `planned` | D-2 |
+| `incident_report` | `incident_report` | `incident_management` | `active` | D-2 ✅ |
 
 ### Prompt Routing Framework
 
@@ -455,7 +455,7 @@ The single authoritative registry for all document domains lives at `src/utils/d
 
 ### Schema Family / Validation Framework
 
-`src/schemas/domain_schema_registry.py` provides `DomainSchemaInfo` entries for all registered domains. Each entry carries `required_fields`, `optional_fields`, `all_fields`, and a `build_fields_model` factory. For `active` domains the factory constructs the real Pydantic model. For `planned` domains it raises `DomainNotImplementedError`. Field contracts for CISA and incident are defined per `docs/data-contracts.md` — the Pydantic models will be implemented in D-1 / D-2.
+`src/schemas/domain_schema_registry.py` provides `DomainSchemaInfo` entries for all registered domains. Each entry carries `required_fields`, `optional_fields`, `all_fields`, and a `build_fields_model` factory. For `active` domains the factory constructs the real Pydantic model. All three domains are `active` after D-2 — `FDAWarningLetterFields`, `CISAAdvisoryFields`, and `IncidentReportFields` are all implemented and routable.
 
 ### Classification / Routing Framework
 
@@ -472,14 +472,14 @@ The single authoritative registry for all document domains lives at `src/utils/d
 - `None` → defaults to `fda_warning_letter` (backward compatible)
 - `fda_warning_letter` → dispatches to V1 extractor/classifier (unchanged)
 - `cisa_advisory` → dispatches to `LocalCISAAdvisoryExtractor` / `LocalCISAAdvisoryClassifier` (D-1 active)
-- `incident_report` → raises `DomainNotImplementedError` (planned, D-2)
+- `incident_report` → dispatches to `LocalIncidentReportExtractor` / `LocalIncidentReportClassifier` (D-2 active)
 - Unregistered keys → raises `ValueError` with registry context
 
 ### D-0 Boundary (What Was Not Changed)
 
 D-0 is a framework phase. It does NOT:
-- Implement CISA advisory extraction, classification, or routing (D-1)
-- Implement incident report extraction, classification, or routing (D-2)
+- Implement CISA advisory extraction, classification, or routing (implemented in D-1)
+- Implement incident report extraction, classification, or routing (implemented in D-2)
 - Change the Bedrock boundary or handoff contract
 - Modify the existing B-phase or C-phase delivery layers
 - Add retrieval, RAG, or agent logic
@@ -490,7 +490,7 @@ D-0 is a framework phase. It does NOT:
 
 | Capability | Current State | Future Direction |
 |---|---|---|
-| Multi-domain extraction | Framework layer (D-0) — FDA active, CISA/incident planned | D-1: CISA; D-2: incident |
+| Multi-domain extraction | Three active domains (D-2 complete) — FDA, CISA, incident all executable | Phase E hardening |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Human review loop | Not implemented | Disagreement queue surfaced to a review tool |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |

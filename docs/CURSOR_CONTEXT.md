@@ -57,7 +57,7 @@ When starting any task in this repository, always read files in this exact order
 
 **V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
 
-**V2 HAS STARTED. PHASE C IS COMPLETE. PHASE D-0 IS COMPLETE. PHASE D-1 IS COMPLETE. PHASE D-2 IS NEXT.** C-0 (design), C-1 (producer-side implementation), and C-2 (producer-side validation layer) are all complete. D-0 (multi-domain framework) is complete. D-1 (CISA advisory domain) is complete — CISA advisories are now fully executable through the pipeline. D-1 delivers: `CISAAdvisoryFields` schema, `LocalCISAAdvisoryExtractor`, `LocalCISAAdvisoryClassifier`, CISA prompt (`cisa_advisory_extract_v1`), `security_ops` routing active, CISA Bedrock contract validation, CISA fixtures, and 123-test D-1 suite (978 total). `cisa_advisory` status is `ACTIVE`. Only `incident_report` remains `PLANNED`. Do not claim incident is executable — it is `planned` and raises `DomainNotImplementedError`. Phase D-2 (incident report) is the next unstarted phase.
+**V2 HAS STARTED. PHASE C IS COMPLETE. PHASES D-0, D-1, AND D-2 ARE COMPLETE.** C-0 (design), C-1 (producer-side implementation), and C-2 (producer-side validation layer) are all complete. D-0 (multi-domain framework) is complete. D-1 (CISA advisory domain) is complete — CISA advisories are fully executable. D-2 (incident report domain) is complete — incident reports are now fully executable through the pipeline. D-2 delivers: `IncidentReportFields` schema, `LocalIncidentReportExtractor`, `LocalIncidentReportClassifier`, incident prompt (`incident_report_extract_v1`), `incident_management` routing active, incident Bedrock contract validation, incident fixtures, and 125-test D-2 suite (1104 total). All three reference domains are `ACTIVE`: `fda_warning_letter`, `cisa_advisory`, and `incident_report`. **No planned domains remain.** Phase E (enterprise operational hardening) is next.
 
 **Phases A-0 through B-6, C-1, C-2, and D-0 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
@@ -66,9 +66,11 @@ When starting any task in this repository, always read files in this exact order
 - A Delta Sharing-oriented producer-side delivery augmentation (C-1) with delivery events and share preparation manifests
 - A bounded 15-check delivery-layer runtime validation layer (C-2) with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary
 - A D-0 multi-domain framework layer: domain registry, domain schema registry, domain-aware prompt routing, taxonomy D-0 extensions, and domain-registry routing in `select_extractor()` / `select_classifier()`
-- 870 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, and D-0 multi-domain framework
+- A D-1 CISA advisory domain: `CISAAdvisoryFields`, `LocalCISAAdvisoryExtractor`, `LocalCISAAdvisoryClassifier`, `security_ops` routing active
+- A D-2 incident report domain: `IncidentReportFields`, `LocalIncidentReportExtractor`, `LocalIncidentReportClassifier`, `incident_management` routing active
+- 1104 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, and D-2 incident report domain
 
-**V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phase D-0 is complete (multi-domain framework). Phase D-1 is complete (CISA advisory domain). Phase D-2 is next (incident report).** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
+**V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E (enterprise operational hardening) is next.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+

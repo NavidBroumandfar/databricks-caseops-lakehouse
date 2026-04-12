@@ -137,7 +137,8 @@ class DomainNotImplementedError(NotImplementedError):
     but not yet implemented' from 'not registered at all'.
 
     D-1 resolved this for the 'cisa_advisory' domain (now ACTIVE).
-    D-2 will resolve this for the 'incident_report' domain.
+    D-2 resolved this for the 'incident_report' domain (now ACTIVE).
+    All three implemented reference domains are now ACTIVE.
     """
 
     def __init__(self, domain_key: str, operation: str = "execution") -> None:
@@ -196,22 +197,24 @@ DOMAIN_REGISTRY: dict[str, DomainConfig] = {
         ),
     ),
     # ------------------------------------------------------------------
-    # Incident Report — PLANNED (D-2)
-    # Draft schema in docs/data-contracts.md § Incident Report Fields.
-    # Classification label and routing label are defined in the taxonomy.
-    # Full implementation is the scope of Phase D-2.
+    # Incident Report — ACTIVE (D-2)
+    # Field contract: docs/data-contracts.md § Incident Report Fields.
+    # Pydantic model: src/schemas/silver_schema.py IncidentReportFields
+    # Prompt: src/utils/extraction_prompts.py INCIDENT_REPORT_PROMPT
+    # Extractor: src/pipelines/extract_silver.py LocalIncidentReportExtractor
+    # Classifier: src/pipelines/classify_gold.py LocalIncidentReportClassifier
     # ------------------------------------------------------------------
     "incident_report": DomainConfig(
         domain_key="incident_report",
         document_type_label="incident_report",
         routing_label="incident_management",
         source_family="operations",
-        extraction_prompt_id=None,  # D-2: prompt not yet registered
+        extraction_prompt_id="incident_report_extract_v1",
         schema_family="incident_report",
-        status=DomainStatus.PLANNED,
+        status=DomainStatus.ACTIVE,
         description=(
             "Internal or regulatory incident report or post-mortem. "
-            "Planned for D-2 implementation. Routing target: incident_management."
+            "D-2 active domain. Routing target: incident_management."
         ),
     ),
 }

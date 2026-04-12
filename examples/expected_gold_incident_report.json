@@ -1,0 +1,46 @@
+{
+  "document_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "bronze_record_id": "b1c2d3e4-f5a6-7890-bcde-fa1234567891",
+  "extraction_id": "c1d2e3f4-a5b6-7890-cdef-ab1234567892",
+  "gold_record_id": "d1e2f3a4-b5c6-7890-defa-bc1234567893",
+  "pipeline_run_id": "local-run-d2-incident-demo",
+  "classified_at": "2025-03-14T11:05:00+00:00",
+  "document_type_label": "incident_report",
+  "routing_label": "incident_management",
+  "classification_confidence": 0.9,
+  "classification_model": "local_rule_classifier/v1",
+  "export_payload": {
+    "document_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "source_file": "incident_report_sample.md",
+    "document_type": "incident_report",
+    "routing_label": "incident_management",
+    "extracted_fields": {
+      "incident_id": "INC-2025-042",
+      "incident_date": "2025-03-14",
+      "incident_type": "Service Outage",
+      "severity": "High",
+      "status": "resolved",
+      "affected_systems": [
+        "Payment API (primary)",
+        "Order Management Service",
+        "Customer Notification Service",
+        "Transaction Database cluster"
+      ],
+      "root_cause": "Misconfigured database connection pool parameter (max_connections set to 10 instead of 200) introduced during a routine deployment.",
+      "resolution_summary": "Rollback of configuration change. Payment API and downstream services restored within 42 minutes.",
+      "reported_by": "Platform Operations Team"
+    },
+    "parsed_text_excerpt": "# Incident Report — INC-2025-042\n\n**Incident ID:** INC-2025-042\n**Date:** March 14, 2025\n**Incident Date:** March 14, 2025\n**Status:** Resolved\n**Severity:** High",
+    "provenance": {
+      "ingested_at": "2025-03-14T10:55:00+00:00",
+      "pipeline_run_id": "local-run-d2-incident-demo",
+      "extraction_model": "local_rule_extractor/v1",
+      "classification_model": "local_rule_classifier/v1",
+      "classification_confidence": 0.9,
+      "schema_version": "v0.1.0"
+    }
+  },
+  "export_ready": true,
+  "export_path": "output/gold/exports/incident_management/a1b2c3d4-e5f6-7890-abcd-ef1234567890.json",
+  "schema_version": "v0.1.0"
+}

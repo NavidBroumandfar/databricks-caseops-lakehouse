@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 has started. Phase C is complete. Phase D-0 is complete. Phase D-1 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report) is the next phase not yet started.
+**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E (enterprise operational hardening) is next.
 
 ### V2 Boundary Rules
 
@@ -639,7 +639,7 @@ V1 is complete as of April 2026. This means:
 | C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 | D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
 | D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
-| D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
+| D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
 | E-0 | Human Review and Reprocessing | 🔲 Not Started | Human review queue for quarantined records; reprocessing-on-failure path |
 | E-1 | Environment Separation | 🔲 Not Started | Dev/staging/prod Databricks environment structure; environment-aware configuration |
 | E-2 | Governance Monitoring | 🔲 Not Started | Pipeline health views; quality trend artifacts; schema drift detection |
@@ -782,17 +782,17 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 | Classify gold D-0 routing | `src/pipelines/classify_gold.py` | ✅ Updated D-0 | `select_classifier()` uses domain registry; planned domains raise `DomainNotImplementedError` |
 | D-0 test suite | `tests/test_domain_registry.py` | ✅ New D-0 | 123 tests: registry integrity, FDA resolution, planned domain failures, prompt routing, schema routing, taxonomy extensions, no-accidental-activation guards |
 
-**D-0 framework state:**
+**D-0 framework state (updated through D-2):**
 
 | Domain | Status | Extraction | Classification | Routing | Phase |
 |---|---|---|---|---|---|
 | `fda_warning_letter` | `active` | ✅ Implemented | ✅ Implemented | `regulatory_review` | V1 |
 | `cisa_advisory` | `active` | ✅ D-1 | ✅ D-1 | `security_ops` | D-1 ✅ |
-| `incident_report` | `planned` | 🔲 D-2 | 🔲 D-2 | `incident_management` | D-2 |
+| `incident_report` | `active` | ✅ D-2 | ✅ D-2 | `incident_management` | D-2 ✅ |
 
 **What D-0 explicitly does NOT deliver:**
-- Full CISA advisory implementation (D-1)
-- Full incident report implementation (D-2)
+- Full CISA advisory implementation (delivered in D-1)
+- Full incident report implementation (delivered in D-2)
 - Any change to the Bedrock boundary or delivery layer
 - Retrieval, RAG, or agent logic
 
@@ -805,6 +805,7 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 - ✅ Classification/routing framework is structurally multi-domain-aware
 - ✅ All planned domain operations fail with explicit `DomainNotImplementedError`
 - ✅ 123 new tests; 870 total; zero regressions
+- ✅ D-1 and D-2 have since graduated both CISA and incident to `active`
 
 ---
 
@@ -828,15 +829,30 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 - CISA fixture + expected Silver/Gold output artifacts (`examples/`)
 - D-1 test suite: 123 new tests in `tests/test_d1_cisa_domain.py`; 978 total; zero regressions
 
-**D-1 domain state:** `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `planned` (D-2).
+**D-1 domain state:** `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `planned` at time of D-1 (graduated in D-2).
 
 ---
 
 ### Phase D-2 — Incident Report Domain
 
-**Status**: Not started.
+**Status**: ✅ Complete (April 2026).
 
-**Goal**: Implement the incident report domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, and evaluation pass. This activates the `incident_management` routing label for the first time.
+**Goal**: Implement the incident report domain end-to-end: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, and Bedrock contract validation. This activates the `incident_management` routing label for the first time.
+
+**What D-2 delivers:**
+- `IncidentReportFields` Pydantic schema with 4 required + 5 optional fields (`src/schemas/silver_schema.py`)
+- `_build_incident_fields` factory and incident schema registry activated (`src/schemas/domain_schema_registry.py`)
+- `INCIDENT_REPORT_PROMPT` prompt template (`incident_report_extract_v1`) registered (`src/utils/extraction_prompts.py`)
+- `incident_report` domain set to `ACTIVE` with extraction_prompt_id (`src/utils/domain_registry.py`)
+- `LocalIncidentReportExtractor` — deterministic rule-based incident field extractor (`src/pipelines/extract_silver.py`)
+- `validate_incident_extracted_fields` — incident validation logic parallel to FDA and CISA (`src/pipelines/extract_silver.py`)
+- `LocalIncidentReportClassifier` — deterministic incident classifier (`src/pipelines/classify_gold.py`)
+- `incident_management` activated in `V1_ROUTING_MAP` and `V1_EXECUTABLE_ROUTING_LABELS` (`src/utils/classification_taxonomy.py`)
+- `REQUIRED_INCIDENT_EXTRACTED_FIELDS` + `_validate_incident_extracted_fields` added to Bedrock contract (`src/schemas/bedrock_contract.py`)
+- Incident fixture + expected Silver/Gold output artifacts (`examples/`)
+- D-2 test suite: 125 new tests in `tests/test_d2_incident_domain.py`; 1104 total; zero regressions
+
+**D-2 domain state:** `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `active` (D-2 ✅). **No planned domains remain.** Three routing labels active: `regulatory_review`, `security_ops`, `incident_management`.
 
 ---
 

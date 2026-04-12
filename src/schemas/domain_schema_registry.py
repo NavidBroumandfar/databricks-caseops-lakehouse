@@ -1,10 +1,10 @@
 """
-domain_schema_registry.py — Per-domain Silver schema family registry (Phase D-0 / D-1)
+domain_schema_registry.py — Per-domain Silver schema family registry (Phase D-0 / D-1 / D-2)
 
 Provides the architectural home for per-domain Silver schema selection,
 validation routing, and field set access. D-0 established this framework;
-D-1 activates the CISA advisory schema family. D-2 will fill in the
-incident report schema family.
+D-1 activated the CISA advisory schema family; D-2 activates the incident
+report schema family.
 
 Design:
     One DomainSchemaInfo per domain, keyed by domain_key.
@@ -27,20 +27,18 @@ Usage:
         list_schema_domain_keys,
     )
 
-    # Inspect metadata (works for ACTIVE and PLANNED):
-    info = get_schema_info("cisa_advisory")
-    required_fields = info.required_fields   # ['advisory_id', 'title', ...]
+    # Inspect metadata (works for ACTIVE domains):
+    info = get_schema_info("incident_report")
+    required_fields = info.required_fields   # ['incident_date', 'incident_type', ...]
 
     # Build a fields model (ACTIVE domains only):
     model = build_fields_for_domain("fda_warning_letter", raw_dict)
     model = build_fields_for_domain("cisa_advisory", raw_dict)    # D-1 active
-
-    # This raises DomainNotImplementedError (D-2 pending):
-    build_fields_for_domain("incident_report", raw_dict)
+    model = build_fields_for_domain("incident_report", raw_dict)  # D-2 active
 
 Architecture context: ARCHITECTURE.md § Multi-Domain Framework (D-0)
 D-1 implements: cisa_advisory Pydantic schema model and build_fields_model
-D-2 will implement: incident_report Pydantic schema model and build_fields_model
+D-2 implements: incident_report Pydantic schema model and build_fields_model
 """
 
 from __future__ import annotations
@@ -119,6 +117,17 @@ def _build_cisa_fields(raw: dict[str, Any]) -> Any:
     from src.schemas.silver_schema import CISA_ALL_FIELDS, CISAAdvisoryFields
 
     return CISAAdvisoryFields(**{k: v for k, v in raw.items() if k in CISA_ALL_FIELDS})
+
+
+def _build_incident_fields(raw: dict[str, Any]) -> Any:
+    """
+    Construct IncidentReportFields from a raw extraction dict.
+    Filters raw to known incident fields to prevent unexpected keyword errors.
+    D-2 implementation.
+    """
+    from src.schemas.silver_schema import INCIDENT_ALL_FIELDS, IncidentReportFields
+
+    return IncidentReportFields(**{k: v for k, v in raw.items() if k in INCIDENT_ALL_FIELDS})
 
 
 def _planned_domain_factory(domain_key: str) -> Callable[[dict[str, Any]], Any]:
@@ -215,10 +224,11 @@ _DOMAIN_SCHEMA_REGISTRY: dict[str, DomainSchemaInfo] = {
         ),
     ),
     # ------------------------------------------------------------------
-    # Incident Report — PLANNED (D-2)
-    # Field contract defined in docs/data-contracts.md § Incident Report Fields.
-    # Pydantic model and extractor will be implemented in Phase D-2.
-    # build_fields_model raises DomainNotImplementedError until D-2.
+    # Incident Report — ACTIVE (D-2)
+    # Field contract: docs/data-contracts.md § Incident Report Fields.
+    # Pydantic model: src/schemas/silver_schema.py IncidentReportFields
+    # Extractor: src/pipelines/extract_silver.py LocalIncidentReportExtractor
+    # Classifier: src/pipelines/classify_gold.py LocalIncidentReportClassifier
     # ------------------------------------------------------------------
     "incident_report": DomainSchemaInfo(
         domain_key="incident_report",
@@ -246,11 +256,12 @@ _DOMAIN_SCHEMA_REGISTRY: dict[str, DomainSchemaInfo] = {
             "resolution_summary",
             "reported_by",
         ],
-        build_fields_model=_planned_domain_factory("incident_report"),
-        status=DomainStatus.PLANNED,
+        build_fields_model=_build_incident_fields,
+        status=DomainStatus.ACTIVE,
         notes=(
-            "Incident report schema — field contract defined per data-contracts.md; "
-            "Pydantic model pending D-2."
+            "Incident report schema — D-2 active. "
+            "Pydantic model: IncidentReportFields in silver_schema.py. "
+            "Routing target: incident_management."
         ),
     ),
 }

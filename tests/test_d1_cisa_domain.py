@@ -1,11 +1,15 @@
 """
 tests/test_d1_cisa_domain.py — Phase D-1 CISA advisory domain test suite
 
+Updated for D-2: incident_report is now ACTIVE. All three domains are executable.
+Tests that previously asserted incident_report is PLANNED are updated to reflect
+the D-2 state (incident_report ACTIVE, fully routable, no planned domains remain).
+
 Coverage:
-  1. Domain registry: CISA is ACTIVE, incident_report is still PLANNED
+  1. Domain registry: CISA is ACTIVE, incident_report is now also ACTIVE (D-2)
   2. Prompt routing: CISA prompt selection via get_prompt_for_domain
   3. Schema: CISAAdvisoryFields validation — valid, partial, invalid
-  4. Schema registry: CISA build_fields_for_domain works; incident still raises
+  4. Schema registry: CISA build_fields_for_domain works; incident also works (D-2)
   5. Extraction: LocalCISAAdvisoryExtractor field extraction behavior
   6. Silver assembly: CISA Silver record valid, partial, invalid paths
   7. Classification: LocalCISAAdvisoryClassifier signal detection and confidence
@@ -13,10 +17,10 @@ Coverage:
   9. Bedrock contract: CISA export payload validation
  10. Gold pipeline: CISA routing resolves to security_ops
  11. FDA regression: FDA domain behavior is unchanged throughout
- 12. Incident regression: incident_report operations still raise DomainNotImplementedError
+ 12. D-2 confirmation: incident_report is now ACTIVE and executable
 
 Authoritative contracts: docs/data-contracts.md, ARCHITECTURE.md § Multi-Domain Framework
-Phase: D-1 (CISA advisory domain activation)
+Phase: D-1 (CISA advisory domain activation), updated for D-2
 """
 
 from __future__ import annotations
@@ -57,9 +61,9 @@ class TestDomainRegistry:
         from src.utils.domain_registry import DOMAIN_REGISTRY
         assert DOMAIN_REGISTRY["cisa_advisory"].source_family == "security"
 
-    def test_incident_still_planned(self):
+    def test_incident_now_active_after_d2(self):
         from src.utils.domain_registry import DOMAIN_REGISTRY, DomainStatus
-        assert DOMAIN_REGISTRY["incident_report"].status == DomainStatus.PLANNED
+        assert DOMAIN_REGISTRY["incident_report"].status == DomainStatus.ACTIVE
 
     def test_fda_still_active(self):
         from src.utils.domain_registry import DOMAIN_REGISTRY, DomainStatus
@@ -69,19 +73,19 @@ class TestDomainRegistry:
         from src.utils.domain_registry import is_domain_active
         assert is_domain_active("cisa_advisory") is True
 
-    def test_is_domain_active_incident_false(self):
+    def test_is_domain_active_incident_true_after_d2(self):
         from src.utils.domain_registry import is_domain_active
-        assert is_domain_active("incident_report") is False
+        assert is_domain_active("incident_report") is True
 
     def test_require_active_domain_cisa_returns_config(self):
         from src.utils.domain_registry import require_active_domain
         config = require_active_domain("cisa_advisory")
         assert config.domain_key == "cisa_advisory"
 
-    def test_require_active_domain_incident_raises(self):
-        from src.utils.domain_registry import DomainNotImplementedError, require_active_domain
-        with pytest.raises(DomainNotImplementedError):
-            require_active_domain("incident_report")
+    def test_require_active_domain_incident_succeeds_after_d2(self):
+        from src.utils.domain_registry import DomainStatus, require_active_domain
+        domain = require_active_domain("incident_report")
+        assert domain.status == DomainStatus.ACTIVE
 
     def test_get_active_domains_includes_cisa(self):
         from src.utils.domain_registry import get_active_domains
@@ -93,15 +97,17 @@ class TestDomainRegistry:
         keys = [d.domain_key for d in get_active_domains()]
         assert "fda_warning_letter" in keys
 
-    def test_get_active_domains_excludes_incident(self):
+    def test_get_active_domains_includes_incident_after_d2(self):
         from src.utils.domain_registry import get_active_domains
         keys = [d.domain_key for d in get_active_domains()]
-        assert "incident_report" not in keys
+        assert "incident_report" in keys
 
-    def test_get_planned_domains_contains_incident_only(self):
+    def test_get_planned_domains_empty_after_d2(self):
         from src.utils.domain_registry import get_planned_domains
         keys = [d.domain_key for d in get_planned_domains()]
-        assert "incident_report" in keys
+        # D-2: all three domains are ACTIVE — no planned domains remain
+        assert len(keys) == 0
+        assert "incident_report" not in keys
         assert "cisa_advisory" not in keys
         assert "fda_warning_letter" not in keys
 
@@ -143,11 +149,10 @@ class TestCISAPromptRouting:
         prompt = get_prompt_for_domain("fda_warning_letter")
         assert prompt.prompt_id == FDA_WARNING_LETTER_PROMPT_ID
 
-    def test_get_prompt_for_domain_incident_raises(self):
-        from src.utils.domain_registry import DomainNotImplementedError
+    def test_get_prompt_for_domain_incident_works_after_d2(self):
         from src.utils.extraction_prompts import get_prompt_for_domain
-        with pytest.raises(DomainNotImplementedError):
-            get_prompt_for_domain("incident_report")
+        prompt = get_prompt_for_domain("incident_report")
+        assert prompt.document_domain == "incident_report"
 
 
 # ---------------------------------------------------------------------------
@@ -314,11 +319,11 @@ class TestDomainSchemaRegistry:
         model = build_fields_for_domain("cisa_advisory", raw)
         assert model.advisory_id == "AA24-001A"
 
-    def test_build_fields_for_domain_incident_still_raises(self):
+    def test_build_fields_for_domain_incident_works_after_d2(self):
         from src.schemas.domain_schema_registry import build_fields_for_domain
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            build_fields_for_domain("incident_report", {})
+        from src.schemas.silver_schema import IncidentReportFields
+        model = build_fields_for_domain("incident_report", {})
+        assert isinstance(model, IncidentReportFields)
 
     def test_build_fields_for_domain_fda_still_works(self):
         from src.schemas.domain_schema_registry import build_fields_for_domain
@@ -628,7 +633,7 @@ class TestAssembleCISASilverRecord:
 
 
 class TestSelectExtractor:
-    """D-1: select_extractor dispatches CISA correctly; incident still raises."""
+    """D-1: select_extractor dispatches CISA correctly; D-2: incident also dispatches."""
 
     def test_select_extractor_cisa(self):
         from src.pipelines.extract_silver import LocalCISAAdvisoryExtractor, select_extractor
@@ -640,11 +645,10 @@ class TestSelectExtractor:
         assert isinstance(select_extractor("fda_warning_letter"), LocalFDAWarningLetterExtractor)
         assert isinstance(select_extractor(None), LocalFDAWarningLetterExtractor)
 
-    def test_select_extractor_incident_raises(self):
-        from src.pipelines.extract_silver import select_extractor
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            select_extractor("incident_report")
+    def test_select_extractor_incident_works_after_d2(self):
+        from src.pipelines.extract_silver import LocalIncidentReportExtractor, select_extractor
+        extractor = select_extractor("incident_report")
+        assert isinstance(extractor, LocalIncidentReportExtractor)
 
     def test_select_extractor_unregistered_raises(self):
         from src.pipelines.extract_silver import select_extractor
@@ -749,7 +753,7 @@ class TestLocalCISAAdvisoryClassifier:
 
 
 class TestSelectClassifier:
-    """D-1: select_classifier dispatches CISA correctly; incident still raises."""
+    """D-1: select_classifier dispatches CISA correctly; D-2: incident also dispatches."""
 
     def test_select_classifier_cisa(self):
         from src.pipelines.classify_gold import LocalCISAAdvisoryClassifier, select_classifier
@@ -761,11 +765,10 @@ class TestSelectClassifier:
         assert isinstance(select_classifier("fda_warning_letter"), LocalFDAWarningLetterClassifier)
         assert isinstance(select_classifier(None), LocalFDAWarningLetterClassifier)
 
-    def test_select_classifier_incident_raises(self):
-        from src.pipelines.classify_gold import select_classifier
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            select_classifier("incident_report")
+    def test_select_classifier_incident_works_after_d2(self):
+        from src.pipelines.classify_gold import LocalIncidentReportClassifier, select_classifier
+        classifier = select_classifier("incident_report")
+        assert isinstance(classifier, LocalIncidentReportClassifier)
 
     def test_select_classifier_unregistered_raises(self):
         from src.pipelines.classify_gold import select_classifier
@@ -802,29 +805,28 @@ class TestClassificationTaxonomy:
         from src.utils.classification_taxonomy import resolve_routing_label
         assert resolve_routing_label("fda_warning_letter") == "regulatory_review"
 
-    def test_resolve_routing_label_incident_quarantine(self):
-        """incident_report is not in V1_ROUTING_MAP yet — must fall through to quarantine."""
+    def test_resolve_routing_label_incident_routes_to_incident_management_after_d2(self):
+        """D-2: incident_report is in V1_ROUTING_MAP and routes to incident_management."""
         from src.utils.classification_taxonomy import resolve_routing_label
-        assert resolve_routing_label("incident_report") == "quarantine"
+        assert resolve_routing_label("incident_report") == "incident_management"
 
     def test_is_domain_executable_cisa_true(self):
         from src.utils.classification_taxonomy import is_domain_executable
         assert is_domain_executable("cisa_advisory") is True
 
-    def test_is_domain_executable_incident_false(self):
+    def test_is_domain_executable_incident_true_after_d2(self):
         from src.utils.classification_taxonomy import is_domain_executable
-        assert is_domain_executable("incident_report") is False
+        assert is_domain_executable("incident_report") is True
 
     def test_resolve_routing_label_for_domain_cisa(self):
         from src.utils.classification_taxonomy import resolve_routing_label_for_domain
         result = resolve_routing_label_for_domain("cisa_advisory", "cisa_advisory")
         assert result == "security_ops"
 
-    def test_resolve_routing_label_for_domain_incident_raises(self):
+    def test_resolve_routing_label_for_domain_incident_resolves_after_d2(self):
         from src.utils.classification_taxonomy import resolve_routing_label_for_domain
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            resolve_routing_label_for_domain("incident_report", "incident_report")
+        result = resolve_routing_label_for_domain("incident_report", "incident_report")
+        assert result == "incident_management"
 
     def test_security_ops_in_all_routing_labels(self):
         from src.utils.classification_taxonomy import ALL_ROUTING_LABELS
@@ -1057,51 +1059,53 @@ class TestFDARegressionSafety:
 
 
 # ---------------------------------------------------------------------------
-# Incident domain: still non-executable
+# Incident domain: active after D-2
 # ---------------------------------------------------------------------------
 
 
-class TestIncidentDomainNonExecutable:
-    """D-2: incident_report must remain non-executable through D-1."""
+class TestIncidentDomainActiveAfterD2:
+    """D-2: incident_report is now ACTIVE and fully executable.
 
-    def test_incident_domain_planned(self):
+    These tests confirm the D-2 graduation: incident_report joined FDA and CISA
+    as a fully routable, extractable, classifiable domain. This replaces the
+    previous D-1-era "non-executable guard" tests.
+    """
+
+    def test_incident_domain_active(self):
         from src.utils.domain_registry import DOMAIN_REGISTRY, DomainStatus
-        assert DOMAIN_REGISTRY["incident_report"].status == DomainStatus.PLANNED
+        assert DOMAIN_REGISTRY["incident_report"].status == DomainStatus.ACTIVE
 
-    def test_incident_extractor_raises(self):
-        from src.pipelines.extract_silver import select_extractor
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            select_extractor("incident_report")
+    def test_incident_extractor_works(self):
+        from src.pipelines.extract_silver import LocalIncidentReportExtractor, select_extractor
+        extractor = select_extractor("incident_report")
+        assert isinstance(extractor, LocalIncidentReportExtractor)
 
-    def test_incident_classifier_raises(self):
-        from src.pipelines.classify_gold import select_classifier
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            select_classifier("incident_report")
+    def test_incident_classifier_works(self):
+        from src.pipelines.classify_gold import LocalIncidentReportClassifier, select_classifier
+        classifier = select_classifier("incident_report")
+        assert isinstance(classifier, LocalIncidentReportClassifier)
 
-    def test_incident_prompt_raises(self):
-        from src.utils.domain_registry import DomainNotImplementedError
+    def test_incident_prompt_retrievable(self):
         from src.utils.extraction_prompts import get_prompt_for_domain
-        with pytest.raises(DomainNotImplementedError):
-            get_prompt_for_domain("incident_report")
+        prompt = get_prompt_for_domain("incident_report")
+        assert prompt.document_domain == "incident_report"
 
-    def test_incident_schema_registry_raises(self):
+    def test_incident_schema_registry_works(self):
         from src.schemas.domain_schema_registry import build_fields_for_domain
-        from src.utils.domain_registry import DomainNotImplementedError
-        with pytest.raises(DomainNotImplementedError):
-            build_fields_for_domain("incident_report", {})
+        from src.schemas.silver_schema import IncidentReportFields
+        model = build_fields_for_domain("incident_report", {})
+        assert isinstance(model, IncidentReportFields)
 
-    def test_incident_routing_falls_to_quarantine(self):
-        """incident_report is not in V1_ROUTING_MAP — must quarantine until D-2."""
+    def test_incident_routing_resolves_to_incident_management(self):
+        """D-2: incident_report is now in V1_ROUTING_MAP."""
         from src.utils.classification_taxonomy import resolve_routing_label
-        assert resolve_routing_label("incident_report") == "quarantine"
+        assert resolve_routing_label("incident_report") == "incident_management"
 
-    def test_incident_require_active_domain_raises(self):
-        from src.utils.domain_registry import DomainNotImplementedError, require_active_domain
-        with pytest.raises(DomainNotImplementedError):
-            require_active_domain("incident_report")
+    def test_incident_require_active_domain_succeeds(self):
+        from src.utils.domain_registry import DomainStatus, require_active_domain
+        domain = require_active_domain("incident_report")
+        assert domain.status == DomainStatus.ACTIVE
 
-    def test_incident_is_not_domain_executable(self):
+    def test_incident_is_domain_executable(self):
         from src.utils.classification_taxonomy import is_domain_executable
-        assert is_domain_executable("incident_report") is False
+        assert is_domain_executable("incident_report") is True

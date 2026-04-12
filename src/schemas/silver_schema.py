@@ -6,6 +6,7 @@ Records carry full lineage back to the Bronze parse record and the source docume
 
 V1 implements the FDA warning letter field set only.
 D-1 adds the CISA advisory field set as the second executable domain.
+D-2 adds the incident report field set as the third executable domain.
 Additional domain field sets are planned for V2+ and should be added as
 separate Pydantic models following the same pattern.
 
@@ -193,6 +194,81 @@ CISA_ALL_FIELDS: List[str] = CISA_REQUIRED_FIELDS + CISA_OPTIONAL_FIELDS
 
 
 # ---------------------------------------------------------------------------
+# Incident Report — D-2 extracted fields
+# ---------------------------------------------------------------------------
+
+
+class IncidentReportFields(BaseModel):
+    """
+    Structured fields extracted from an incident report or post-mortem.
+
+    Required fields must be present for validation_status = 'valid'.
+    Optional fields may be absent without causing an 'invalid' status.
+
+    Authoritative field contract: docs/data-contracts.md § Incident Report Fields
+    Phase D-2 domain implementation.
+    """
+
+    # Required
+    incident_date: Optional[str] = Field(
+        default=None,
+        description="Date the incident occurred. ISO 8601 date string (YYYY-MM-DD) or human-readable.",
+    )
+    incident_type: Optional[str] = Field(
+        default=None,
+        description="Category or type of the incident (e.g., 'outage', 'security breach', 'data loss').",
+    )
+    severity: Optional[str] = Field(
+        default=None,
+        description="Severity classification of the incident (e.g., 'Critical', 'High', 'Medium', 'Low').",
+    )
+    status: Optional[str] = Field(
+        default=None,
+        description="Current status of the incident: 'open', 'resolved', or 'under_review'.",
+    )
+
+    # Optional
+    incident_id: Optional[str] = Field(
+        default=None,
+        description="Unique identifier or ticket number for the incident (e.g., 'INC-2025-001').",
+    )
+    affected_systems: Optional[List[str]] = Field(
+        default=None,
+        description="List of systems, services, or components affected by the incident.",
+    )
+    root_cause: Optional[str] = Field(
+        default=None,
+        description="Root cause of the incident as determined by investigation.",
+    )
+    resolution_summary: Optional[str] = Field(
+        default=None,
+        description="Brief description of how the incident was resolved or mitigated.",
+    )
+    reported_by: Optional[str] = Field(
+        default=None,
+        description="Name or team that reported or filed the incident.",
+    )
+
+
+INCIDENT_REQUIRED_FIELDS: List[str] = [
+    "incident_date",
+    "incident_type",
+    "severity",
+    "status",
+]
+
+INCIDENT_OPTIONAL_FIELDS: List[str] = [
+    "incident_id",
+    "affected_systems",
+    "root_cause",
+    "resolution_summary",
+    "reported_by",
+]
+
+INCIDENT_ALL_FIELDS: List[str] = INCIDENT_REQUIRED_FIELDS + INCIDENT_OPTIONAL_FIELDS
+
+
+# ---------------------------------------------------------------------------
 # Coverage calculation helpers
 # ---------------------------------------------------------------------------
 
@@ -229,6 +305,23 @@ def compute_cisa_field_coverage(fields: CISAAdvisoryFields) -> float:
         and fields_dict.get(f) != ""
     )
     return round(populated / len(CISA_ALL_FIELDS), 4) if CISA_ALL_FIELDS else 0.0
+
+
+def compute_incident_field_coverage(fields: IncidentReportFields) -> float:
+    """
+    Return the fraction of incident report fields that are non-null.
+
+    Coverage is computed over all expected fields (required + optional).
+    Returns a float in [0.0, 1.0].
+    """
+    fields_dict = fields.model_dump()
+    populated = sum(
+        1 for f in INCIDENT_ALL_FIELDS
+        if fields_dict.get(f) is not None
+        and fields_dict.get(f) != []
+        and fields_dict.get(f) != ""
+    )
+    return round(populated / len(INCIDENT_ALL_FIELDS), 4) if INCIDENT_ALL_FIELDS else 0.0
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2 / D-0 / D-1)
+extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2 / D-0 / D-1 / D-2)
 
 This module contains prompt templates for structured field extraction.
 These prompts are designed for future integration with Databricks ai_extract.
@@ -20,13 +20,17 @@ The ID written into Silver records must match the constant defined here.
 D-0 Multi-domain framework additions:
     get_prompt_for_domain(domain_key) routes prompt selection through the domain
     registry. For ACTIVE domains, it returns the registered ExtractionPrompt.
-    For PLANNED domains (incident_report), it raises DomainNotImplementedError.
+    For PLANNED domains, it raises DomainNotImplementedError.
     FDA behavior is unchanged.
 
 D-1 CISA advisory prompt:
     CISA_ADVISORY_PROMPT_ID and CISA_ADVISORY_PROMPT are now registered.
     get_prompt_for_domain("cisa_advisory") returns the CISA prompt.
-    incident_report remains planned (D-2).
+
+D-2 Incident report prompt:
+    INCIDENT_REPORT_PROMPT_ID and INCIDENT_REPORT_PROMPT are now registered.
+    get_prompt_for_domain("incident_report") returns the incident prompt.
+    All three domains are now ACTIVE and prompt-registered.
 """
 
 from __future__ import annotations
@@ -151,12 +155,70 @@ Respond with only the JSON object. Do not include any explanation or preamble.
 
 
 # ---------------------------------------------------------------------------
+# Incident Report — D-2 extraction prompt
+# ---------------------------------------------------------------------------
+
+INCIDENT_REPORT_PROMPT_ID = "incident_report_extract_v1"
+
+INCIDENT_REPORT_PROMPT = ExtractionPrompt(
+    prompt_id=INCIDENT_REPORT_PROMPT_ID,
+    document_domain="incident_report",
+    description=(
+        "Extract structured fields from an incident report or post-mortem document. "
+        "Returns a JSON object with required and optional fields as defined in "
+        "the incident report Silver schema (docs/data-contracts.md)."
+    ),
+    template="""You are an incident management document extraction assistant.
+
+Extract the following structured fields from the incident report text provided below.
+Return a valid JSON object. Use null for any field you cannot find in the text.
+Do not infer or hallucinate values — extract only what is explicitly stated.
+
+Fields to extract:
+
+REQUIRED:
+- incident_date (string): The date the incident occurred in YYYY-MM-DD format.
+  Look for 'Date:', 'Incident Date:', 'Occurred:', or a date near the top.
+  If only a partial date is available, use the closest ISO 8601 representation.
+- incident_type (string): The category or type of incident
+  (e.g., 'outage', 'security breach', 'data loss', 'performance degradation',
+  'network failure', 'unauthorized access'). Extract the explicit type label
+  or the most descriptive phrase used in the document.
+- severity (string): The severity level of the incident. Look for an explicit
+  severity label such as 'Critical', 'High', 'Medium', or 'Low'. If a P1/P2/P3/P4
+  priority system is used, map: P1=Critical, P2=High, P3=Medium, P4=Low.
+- status (string): The current status of the incident. Must be exactly one of:
+  'open', 'resolved', or 'under_review'. Look for 'Status:', 'Resolution Status:',
+  or the overall disposition of the incident in the document.
+
+OPTIONAL:
+- incident_id (string): The unique identifier or ticket number for the incident
+  (e.g., 'INC-2025-001', 'INC-20250314-001', ticket IDs, or reference numbers).
+- affected_systems (array of strings): List of systems, services, or components
+  explicitly named as affected by the incident (e.g., ['Payment API', 'Database cluster',
+  'CDN edge nodes']). Extract one entry per distinct system or service.
+- root_cause (string): The root cause of the incident as stated in the document.
+  If root cause analysis is still ongoing, extract any preliminary findings.
+- resolution_summary (string): A concise description of how the incident was resolved
+  or mitigated. Include the key corrective actions taken.
+- reported_by (string): The name, team, or system that first reported or filed the incident.
+
+Document text:
+{parsed_text}
+
+Respond with only the JSON object. Do not include any explanation or preamble.
+""",
+)
+
+
+# ---------------------------------------------------------------------------
 # Prompt registry
 # ---------------------------------------------------------------------------
 
 _PROMPT_REGISTRY: dict[str, ExtractionPrompt] = {
     FDA_WARNING_LETTER_PROMPT_ID: FDA_WARNING_LETTER_PROMPT,
     CISA_ADVISORY_PROMPT_ID: CISA_ADVISORY_PROMPT,
+    INCIDENT_REPORT_PROMPT_ID: INCIDENT_REPORT_PROMPT,
 }
 
 
@@ -188,9 +250,11 @@ def get_prompt_for_domain(domain_key: str) -> ExtractionPrompt:
     Return the ExtractionPrompt for the given domain_key via the domain registry.
 
     For ACTIVE domains with a registered extraction_prompt_id: returns the prompt.
-    For PLANNED domains (cisa_advisory, incident_report): raises
-        DomainNotImplementedError — these prompts will be authored in D-1 / D-2.
+    For PLANNED domains: raises DomainNotImplementedError.
     For unknown domain keys: raises DomainNotFoundError.
+
+    All three implemented domains (fda_warning_letter, cisa_advisory,
+    incident_report) are ACTIVE and return their registered prompts.
 
     FDA warning letter example:
         get_prompt_for_domain("fda_warning_letter")

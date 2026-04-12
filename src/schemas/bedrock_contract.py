@@ -1,5 +1,5 @@
 """
-src/schemas/bedrock_contract.py — B-1 Bedrock handoff contract validation.
+src/schemas/bedrock_contract.py — B-1 / D-1 / D-2 Bedrock handoff contract validation.
 
 Validates Gold export_payload dicts against the B-0 contract requirements
 documented in docs/bedrock-handoff-contract.md.
@@ -8,10 +8,15 @@ B-1 purpose: convert the B-0 contract from documentation into repo-enforced,
 testable behavior. This module is the authoritative validator for Gold export
 payload structural compliance.
 
+D-1 adds: CISA advisory extracted_fields validation.
+D-2 adds: incident report extracted_fields validation.
+
 Scope:
 - Validates required vs optional field presence per B-0 §4.1, §4.2, §4.3
 - Validates provenance completeness per B-0 §4.3
 - Validates required FDA warning letter extracted fields per B-0 §4.4
+- Validates required CISA advisory extracted fields (D-1)
+- Validates required incident report extracted fields (D-2)
 - Validates quarantine record shape per B-0 §6
 - Does NOT call any Bedrock SDK, AWS service, or live integration endpoint
 
@@ -84,6 +89,15 @@ REQUIRED_CISA_EXTRACTED_FIELDS: tuple[str, ...] = (
     "published_date",
     "severity_level",
     "remediation_available",
+)
+
+# Required extracted_fields for document_type = 'incident_report' (D-2).
+# Mirrors docs/data-contracts.md § Incident Report Fields (required set).
+REQUIRED_INCIDENT_EXTRACTED_FIELDS: tuple[str, ...] = (
+    "incident_date",
+    "incident_type",
+    "severity",
+    "status",
 )
 
 # Document types that are valid for a handoff unit (not 'unknown').
@@ -216,6 +230,9 @@ def validate_export_payload(payload: Any) -> ContractValidationResult:
             elif document_type == "cisa_advisory":
                 # D-1 CISA advisory field validation
                 errors.extend(_validate_cisa_extracted_fields(extracted_fields))
+            elif document_type == "incident_report":
+                # D-2 incident report field validation
+                errors.extend(_validate_incident_extracted_fields(extracted_fields))
 
     # --- parsed_text_excerpt: must be a string ---
     excerpt = payload["parsed_text_excerpt"]
@@ -381,6 +398,38 @@ def _validate_fda_extracted_fields(extracted_fields: dict) -> list[str]:
             if not isinstance(value, bool):
                 errors.append(
                     "'corrective_action_requested' must be a boolean"
+                )
+
+    return errors
+
+
+def _validate_incident_extracted_fields(extracted_fields: dict) -> list[str]:
+    """
+    Validate required extracted_fields for document_type = 'incident_report' (D-2).
+
+    Required incident fields: incident_date, incident_type, severity, status.
+    status must be one of: 'open', 'resolved', 'under_review'.
+    """
+    errors: list[str] = []
+    valid_statuses = {"open", "resolved", "under_review"}
+
+    for req_field in REQUIRED_INCIDENT_EXTRACTED_FIELDS:
+        if req_field not in extracted_fields:
+            errors.append(
+                f"Missing required incident report extracted_field: '{req_field}'"
+            )
+            continue
+
+        value = extracted_fields[req_field]
+
+        if value is None:
+            errors.append(
+                f"Required incident report extracted_field '{req_field}' is null"
+            )
+        elif req_field == "status":
+            if value not in valid_statuses:
+                errors.append(
+                    f"'status' must be one of {sorted(valid_statuses)}; got '{value}'"
                 )
 
     return errors

@@ -99,6 +99,7 @@ from src.schemas.gold_schema import (
 from src.utils.classification_taxonomy import (
     DOCUMENT_TYPE_CISA_ADVISORY,
     DOCUMENT_TYPE_FDA_WARNING_LETTER,
+    DOCUMENT_TYPE_INCIDENT_REPORT,
     DOCUMENT_TYPE_UNKNOWN,
     ROUTING_LABEL_QUARANTINE,
     resolve_routing_label,
@@ -403,6 +404,102 @@ class LocalCISAAdvisoryClassifier(DocumentClassifier):
 
 
 # ---------------------------------------------------------------------------
+# Local deterministic incident report classifier (D-2)
+# ---------------------------------------------------------------------------
+
+
+class LocalIncidentReportClassifier(DocumentClassifier):
+    """
+    Deterministic rule-based classifier for incident reports and post-mortems.
+
+    Classification logic is based on explicit, readable heuristics:
+      1. document_class_hint field from Silver
+      2. Presence and shape of incident-specific extracted fields
+         (incident_date, incident_type, severity, status, affected_systems)
+      3. Silver validation_status
+      4. Silver field_coverage_pct
+
+    Confidence scoring mirrors the FDA/CISA classifier pattern:
+      - Base confidence: 0.60 if at least 2 positive signals present
+      - +0.20 if document_class_hint == 'incident_report'
+      - +0.10 if validation_status is 'valid'
+      - +0.10 if field_coverage_pct >= 0.70
+      - Maximum: 1.0
+
+    D-2 active domain. routing_label = 'incident_management'.
+    """
+
+    _MODEL_ID = LOCAL_CLASSIFICATION_MODEL
+
+    @property
+    def model_id(self) -> str:
+        return self._MODEL_ID
+
+    def classify(self, silver: dict) -> dict:
+        extracted_fields = silver.get("extracted_fields") or {}
+        class_hint = silver.get("document_class_hint") or ""
+        validation_status = silver.get("validation_status") or ""
+        coverage = silver.get("field_coverage_pct") or 0.0
+
+        signals = []
+
+        if class_hint == "incident_report":
+            signals.append("class_hint_match")
+
+        # Incident-specific field presence checks
+        incident_fields = {
+            "incident_date": extracted_fields.get("incident_date"),
+            "incident_type": extracted_fields.get("incident_type"),
+            "severity": extracted_fields.get("severity"),
+            "status": extracted_fields.get("status"),
+            "affected_systems": extracted_fields.get("affected_systems"),
+        }
+        populated_incident_fields = [
+            k for k, v in incident_fields.items()
+            if v is not None and v != [] and v != ""
+        ]
+        if len(populated_incident_fields) >= 2:
+            signals.append("incident_fields_populated")
+
+        if validation_status in ("valid", "partial"):
+            signals.append("valid_or_partial_extraction")
+
+        if coverage >= 0.50:
+            signals.append("adequate_coverage")
+
+        if len(signals) >= 2:
+            document_type_label = DOCUMENT_TYPE_INCIDENT_REPORT
+            confidence = self._compute_confidence(
+                class_hint=class_hint,
+                validation_status=validation_status,
+                coverage=coverage,
+            )
+        else:
+            document_type_label = DOCUMENT_TYPE_UNKNOWN
+            confidence = 0.0
+
+        return {
+            "document_type_label": document_type_label,
+            "classification_confidence": confidence,
+        }
+
+    def _compute_confidence(
+        self,
+        class_hint: str,
+        validation_status: str,
+        coverage: float,
+    ) -> float:
+        score = 0.60
+        if class_hint == "incident_report":
+            score += 0.20
+        if validation_status == "valid":
+            score += 0.10
+        if coverage >= 0.70:
+            score += 0.10
+        return round(min(score, 1.0), 4)
+
+
+# ---------------------------------------------------------------------------
 # Databricks ai_classify adapter (placeholder)
 # ---------------------------------------------------------------------------
 
@@ -445,14 +542,13 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
     """
     Return the appropriate classifier for the given document class.
 
-    Domain-registry routing (D-0 framework, D-1 CISA active):
+    Domain-registry routing (D-0 framework, D-1 CISA active, D-2 incident active):
       - None or 'fda_warning_letter' → LocalFDAWarningLetterClassifier (ACTIVE)
       - 'cisa_advisory'              → LocalCISAAdvisoryClassifier (ACTIVE, D-1)
-      - 'incident_report'            → DomainNotImplementedError (PLANNED, D-2)
+      - 'incident_report'            → LocalIncidentReportClassifier (ACTIVE, D-2)
       - Unregistered domain keys     → raises ValueError with registry context
 
-    FDA behavior is preserved exactly. CISA is now the second active domain.
-    Incident report remains planned until D-2.
+    FDA and CISA behavior is preserved exactly.
     """
     from src.utils.domain_registry import (
         DOMAIN_REGISTRY,
@@ -473,6 +569,10 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
     if effective_key == "cisa_advisory":
         return LocalCISAAdvisoryClassifier()
 
+    # Incident report — ACTIVE, D-2 classifier
+    if effective_key == "incident_report":
+        return LocalIncidentReportClassifier()
+
     # Check registry status for all other keys
     if effective_key not in DOMAIN_REGISTRY:
         raise ValueError(
@@ -481,7 +581,6 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
         )
 
     if not is_domain_active(effective_key):
-        # Registered but PLANNED — clear error before D-2 implements it
         raise DomainNotImplementedError(effective_key, "classification")
 
     raise ValueError(
