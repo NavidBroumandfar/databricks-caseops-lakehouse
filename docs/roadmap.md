@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 is not started.** V2 is formally defined after V1 closeout (April 2026). The phases below are planned and not yet implemented. No V2 code, infrastructure, or live integration exists.
+**V2 has started. Phase C is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 is the next phase not yet started.
 
 ### V2 Boundary Rules
 
@@ -636,7 +636,7 @@ V1 is complete as of April 2026. This means:
 |---|---|---|---|
 | C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
 | C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
-| C-2 | Runtime Integration Validation | 🔲 Not Started | End-to-end delivery validation: share query, event row, manifest integrity, payload fetch |
+| C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 | D-0 | Multi-Domain Framework | 🔲 Not Started | Per-domain prompt routing; domain registry; multi-domain classification and routing |
 | D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
 | D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
@@ -648,7 +648,7 @@ V1 is complete as of April 2026. This means:
 
 ## Phase C — Live Handoff Integration and Export Delivery
 
-**Status**: C-0 design complete. C-1 complete. C-2 not started.
+**Status**: Complete. C-0, C-1, and C-2 are all complete. Phase D-0 is next.
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
 

@@ -57,7 +57,7 @@ When starting any task in this repository, always read files in this exact order
 
 **V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
 
-**V2 HAS STARTED. PHASES C-1 AND C-2 ARE COMPLETE.** C-0 (design), C-1 (producer-side implementation), and C-2 (runtime validation layer) are complete. C-2 added a bounded 15-check delivery-layer validation layer with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary. The producer-side validation is implemented; live Delta Share provisioning in a Databricks workspace and the `validated` status are achievable after running the C-2 runbook in `docs/delivery-runtime-validation.md`. Do not claim live Delta Sharing is provisioned — it is `not_provisioned` by default. Do not reopen V1.
+**V2 HAS STARTED. PHASE C IS COMPLETE. PHASE D-0 IS NEXT.** C-0 (design), C-1 (producer-side implementation), and C-2 (producer-side validation layer) are all complete. C-2 added a bounded 15-check delivery-layer validation layer with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary. Do not claim live Delta Sharing is provisioned — it is `not_provisioned` by default. Do not reopen V1. Phase D-0 is the next unstarted phase.
 
 **Phases A-0 through B-6, C-1, and C-2 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
@@ -67,7 +67,7 @@ When starting any task in this repository, always read files in this exact order
 - A bounded 15-check delivery-layer runtime validation layer (C-2) with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary
 - 747 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, and delivery-layer runtime validation
 
-**V2 has started. Phase C-1 (export delivery implementation) is complete. Phase C-2 (runtime validation layer) is complete.** Live Delta Share provisioning in a Databricks workspace completes the runtime `validated` state — see `docs/delivery-runtime-validation.md`.
+**V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phase D-0 is next.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+

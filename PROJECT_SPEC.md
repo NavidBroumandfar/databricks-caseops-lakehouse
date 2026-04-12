@@ -367,7 +367,7 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ## V2 Scope
 
-**V2 has not started.** V2 is formally defined after V1 closeout (April 2026). The phases below describe what V2 will deliver when implementation begins. No V2 code, infrastructure, or live integration exists yet.
+**V2 has started. Phase C is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 is the next phase not yet started. The phases below reflect the current delivery state.
 
 ### V2 Objective
 
@@ -410,7 +410,7 @@ This boundary remains explicit and non-negotiable in V2:
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps. V1 B-phases prepared and hardened the export boundary. V2-C executes across that boundary — delivering to a real Bedrock consumer using a selected delivery protocol.
 
-**Status**: C-0 design complete. C-1 complete. C-2 complete (producer-side validation layer implemented; runtime end-to-end validation pending manual workspace provisioning).
+**Status**: Complete. C-0 (design), C-1 (implementation), and C-2 (producer-side validation layer) are all complete. Phase D-0 is next.
 
 Subphases:
 - **C-0** — Integration delivery mechanism design and selection. **Complete.** Decision: Delta Sharing as primary mechanism, augmenting (not replacing) the V1 file export path. See [`docs/live-handoff-design.md`](./docs/live-handoff-design.md) for the full design record.

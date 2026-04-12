@@ -429,7 +429,7 @@ delta_share_handoff.py        → defines share config → generates SQL templat
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Human review loop | Not implemented | Disagreement queue surfaced to a review tool |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
-| Live Bedrock integration | File export V1 | Delta Sharing or API push |
+| Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps; Phase D multi-domain expansion |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.
