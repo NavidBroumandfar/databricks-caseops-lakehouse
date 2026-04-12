@@ -367,7 +367,7 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 ## V2 Scope
 
-**V2 has started. Phase C is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 is the next phase not yet started. The phases below reflect the current delivery state.
+**V2 has started. Phase C is complete. Phase D-0 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0: design, C-1: implementation, C-2: producer-side validation layer) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 is the next phase not yet started. The phases below reflect the current delivery state.
 
 ### V2 Objective
 
@@ -426,7 +426,7 @@ Subphases:
 **Status**: Not started.
 
 Subphases:
-- **D-0** — Multi-domain framework: per-domain prompt routing, domain registry, multi-domain classification and routing table extension
+- **D-0** — Multi-domain framework. **Complete (April 2026).** Domain registry (`src/utils/domain_registry.py`), per-domain prompt routing (`extraction_prompts.py`), domain schema registry (`src/schemas/domain_schema_registry.py`), multi-domain classification/routing framework (`classification_taxonomy.py`). FDA remains the only fully executable domain. CISA and incident are registered as `planned`. 123 new tests; 870 total.
 - **D-1** — CISA advisory domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `cisa_advisory` classification label, `security_ops` routing, evaluation pass
 - **D-2** — Incident report domain: extraction schema (from `docs/data-contracts.md` § 3 draft), `ai_extract` prompt template, `incident_report` classification label, `incident_management` routing, evaluation pass
 

@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), a local-safe bundle integrity and consistency validation layer (B-6), a Delta Sharing-oriented delivery augmentation layer with per-batch delivery events (C-1), and a bounded runtime validation and observability layer with 15 explicit checks and an honest 4-state integration health model (C-2).
+**V1 is complete. V2 Phase C is complete. V2 Phase D-0 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), a local-safe bundle integrity and consistency validation layer (B-6), a Delta Sharing-oriented delivery augmentation layer with per-batch delivery events (C-1), a bounded runtime validation and observability layer with 15 explicit checks and an honest 4-state integration health model (C-2), and the D-0 multi-domain framework layer with domain registry, per-domain prompt routing, domain schema registry, and multi-domain classification/routing framework.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation). Phase D-0 is next.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation). Phase D-0 is complete (multi-domain framework). Phase D-1 is next.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -261,7 +261,20 @@ The `--delivery-dir` flag activates C-1 delivery augmentation: export payloads a
 
 Integration health states (C-2): `not_provisioned` (share designed, not yet in Unity Catalog — honest default), `partially_validated` (producer-side correct, share provisioned, no live queries run), `validated` (confirmed in personal Databricks workspace), `failed` (schema error, ID mismatch, or parse failure).
 
-Total test count: **747 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, and delivery-layer runtime validation.
+**Phase D-0 — Multi-Domain Framework** is complete. D-0 establishes the multi-domain framework layer as the architectural foundation for D-1 (CISA advisories) and D-2 (incident reports). FDA warning letters remain the only fully executable domain after D-0.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Domain registry | `src/utils/domain_registry.py` | ✅ New D-0 |
+| Domain schema registry | `src/schemas/domain_schema_registry.py` | ✅ New D-0 |
+| Prompt routing framework | `src/utils/extraction_prompts.py` (`get_prompt_for_domain`) | ✅ Updated D-0 |
+| Taxonomy D-0 extensions | `src/utils/classification_taxonomy.py` (`DOMAIN_ROUTING_MAP`, `is_domain_executable`, `resolve_routing_label_for_domain`) | ✅ Updated D-0 |
+| Pipeline domain routing | `extract_silver.py`, `classify_gold.py` (`select_extractor`, `select_classifier`) | ✅ Updated D-0 |
+| D-0 test suite | `tests/test_domain_registry.py` (123 tests) | ✅ New D-0 |
+
+D-0 domain state: `fda_warning_letter` → `active`; `cisa_advisory` → `planned` (D-1); `incident_report` → `planned` (D-2). Planned domains are structurally registered but operations on them raise `DomainNotImplementedError`.
+
+Total test count: **870 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, and D-0 multi-domain framework.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 

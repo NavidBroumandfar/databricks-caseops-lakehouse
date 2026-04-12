@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 has started. Phase C is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 is the next phase not yet started.
+**V2 has started. Phase C is complete. Phase D-0 is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 is the next phase not yet started.
 
 ### V2 Boundary Rules
 
@@ -637,7 +637,7 @@ V1 is complete as of April 2026. This means:
 | C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
 | C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
 | C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
-| D-0 | Multi-Domain Framework | 🔲 Not Started | Per-domain prompt routing; domain registry; multi-domain classification and routing |
+| D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
 | D-1 | CISA Advisory Domain | 🔲 Not Started | CISA advisory schema, extraction, classification, routing; activate `security_ops` label |
 | D-2 | Incident Report Domain | 🔲 Not Started | Incident report schema, extraction, classification, routing; activate `incident_management` label |
 | E-0 | Human Review and Reprocessing | 🔲 Not Started | Human review queue for quarantined records; reprocessing-on-failure path |
@@ -766,9 +766,45 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ### Phase D-0 — Multi-Domain Framework
 
-**Status**: Not started.
+**Status**: Complete (April 2026).
 
-**Goal**: Extend the extraction, classification, and routing framework to support multiple document domains in a single pipeline run. Includes: domain registry, per-domain prompt selection, per-domain schema validation, and multi-domain routing table.
+**Goal**: Establish the multi-domain framework layer that removes single-domain hardcoding and provides clean architectural homes for D-1 (CISA) and D-2 (incident) domain expansion. FDA warning letters remain the only fully executable domain after D-0.
+
+**What D-0 delivers:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Domain registry | `src/utils/domain_registry.py` | ✅ New D-0 | `DOMAIN_REGISTRY`, `DomainConfig`, `DomainStatus`, `get_domain`, `require_active_domain`, `is_domain_active` |
+| Domain schema registry | `src/schemas/domain_schema_registry.py` | ✅ New D-0 | Per-domain Silver schema families; `build_fields_for_domain()` routing; CISA/incident field contracts defined |
+| Prompt routing framework | `src/utils/extraction_prompts.py` | ✅ Updated D-0 | `get_prompt_for_domain(domain_key)` — domain-aware prompt selection; planned domains fail cleanly |
+| Taxonomy D-0 extensions | `src/utils/classification_taxonomy.py` | ✅ Updated D-0 | `DOMAIN_ROUTING_MAP`, `is_domain_executable()`, `resolve_routing_label_for_domain()` |
+| Extract silver D-0 routing | `src/pipelines/extract_silver.py` | ✅ Updated D-0 | `select_extractor()` uses domain registry; planned domains raise `DomainNotImplementedError` |
+| Classify gold D-0 routing | `src/pipelines/classify_gold.py` | ✅ Updated D-0 | `select_classifier()` uses domain registry; planned domains raise `DomainNotImplementedError` |
+| D-0 test suite | `tests/test_domain_registry.py` | ✅ New D-0 | 123 tests: registry integrity, FDA resolution, planned domain failures, prompt routing, schema routing, taxonomy extensions, no-accidental-activation guards |
+
+**D-0 framework state:**
+
+| Domain | Status | Extraction | Classification | Routing | Phase |
+|---|---|---|---|---|---|
+| `fda_warning_letter` | `active` | ✅ Implemented | ✅ Implemented | `regulatory_review` | V1 |
+| `cisa_advisory` | `planned` | 🔲 D-1 | 🔲 D-1 | `security_ops` | D-1 |
+| `incident_report` | `planned` | 🔲 D-2 | 🔲 D-2 | `incident_management` | D-2 |
+
+**What D-0 explicitly does NOT deliver:**
+- Full CISA advisory implementation (D-1)
+- Full incident report implementation (D-2)
+- Any change to the Bedrock boundary or delivery layer
+- Retrieval, RAG, or agent logic
+
+**Completion criteria met:**
+- ✅ Domain registry established as single source of truth for domain status
+- ✅ FDA is the only ACTIVE domain — behavior unchanged
+- ✅ CISA and incident are PLANNED — registered structurally, not executable
+- ✅ Prompt selection routes through domain registry
+- ✅ Schema branching has a clean architectural home
+- ✅ Classification/routing framework is structurally multi-domain-aware
+- ✅ All planned domain operations fail with explicit `DomainNotImplementedError`
+- ✅ 123 new tests; 870 total; zero regressions
 
 ---
 

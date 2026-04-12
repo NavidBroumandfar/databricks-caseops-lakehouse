@@ -1,5 +1,5 @@
 """
-extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2)
+extraction_prompts.py — Extraction prompt templates for Silver pipeline (Phase A-2 / D-0)
 
 This module contains prompt templates for structured field extraction.
 These prompts are designed for future integration with Databricks ai_extract.
@@ -16,6 +16,14 @@ versioned artifact so that:
 
 Prompt ID naming convention: <domain>_extract_v<N>
 The ID written into Silver records must match the constant defined here.
+
+D-0 Multi-domain framework additions:
+    get_prompt_for_domain(domain_key) routes prompt selection through the domain
+    registry. For ACTIVE domains, it returns the registered ExtractionPrompt.
+    For PLANNED domains (cisa_advisory, incident_report), it raises
+    DomainNotImplementedError — the prompt has not been authored yet.
+    FDA behavior is unchanged: get_prompt(FDA_WARNING_LETTER_PROMPT_ID) and
+    get_prompt_for_domain("fda_warning_letter") are equivalent.
 """
 
 from __future__ import annotations
@@ -112,3 +120,56 @@ def get_prompt(prompt_id: str) -> ExtractionPrompt:
 def list_prompt_ids() -> list[str]:
     """Return the list of registered prompt IDs."""
     return sorted(_PROMPT_REGISTRY.keys())
+
+
+# ---------------------------------------------------------------------------
+# Domain-aware prompt routing (D-0)
+# ---------------------------------------------------------------------------
+
+
+def get_prompt_for_domain(domain_key: str) -> ExtractionPrompt:
+    """
+    Return the ExtractionPrompt for the given domain_key via the domain registry.
+
+    For ACTIVE domains with a registered extraction_prompt_id: returns the prompt.
+    For PLANNED domains (cisa_advisory, incident_report): raises
+        DomainNotImplementedError — these prompts will be authored in D-1 / D-2.
+    For unknown domain keys: raises DomainNotFoundError.
+
+    FDA warning letter example:
+        get_prompt_for_domain("fda_warning_letter")
+        # Equivalent to: get_prompt(FDA_WARNING_LETTER_PROMPT_ID)
+
+    This function is the D-0 framework entry point for prompt selection.
+    Callers in extract_silver.py should prefer this over hardcoded prompt IDs
+    so that adding a new domain in D-1 / D-2 only requires:
+      1. Adding the prompt constant below
+      2. Registering it in DOMAIN_REGISTRY (extraction_prompt_id field)
+      3. No changes needed here
+
+    Raises
+    ------
+    DomainNotFoundError
+        If domain_key is not in DOMAIN_REGISTRY.
+    DomainNotImplementedError
+        If the domain is PLANNED (no prompt registered yet).
+    KeyError
+        If the domain is ACTIVE but its extraction_prompt_id is not in
+        _PROMPT_REGISTRY (indicates a misconfiguration — both must be kept
+        in sync).
+    """
+    from src.utils.domain_registry import (
+        DomainNotImplementedError,
+        DomainStatus,
+        get_domain,
+    )
+
+    domain = get_domain(domain_key)
+
+    if domain.status != DomainStatus.ACTIVE:
+        raise DomainNotImplementedError(domain_key, "prompt selection")
+
+    if domain.extraction_prompt_id is None:
+        raise DomainNotImplementedError(domain_key, "prompt selection (no prompt_id registered)")
+
+    return get_prompt(domain.extraction_prompt_id)

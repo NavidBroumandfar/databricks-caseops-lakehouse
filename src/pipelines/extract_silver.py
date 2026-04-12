@@ -1,5 +1,5 @@
 """
-extract_silver.py — Silver extraction pipeline (Phase A-2)
+extract_silver.py — Silver extraction pipeline (Phase A-2 / D-0)
 
 Reads Bronze JSON artifacts produced by ingest_bronze.py, extracts structured
 fields into Silver records, validates them against the Silver schema, and writes
@@ -8,6 +8,13 @@ one Silver JSON artifact per Bronze input record.
 Only Bronze records with parse_status != 'failed' are processed.
 Records that produce invalid or partial extractions are still written —
 no silent drops. All extraction outcomes are captured as Silver records.
+
+D-0 multi-domain framework:
+    select_extractor() now uses the domain registry to validate the requested
+    domain before dispatching to the extractor. ACTIVE domains are dispatched;
+    PLANNED domains (cisa_advisory, incident_report) raise DomainNotImplementedError.
+    FDA behavior is unchanged. Domain-aware prompt selection is available via
+    get_prompt_for_domain() in extraction_prompts.py.
 
 Usage:
     # Process all Bronze artifacts in the default directory
@@ -23,7 +30,7 @@ Outputs:
     output/silver/<extraction_id>.json  — one Silver record per processed Bronze record
 
 Authoritative contract: docs/data-contracts.md § Silver: Extraction Schema Contract
-Architecture context: ARCHITECTURE.md § Silver Layer
+Architecture context: ARCHITECTURE.md § Silver Layer / Multi-Domain Framework (D-0)
 """
 
 from __future__ import annotations
@@ -441,14 +448,46 @@ def select_extractor(document_class_hint: Optional[str]) -> FieldExtractor:
     """
     Return the appropriate field extractor for the given document class.
 
-    Currently only FDA warning letters are supported (V1 single domain).
-    Extend this function when adding new document domains in V2+.
+    D-0 domain-registry routing:
+      - None or 'fda_warning_letter' → LocalFDAWarningLetterExtractor (ACTIVE)
+      - 'cisa_advisory' / 'incident_report' → DomainNotImplementedError (PLANNED)
+      - Any other registered domain that is ACTIVE: would be dispatched here in D-1/D-2
+      - Unregistered domain keys → raises ValueError with registry context
+
+    FDA behavior is preserved exactly. The domain registry provides the authoritative
+    status check; extractor dispatch remains explicit and auditable.
     """
-    if document_class_hint == "fda_warning_letter" or document_class_hint is None:
+    from src.utils.domain_registry import (
+        DOMAIN_REGISTRY,
+        DomainNotImplementedError,
+        get_active_domains,
+        is_domain_active,
+    )
+
+    # Treat None as the default FDA domain (backward compatible with V1 callers
+    # that do not supply a document_class_hint).
+    effective_key = document_class_hint if document_class_hint is not None else "fda_warning_letter"
+
+    # FDA warning letter — ACTIVE, V1 extractor
+    if effective_key == "fda_warning_letter":
         return LocalFDAWarningLetterExtractor()
+
+    # Check registry status for all other keys
+    if effective_key not in DOMAIN_REGISTRY:
+        raise ValueError(
+            f"No extractor registered for document_class_hint '{document_class_hint}'. "
+            f"Active domains: {[d.domain_key for d in get_active_domains()]}."
+        )
+
+    if not is_domain_active(effective_key):
+        # Registered but PLANNED — clear error before D-1 / D-2 implements it
+        raise DomainNotImplementedError(effective_key, "extraction")
+
+    # Future ACTIVE domains (D-1, D-2) will add dispatch cases here before this line.
     raise ValueError(
-        f"No extractor registered for document_class_hint '{document_class_hint}'. "
-        "V1 supports 'fda_warning_letter' only."
+        f"Domain '{effective_key}' is registered as ACTIVE in the domain registry "
+        "but no extractor has been implemented yet. "
+        "Add the extractor class and dispatch case in extract_silver.py."
     )
 
 

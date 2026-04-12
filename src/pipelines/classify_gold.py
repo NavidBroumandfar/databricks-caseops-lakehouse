@@ -1,5 +1,5 @@
 """
-classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3)
+classify_gold.py — Gold classification and routing pipeline (Phase A-3 / B-3 / D-0)
 
 Reads Silver JSON artifacts produced by extract_silver.py, classifies each
 record into a Gold record (document type label + routing label), assembles
@@ -348,14 +348,46 @@ def select_classifier(document_class_hint: Optional[str]) -> DocumentClassifier:
     """
     Return the appropriate classifier for the given document class.
 
-    Currently only FDA warning letters are supported (V1 single domain).
-    Extend this function when adding new document domains in V2+.
+    D-0 domain-registry routing:
+      - None or 'fda_warning_letter' → LocalFDAWarningLetterClassifier (ACTIVE)
+      - 'cisa_advisory' / 'incident_report' → DomainNotImplementedError (PLANNED)
+      - Any other registered domain that is ACTIVE: would be dispatched here in D-1/D-2
+      - Unregistered domain keys → raises ValueError with registry context
+
+    FDA behavior is preserved exactly. The domain registry provides the authoritative
+    status check; classifier dispatch remains explicit and auditable.
     """
-    if document_class_hint == "fda_warning_letter" or document_class_hint is None:
+    from src.utils.domain_registry import (
+        DOMAIN_REGISTRY,
+        DomainNotImplementedError,
+        get_active_domains,
+        is_domain_active,
+    )
+
+    # Treat None as the default FDA domain (backward compatible with V1 callers
+    # that do not supply a document_class_hint).
+    effective_key = document_class_hint if document_class_hint is not None else "fda_warning_letter"
+
+    # FDA warning letter — ACTIVE, V1 classifier
+    if effective_key == "fda_warning_letter":
         return LocalFDAWarningLetterClassifier()
+
+    # Check registry status for all other keys
+    if effective_key not in DOMAIN_REGISTRY:
+        raise ValueError(
+            f"No classifier registered for document_class_hint '{document_class_hint}'. "
+            f"Active domains: {[d.domain_key for d in get_active_domains()]}."
+        )
+
+    if not is_domain_active(effective_key):
+        # Registered but PLANNED — clear error before D-1 / D-2 implements it
+        raise DomainNotImplementedError(effective_key, "classification")
+
+    # Future ACTIVE domains (D-1, D-2) will add dispatch cases here before this line.
     raise ValueError(
-        f"No classifier registered for document_class_hint '{document_class_hint}'. "
-        "V1 supports 'fda_warning_letter' only."
+        f"Domain '{effective_key}' is registered as ACTIVE in the domain registry "
+        "but no classifier has been implemented yet. "
+        "Add the classifier class and dispatch case in classify_gold.py."
     )
 
 

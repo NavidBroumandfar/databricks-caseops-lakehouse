@@ -421,15 +421,79 @@ delta_share_handoff.py        → defines share config → generates SQL templat
 
 ---
 
+## Multi-Domain Framework (Phase D-0)
+
+Phase D-0 introduces the multi-domain framework layer that removes single-domain hardcoding and provides clean architectural homes for D-1 (CISA) and D-2 (incident) domain expansion. FDA warning letters remain the only fully executable domain after D-0.
+
+### Domain Registry
+
+The single authoritative registry for all document domains lives at `src/utils/domain_registry.py`.
+
+| Module | Path | Role |
+|---|---|---|
+| Domain registry | `src/utils/domain_registry.py` | `DOMAIN_REGISTRY`, `DomainConfig`, `DomainStatus`, `get_domain`, `require_active_domain`, `is_domain_active` |
+| Domain schema registry | `src/schemas/domain_schema_registry.py` | Per-domain Silver schema families, field lists, `build_fields_for_domain()` factory routing |
+
+**Domain status vocabulary:**
+
+| Status | Meaning |
+|---|---|
+| `active` | Fully executable — extraction, classification, routing, export all implemented |
+| `planned` | Registered in framework but not yet implemented; operations raise `DomainNotImplementedError` |
+
+**D-0 registry state:**
+
+| Domain Key | Document Type | Routing Label | Status | Phase |
+|---|---|---|---|---|
+| `fda_warning_letter` | `fda_warning_letter` | `regulatory_review` | `active` | V1 |
+| `cisa_advisory` | `cisa_advisory` | `security_ops` | `planned` | D-1 |
+| `incident_report` | `incident_report` | `incident_management` | `planned` | D-2 |
+
+### Prompt Routing Framework
+
+`src/utils/extraction_prompts.py` now exposes `get_prompt_for_domain(domain_key)` as the D-0 entry point for domain-aware prompt selection. For `active` domains it returns the registered `ExtractionPrompt`. For `planned` domains it raises `DomainNotImplementedError`. FDA behavior is unchanged.
+
+### Schema Family / Validation Framework
+
+`src/schemas/domain_schema_registry.py` provides `DomainSchemaInfo` entries for all registered domains. Each entry carries `required_fields`, `optional_fields`, `all_fields`, and a `build_fields_model` factory. For `active` domains the factory constructs the real Pydantic model. For `planned` domains it raises `DomainNotImplementedError`. Field contracts for CISA and incident are defined per `docs/data-contracts.md` — the Pydantic models will be implemented in D-1 / D-2.
+
+### Classification / Routing Framework
+
+`src/utils/classification_taxonomy.py` adds:
+- `DOMAIN_ROUTING_MAP` — explicit `document_type_label → routing_label` map for all registered domains
+- `is_domain_executable(domain_key)` — delegates to domain registry, guards execution paths
+- `resolve_routing_label_for_domain(domain_key, document_type_label)` — domain-aware routing that enforces `planned` status
+
+`V1_ROUTING_MAP` and `resolve_routing_label()` are preserved for backward compatibility.
+
+### Pipeline Domain Routing
+
+`select_extractor()` in `extract_silver.py` and `select_classifier()` in `classify_gold.py` now route through the domain registry:
+- `None` → defaults to `fda_warning_letter` (backward compatible)
+- `fda_warning_letter` → dispatches to V1 extractor/classifier (unchanged)
+- `cisa_advisory` / `incident_report` → raises `DomainNotImplementedError` (planned)
+- Unregistered keys → raises `ValueError` with registry context
+
+### D-0 Boundary (What Was Not Changed)
+
+D-0 is a framework phase. It does NOT:
+- Implement CISA advisory extraction, classification, or routing (D-1)
+- Implement incident report extraction, classification, or routing (D-2)
+- Change the Bedrock boundary or handoff contract
+- Modify the existing B-phase or C-phase delivery layers
+- Add retrieval, RAG, or agent logic
+
+---
+
 ## Future Evolution
 
 | Capability | Current State | Future Direction |
 |---|---|---|
-| Multi-domain extraction | Single domain per batch | Dynamic prompt routing by detected document class |
+| Multi-domain extraction | Framework layer (D-0) — FDA active, CISA/incident planned | D-1: CISA; D-2: incident |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Human review loop | Not implemented | Disagreement queue surfaced to a review tool |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
-| Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps; Phase D multi-domain expansion |
+| Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.
