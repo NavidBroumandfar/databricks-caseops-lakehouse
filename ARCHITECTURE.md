@@ -603,17 +603,50 @@ config.mlflow_bronze_suffix() # "staging/bronze/parse_quality"
 
 ---
 
+## Phase E-2 — Governance Monitoring Layer
+
+Phase E-2 adds the governance monitoring layer on top of the completed E-0 (human review) and E-1 (environment separation) work. It aggregates existing evaluation, handoff, and review queue artifacts into a structured, deterministic `GovernanceReport`.
+
+### Governance Monitoring Design
+
+| Module | Path | Role |
+|---|---|---|
+| Governance monitoring schema | `src/schemas/governance_monitoring.py` | `GovernanceReport`, `GovernanceFlag`, bounded flag vocabulary, serialization helpers |
+| Governance monitoring pipeline | `src/pipelines/governance_monitoring.py` | `build_governance_report()`, `format_governance_report_text()`, `write_governance_report()`, aggregation sub-functions |
+
+**Governance flag vocabulary (bounded):**
+
+| Category | Signal Examples | Severity Range |
+|---|---|---|
+| `quality_degradation` | Bronze parse success below threshold; Silver validity below threshold; Gold export-ready below threshold | warning |
+| `traceability_defect` | Orphaned Gold/Silver records; incomplete link rates | warning / critical |
+| `contract_schema_inconsistency` | Mixed schema versions; missing provenance fields; unexpected routing patterns | warning |
+| `review_queue_pressure` | Elevated or critical queue pressure fraction | warning / critical |
+| `export_handoff_reliability_concern` | Contract-blocked records present; low export success rate | info / warning |
+| `environment_config_mismatch` | Mixed environments in governance scope | warning |
+
+**Overall health status vocabulary:** `healthy` (no warnings), `degraded` (≥1 warning flag), `critical` (≥1 critical flag).
+
+**What E-2 is NOT:**
+- Not a dashboard, BI product, or frontend view
+- Not cross-case analytics or KPI reporting
+- Not downstream Bedrock runtime monitoring
+- Not enterprise alerting infrastructure
+- Not a rewrite of the A-4 evaluation layer
+
+---
+
 ## Future Evolution
 
 | Capability | Current State | Future Direction |
 |---|---|---|
-| Multi-domain extraction | Three active domains (D-2 complete) — FDA, CISA, incident all executable | Phase E hardening |
+| Multi-domain extraction | Three active domains (D-2 complete) — FDA, CISA, incident all executable | V3+ domain expansion |
 | Human review loop | E-0 complete: structured review queue, review decisions, reprocessing requests | Downstream review tooling at Bedrock CaseOps |
-| Environment separation | E-1 complete: dev/staging/prod model, deterministic resource naming, env-aware MLflow | E-2: governance monitoring |
+| Environment separation | E-1 complete: dev/staging/prod model, deterministic resource naming, env-aware MLflow | Production deployment with enterprise IaC (out of scope) |
+| Governance monitoring | E-2 complete: GovernanceReport, bounded flag vocabulary, deterministic aggregation from eval/handoff/review artifacts | Multi-run trend aggregation; V3+ governance evolution |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
 | Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
-| Governance monitoring | Pipeline-level artifacts (B-4 report, B-5 bundle, E-0 review queue) | E-2: pipeline health views, quality trend artifacts, schema drift detection |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.

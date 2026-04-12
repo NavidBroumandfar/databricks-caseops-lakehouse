@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phases E-0 and E-1 are complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete. Phase E-1 (Environment Separation) is complete — the pipeline now has a bounded dev/staging/prod environment model with deterministic resource naming and environment-aware MLflow experiment paths. Phase E-2 is not yet started.
+**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phases E-0, E-1, and E-2 are complete. Phase E (Enterprise Operational Hardening) is complete. V2 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete. Phase E-1 (Environment Separation) is complete. Phase E-2 (Governance Monitoring) is complete — the pipeline now produces a structured, deterministic governance monitoring artifact that summarizes pipeline quality, handoff health, review queue pressure, schema/contract drift signals, and bounded governance flags across batches.
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 (Environment Separation) is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 (Environment Separation) is complete. Phase E-2 (Governance Monitoring) is complete. V2 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -312,6 +312,17 @@ D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `a
 
 **Phase E-1 — Environment Separation** is complete. E-1 adds a bounded, explicit environment-separation layer that makes the pipeline configuration-aware across dev, staging, and prod environments. All resource names (Unity Catalog catalog, table FQNs, Volume paths, MLflow experiment paths) are derived deterministically from the environment name. No secrets, credentials, or workspace-specific values are required or introduced. The pipeline is not production-deployed; this phase documents what a multi-environment deployment would look like without claiming it.
 
+**Phase E-2 — Governance Monitoring** is complete. E-2 adds a structured, deterministic governance monitoring layer that aggregates existing evaluation, handoff, review queue, and environment artifacts into a `GovernanceReport` artifact. The governance report captures quality summaries (Bronze/Silver/Gold/traceability), handoff health (exported/quarantined/contract-blocked/skipped rates), review queue pressure, schema/contract drift indicators, and bounded governance flags. Both machine-readable (JSON) and human-readable (text) outputs are produced. Phase E (Enterprise Operational Hardening) is now complete.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Governance monitoring schema | `src/schemas/governance_monitoring.py` | ✅ New E-2 |
+| Governance monitoring pipeline | `src/pipelines/governance_monitoring.py` | ✅ New E-2 |
+| Reference governance report fixture | `examples/expected_governance_report.json` | ✅ New E-2 |
+| E-2 test suite | `tests/test_e2_governance_monitoring.py` (104 tests) | ✅ New E-2 |
+
+Governance signal categories (bounded vocabulary): `quality_degradation`, `traceability_defect`, `contract_schema_inconsistency`, `review_queue_pressure`, `export_handoff_reliability_concern`, `environment_config_mismatch`. Overall health status: `healthy`, `degraded`, `critical`. All derivation is deterministic — no live Databricks workspace, no secrets, no Bedrock runtime logic required.
+
 | Deliverable | Path | Status |
 |---|---|---|
 | Environment model | `src/utils/environment_config.py` | ✅ New E-1 |
@@ -336,7 +347,7 @@ D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `a
 
 The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`. Phases E-1 (environment separation) and E-2 (governance monitoring) are not yet started.
 
-Total test count: **1321 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue and reprocessing layer, and E-1 environment separation layer.
+Total test count: **1425 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue and reprocessing layer, E-1 environment separation layer, and E-2 governance monitoring layer.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -711,10 +722,11 @@ databricks-caseops-lakehouse/
 │   └── prompts/             # Excluded from version control
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
-│   │   ├── bedrock_contract.py   # B-1: Gold export payload contract validator
-│   │   ├── delivery_event.py     # C-1: Delivery event schema (v0.2.0)
-│   │   ├── review_queue.py       # E-0: Human review queue schema
-│   │   └── review_decision.py    # E-0: Review decision and reprocessing request schemas
+│   │   ├── bedrock_contract.py       # B-1: Gold export payload contract validator
+│   │   ├── delivery_event.py         # C-1: Delivery event schema (v0.2.0)
+│   │   ├── review_queue.py           # E-0: Human review queue schema
+│   │   ├── review_decision.py        # E-0: Review decision and reprocessing request schemas
+│   │   └── governance_monitoring.py  # E-2: Governance monitoring schema and flag vocabulary
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
 │   │   ├── export_handoff.py             # B-3: Export packaging and handoff service boundary
 │   │   ├── handoff_report.py             # B-4: Export outcome observability and handoff reporting
@@ -722,7 +734,8 @@ databricks-caseops-lakehouse/
 │   │   ├── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
 │   │   ├── delivery_events.py            # C-1: Delivery event materialization
 │   │   ├── delta_share_handoff.py        # C-1: Delta Sharing producer-side preparation layer
-│   │   └── review_queue.py               # E-0: Human review queue derivation and materialization
+│   │   ├── review_queue.py               # E-0: Human review queue derivation and materialization
+│   │   └── governance_monitoring.py      # E-2: Governance monitoring aggregation and reporting
 │   ├── evaluation/          # A-4 evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
@@ -736,7 +749,7 @@ databricks-caseops-lakehouse/
 │       └── environment_config.py         # E-1: Environment model and resource naming
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 1321 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0, E-1
+├── tests/                   # 1425 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0, E-1, E-2
 └── examples/
     ├── evaluation/                       # A-4 usage guide
     ├── expected_delivery_event.json      # C-1: Reference delivery event fixture

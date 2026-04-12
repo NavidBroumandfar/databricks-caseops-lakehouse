@@ -620,7 +620,7 @@ V1 is complete as of April 2026. This means:
 
 ## V2 — Future Work
 
-**V2 has started. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phases E-0 and E-1 are complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E-0 (human review and reprocessing) is complete as of April 2026. Phase E-1 (environment separation) is complete as of April 2026. Phase E-2 (governance monitoring) is not yet started.
+**V2 is complete. Phase C is complete. Phases D-0, D-1, and D-2 are complete. Phases E-0, E-1, and E-2 are complete. Phase E is complete.** V2 is formally defined after V1 closeout (April 2026). Phase C (C-0, C-1, C-2) is complete as of April 2026. Phase D-0 (multi-domain framework) is complete as of April 2026. Phase D-1 (CISA advisory domain) is complete as of April 2026. Phase D-2 (incident report domain) is complete as of April 2026. Phase E-0 (human review and reprocessing) is complete as of April 2026. Phase E-1 (environment separation) is complete as of April 2026. Phase E-2 (governance monitoring) is complete as of April 2026. V2 is complete.
 
 ### V2 Boundary Rules
 
@@ -957,21 +957,56 @@ export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
 
 ### Phase E-2 — Governance Monitoring
 
-**Status**: Not started.
+**Status**: ✅ Complete (April 2026).
 
-**Goal**: Implement governance monitoring views: pipeline health metrics, batch-level quality trend artifacts, schema drift detection signals, and governance reporting outputs — surfaced as Databricks notebooks or structured export artifacts.
+**Goal**: Implement a structured, deterministic governance monitoring layer that aggregates existing pipeline artifacts into a reviewable `GovernanceReport`. Surfaces pipeline quality and operational health in a bounded, artifact-driven, upstream-safe way.
 
-**Scope boundary**: Pipeline health visibility only. Not cross-case analytics, not KPI dashboards, not downstream operational intelligence.
+**What E-2 delivers:**
+
+| Artifact | Path | Status | Description |
+|---|---|---|---|
+| Governance monitoring schema | `src/schemas/governance_monitoring.py` | ✅ New E-2 | `GovernanceReport`, `GovernanceFlag`, bounded flag vocabulary (6 categories, 3 severities, 3 health statuses), `make_governance_flag()`, serialization helpers |
+| Governance monitoring pipeline | `src/pipelines/governance_monitoring.py` | ✅ New E-2 | `build_governance_report()` — primary entry point; aggregation sub-functions for quality, handoff health, review queue, schema drift; `format_governance_report_text()`; `write_governance_report()` |
+| Reference governance report fixture | `examples/expected_governance_report.json` | ✅ New E-2 | Reference `GovernanceReport` showing a healthy batch with full artifact input scope |
+| E-2 test suite | `tests/test_e2_governance_monitoring.py` | ✅ New E-2 | 104 tests covering schema vocabulary, flag construction, quality derivation, handoff health derivation, review queue derivation, all flag categories, schema drift signaling, overall health derivation, text formatting, artifact write/load, module boundary guards, fixture validation |
+
+**Governance signal vocabulary (bounded):**
+
+| Category | Trigger Examples | Severity |
+|---|---|---|
+| `quality_degradation` | Bronze parse success < 90%; Silver validity < 80%; Gold export-ready < 70% | warning |
+| `traceability_defect` | Orphaned Gold records; incomplete link rates; broken lineage | warning / critical |
+| `contract_schema_inconsistency` | Mixed schema versions; missing provenance; unexpected quarantine rate | warning |
+| `review_queue_pressure` | Queue pressure ≥ 20% (warning); ≥ 50% (critical) | warning / critical |
+| `export_handoff_reliability_concern` | Contract-blocked records; low export success rate | info / warning |
+| `environment_config_mismatch` | Mixed environments in governance scope | warning |
+
+**Overall health status:** `healthy` → `degraded` → `critical` — derived deterministically from the flag list.
+
+**Scope boundary**: E-2 is upstream governance artifact production only. Not a dashboard, not cross-case analytics, not downstream Bedrock runtime monitoring, not enterprise alerting.
+
+**Completion criteria met:**
+
+- ✅ Structured governance monitoring artifact exists (`src/schemas/governance_monitoring.py`, `src/pipelines/governance_monitoring.py`)
+- ✅ Governance signals are derived explicitly and deterministically from input artifacts
+- ✅ Bounded flag vocabulary: 6 categories, 3 severities, 3 health statuses
+- ✅ Schema/contract/review-pressure drift concerns are surfaced in a bounded way
+- ✅ Machine-readable (JSON) and human-readable (text) governance outputs both exist
+- ✅ All derivation is local-safe — no live Databricks workspace, no secrets
+- ✅ No Bedrock runtime logic, no dashboard/UI work, no rewrite of existing evaluation logic
+- ✅ 104 new tests; 1425 total; zero regressions
+- ✅ Phase E (E-0 + E-1 + E-2) is now complete
 
 ---
 
 ## V2 Closeout Criteria
 
-V2 is complete when all of the following are true:
+**V2 is complete.** All of the following are true:
 
-- A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C)
-- CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D)
+- ✅ A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C — complete)
+- ✅ CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
 - ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 - ✅ Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)
-- The Databricks / Bedrock boundary remains explicit throughout — no retrieval, RAG, agent, or escalation logic enters this repo
-- No production credentials or enterprise configuration committed at any V2 phase
+- ✅ The repo surfaces its own operational health in a governed, upstream-safe, artifact-driven way (Phase E-2 — complete)
+- ✅ The Databricks / Bedrock boundary remains explicit throughout — no retrieval, RAG, agent, or escalation logic entered this repo
+- ✅ No production credentials or enterprise configuration committed at any V2 phase

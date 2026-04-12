@@ -1,0 +1,73 @@
+{
+  "governance_report_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "generated_at": "2026-04-12T10:00:00+00:00",
+  "environment": "dev",
+  "schema_version": "v1.0.0",
+  "reporting_scope": {
+    "evaluation_report_path": "output/eval/report_abc123.json",
+    "handoff_report_path": "output/reports/handoff_report_run001.json",
+    "handoff_bundle_path": "output/reports/handoff_bundle_run001.json",
+    "review_queue_path": "output/review_queue/review_queue_run001.json",
+    "environment": "dev",
+    "input_pipeline_run_ids": ["run001"]
+  },
+  "quality_summary": {
+    "bronze_parse_success_rate": 1.0,
+    "silver_extraction_validity_rate": 1.0,
+    "gold_export_ready_rate": 0.75,
+    "gold_classification_success_rate": 1.0,
+    "traceability_gold_to_silver_link_rate": 1.0,
+    "traceability_silver_to_bronze_link_rate": 1.0,
+    "traceability_pipeline_run_id_coverage": 1.0,
+    "traceability_orphaned_silver_count": 0,
+    "traceability_orphaned_gold_count": 0,
+    "bootstrap_path_detected": false,
+    "quality_observations": []
+  },
+  "handoff_health": {
+    "total_records_processed": 4,
+    "total_exported": 3,
+    "total_quarantined": 1,
+    "total_contract_blocked": 0,
+    "total_skipped_not_export_ready": 0,
+    "export_success_rate": 0.75,
+    "quarantine_rate": 0.25,
+    "contract_block_rate": 0.0,
+    "contract_blocked_document_ids": [],
+    "quarantined_document_ids": ["doc-uuid-001"],
+    "handoff_observations": [
+      "1 record(s) routed to quarantine. Review the Gold artifacts for classification context."
+    ]
+  },
+  "review_queue_summary": {
+    "total_records_reviewed": 4,
+    "total_queue_entries": 1,
+    "entries_by_reason": {
+      "quarantined": 1,
+      "contract_blocked": 0,
+      "extraction_failed": 0
+    },
+    "review_queue_pressure_pct": 0.25,
+    "review_queue_observations": [
+      "1 record(s) entered the review queue. Review decisions should be recorded using the ReviewDecision schema."
+    ]
+  },
+  "schema_drift": {
+    "schema_versions_detected": [],
+    "mixed_schema_versions": false,
+    "missing_provenance_fields": [],
+    "unexpected_routing_combinations": [],
+    "environment_names_detected": ["dev"],
+    "mixed_environments_detected": false,
+    "drift_observations": []
+  },
+  "governance_flags": [],
+  "governance_notes": [
+    "Governance report generated for environment: 'dev'. Overall health status: HEALTHY.",
+    "Input artifacts consumed: evaluation report (A-4), handoff batch report (B-4), handoff bundle manifest (B-5), review queue artifact (E-0).",
+    "0 governance flag(s) derived: 0 critical, 0 warning, 0 info.",
+    "This governance report is an upstream-only artifact. It summarizes pipeline quality and operational state derived from existing structured outputs. It does not represent a dashboard, cross-case analytics product, or downstream Bedrock runtime monitoring layer.",
+    "Governance signals are derived deterministically from evaluation, handoff, review queue, and environment artifacts. No live Databricks workspace or external credentials are required to produce this report."
+  ],
+  "overall_health_status": "healthy"
+}
