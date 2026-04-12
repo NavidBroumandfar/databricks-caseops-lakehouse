@@ -368,6 +368,32 @@ delta_share_handoff.py        → defines DeltaShareConfig → generates SQL tem
 
 **What C-1 does not include:** No live Unity Catalog API calls, no Delta Sharing SDK, no real share provisioning, no Bedrock consumer simulation. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
 
+### Phase C-2 Delivery Validation Layer — Implementation Status
+
+Phase C-2 implements a bounded, producer-side delivery-layer validation and observability layer on top of the C-1 artifacts. The following modules are complete:
+
+| Module | Path | Role |
+|---|---|---|
+| Delivery validation schema | `src/schemas/delivery_validation.py` | `DeliveryValidationResult`, `CheckResult`; status/scope/workspace vocabulary |
+| Delivery validation logic | `src/pipelines/delivery_validation.py` | 15 check functions + `validate_delivery_layer()` entry point |
+
+**C-2 validation status vocabulary (definitive):**
+
+| Status | Meaning |
+|---|---|
+| `validated` | All critical checks passed; workspace_mode = `personal_databricks` |
+| `partially_validated` | All critical checks passed; local_repo_only; share is provisioned |
+| `not_provisioned` | Share manifest status = `designed`; local_repo_only (honest default) |
+| `failed` | Critical check failure: schema mismatch, ID inconsistency, parse error |
+
+**C-2 checks (15 total):** `delivery_event_exists`, `delivery_event_parseable`, `delivery_event_schema_version`, `delivery_event_status_known`, `delivery_mechanism_known`, `cross_id_consistency`, `bundle_path_referenced`, `bundle_path_exists`, `routing_labels_present`, `share_manifest_exists`, `share_manifest_parseable`, `share_manifest_has_setup_sql`, `share_manifest_has_c2_queries`, `share_provisioning_acknowledged`, `evidence_sufficiency`.
+
+**Honesty invariant:** The `evidence_sufficiency` check prevents `validated` from ever being assigned for `local_repo_only` runs. A locally-correct producer-side artifact set always produces `not_provisioned` (share not yet executed in Unity Catalog) or `partially_validated` — never `validated`.
+
+**C-2 runtime validation target:** `validated` is achievable only after the share setup SQL is executed in a Databricks workspace and `workspace_mode = 'personal_databricks'` is passed explicitly. The runbook is in `docs/delivery-runtime-validation.md`.
+
+**What C-2 does not include:** No live Unity Catalog API calls, no Delta Sharing SDK, no Bedrock consumer simulation, no retrieval/RAG/agent logic. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
+
 **Module boundary (full B through C-1):**
 
 ```

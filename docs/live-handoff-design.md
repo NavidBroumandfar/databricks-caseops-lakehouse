@@ -1,7 +1,7 @@
 # Live Handoff Design — Phase C-0: Integration Delivery Mechanism Design
 
 > **Phase**: C-0 — Integration Delivery Mechanism Design
-> **Status**: C-0 design complete. C-1 producer-side implementation complete. C-2 runtime validation not started.
+> **Status**: C-0 design complete. C-1 producer-side implementation complete. C-2 runtime validation layer complete (producer-side validation implemented; live workspace provisioning pending).
 > **Authoritative scope**: [`PROJECT_SPEC.md`](../PROJECT_SPEC.md)
 > **Authoritative technical design**: [`ARCHITECTURE.md`](../ARCHITECTURE.md)
 > **Upstream contract**: [`docs/bedrock-handoff-contract.md`](./bedrock-handoff-contract.md)

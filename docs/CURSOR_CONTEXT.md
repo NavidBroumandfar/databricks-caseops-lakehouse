@@ -57,15 +57,17 @@ When starting any task in this repository, always read files in this exact order
 
 **V1 IS COMPLETE.** Do not treat any V1 milestone as pending. Do not rewrite V1 history.
 
-**V2 HAS STARTED. PHASE C-1 IS COMPLETE.** C-0 (design) and C-1 (producer-side implementation) are complete. C-2 (runtime validation) is not started. Do not claim live Delta Sharing is provisioned — that is C-2. Do not reopen V1.
+**V2 HAS STARTED. PHASES C-1 AND C-2 ARE COMPLETE.** C-0 (design), C-1 (producer-side implementation), and C-2 (runtime validation layer) are complete. C-2 added a bounded 15-check delivery-layer validation layer with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary. The producer-side validation is implemented; live Delta Share provisioning in a Databricks workspace and the `validated` status are achievable after running the C-2 runbook in `docs/delivery-runtime-validation.md`. Do not claim live Delta Sharing is provisioned — it is `not_provisioned` by default. Do not reopen V1.
 
-**Phases A-0 through B-6 and C-1 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
+**Phases A-0 through B-6, C-1, and C-2 are complete**, and the final V1 MLflow live-workspace evaluation checkpoint has been executed. The repo has:
 - A validated pipeline (A-0 through A-4.1) with A-3B personal Databricks bootstrap and A-4.1 runtime inspection
 - Real Databricks MLflow experiments populated for all four evaluation stages: bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability — logged April 2026 via `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified paths using `src/evaluation/mlflow_experiment_paths.py`
 - An explicit Gold → Bedrock handoff contract (B-0), repo-enforced contract validator (B-1), contract-enforced export materialization path (B-2), clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6)
-- 427 tests passing across all pipeline stages and contract enforcement layers
+- A Delta Sharing-oriented producer-side delivery augmentation (C-1) with delivery events and share preparation manifests
+- A bounded 15-check delivery-layer runtime validation layer (C-2) with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary
+- 747 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, and delivery-layer runtime validation
 
-**V2 has started. Phase C-1 (export delivery implementation) is complete. Phase C-2 (runtime validation) is not started.**
+**V2 has started. Phase C-1 (export delivery implementation) is complete. Phase C-2 (runtime validation layer) is complete.** Live Delta Share provisioning in a Databricks workspace completes the runtime `validated` state — see `docs/delivery-runtime-validation.md`.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
@@ -172,11 +174,23 @@ templates for Unity Catalog, C-2 validation query set);
 `ExportProvenance` fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`);
 `src/pipelines/classify_gold.py` updated with `--delivery-dir` flag (activates C-1 path);
 `examples/expected_delivery_event.json`; `tests/test_delivery_events.py` (88 tests);
-`tests/test_delta_share_handoff.py` (67 tests). **613 tests pass total.**
+`tests/test_delta_share_handoff.py` (67 tests). 613 tests at C-1 closeout.
 All C-1 delivery events carry `status = 'prepared'` — producer-side is complete; runtime validation
 is C-2. No live Unity Catalog provisioning, no Bedrock SDK, no real Delta Share created.
 
-The module boundary (through C-1) is:
+**Phase C-2 — Runtime Integration Validation** is complete (producer-side validation layer).
+C-2 adds a bounded, credential-free, locally executable delivery-layer validation layer. Key deliverables:
+`src/schemas/delivery_validation.py` (`DeliveryValidationResult`, `CheckResult`; status/scope/workspace
+vocabulary with 4 statuses, 2 scopes, 2 workspace modes, 15 check name constants);
+`src/pipelines/delivery_validation.py` (15 named check functions + `validate_delivery_layer()` entry
+point + `format_validation_result_text()` + `write_validation_result()` + `load_validation_result()`);
+`examples/expected_delivery_validation_result.json` (C-2 reference fixture; status `not_provisioned`);
+`docs/delivery-runtime-validation.md` (C-2 design record, check catalogue, and runtime validation runbook);
+`tests/test_delivery_validation.py` (134 tests). **747 tests pass total.**
+Default local run produces `status = 'not_provisioned'` (honest baseline). `validated` requires
+`workspace_mode='personal_databricks'` and execution of share setup SQL in a Databricks workspace.
+
+The module boundary (through C-2) is:
   `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle → writes C-1 delivery event
   `export_handoff.py`             → validates contract → writes export artifact → returns `ExportResult`
   `handoff_report.py`             → derives outcome categories → aggregates batch report → writes report artifacts
@@ -184,6 +198,7 @@ The module boundary (through C-1) is:
   `handoff_bundle_validation.py`  → validates the bundle is internally consistent and trustworthy
   `delivery_events.py`            → builds DeliveryEvent from summaries → writes event artifacts
   `delta_share_handoff.py`        → defines share config → generates SQL templates → writes share prep manifest
+  `delivery_validation.py`        → runs 15 checks on C-1 delivery artifacts → produces DeliveryValidationResult
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

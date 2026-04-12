@@ -26,6 +26,9 @@
 | B-4 | Export Outcome Observability and Handoff Reporting | ✅ Complete | Explicit outcome categories, reason codes, and batch-level handoff summary reporting |
 | B-5 | Handoff Batch Manifest and Review Bundle | ✅ Complete | Single reviewable batch bundle with per-record artifact references, linked to B-4 report |
 | B-6 | Handoff Bundle Integrity and Consistency Validation | ✅ Complete | Local-safe validator that proves the B-5 bundle is internally trustworthy and review-safe |
+| C-0 | Live Handoff: Delivery Mechanism Design | ✅ Complete (V2) | Delta Sharing selected as primary; delivery events as secondary; V1 file path retained |
+| C-1 | Live Handoff: Export Delivery Implementation | ✅ Complete (V2) | Producer-side delivery augmentation: DeliveryEvent schema + Delta Share prep layer |
+| C-2 | Live Handoff: Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 
 ---
 
@@ -718,17 +721,31 @@ V1 is complete as of April 2026. This means:
 
 ### Phase C-2 — Runtime Integration Validation
 
-**Status**: Not started.
+**Status**: Complete (producer-side validation layer). Live workspace validation pending manual share provisioning.
 
-**Goal**: Validate the C-1 delivery slice end-to-end via a reproducible validation script or notebook. Confirm all six delivery validation targets pass in a single run.
+**Goal**: Implement a bounded delivery-layer validation and observability layer for the C-1 delivery artifacts. Provide explicit, honest integration health signals. Define the runbook for live workspace validation.
 
-**Validation targets** (from C-0):
-- Delta Sharing recipient can query `gold_ai_ready_assets` and observe `export_ready = true` records
-- `delivery_events` table shows a row for the batch with correct counts and manifest path
-- B-5 manifest referenced in the delivery event is readable and passes B-6 integrity validation
-- Export payload files at manifest-referenced paths are readable JSON
-- Payloads carry `schema_version: v0.2.0`
-- `routing_label` is correctly observable from the shared table
+**What C-2 delivered**:
+- `src/schemas/delivery_validation.py` — `DeliveryValidationResult` schema with 4-state status vocabulary (`validated`, `partially_validated`, `not_provisioned`, `failed`), scope vocabulary, workspace mode vocabulary, and 15 check name constants
+- `src/pipelines/delivery_validation.py` — 15 named check functions + `validate_delivery_layer()` main entry point. Locally executable, credential-free, no Databricks workspace required
+- `examples/expected_delivery_validation_result.json` — Reference C-2 validation result fixture
+- `docs/delivery-runtime-validation.md` — C-2 design record, check catalogue, and personal Databricks runtime validation runbook
+- `tests/test_delivery_validation.py` — 134 focused tests. 747 total tests pass
+- Honest default: `status = 'not_provisioned'` for local runs (share designed, not yet provisioned in Unity Catalog)
+
+**What C-2 does NOT deliver** (honest scope boundary):
+- Live Delta Share provisioning (requires Databricks workspace with CREATE SHARE privilege)
+- `validated` status without actual workspace evidence (evidence_sufficiency check enforces this)
+- Bedrock CaseOps consumer simulation
+- Any live API calls, SDK calls, or credentials
+
+**Remaining for runtime `validated` status**:
+- Execute `setup_sql` from the share manifest in a Databricks SQL notebook
+- Create the `delivery_events` table using the `delivery_events_ddl` from the manifest
+- Run the C-2 validation queries from `c2_validation_queries` in the manifest
+- Re-run `validate_delivery_layer(..., workspace_mode='personal_databricks')` to capture `validated` status
+
+See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 ---
 

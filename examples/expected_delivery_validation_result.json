@@ -1,0 +1,123 @@
+{
+  "validation_run_id": "c2a00001-0000-0000-0000-000000000001",
+  "pipeline_run_id": "run-fda-example-0001",
+  "delivery_event_id": "de000001-0000-0000-0000-000000000001",
+  "validated_at": "2026-04-12T00:00:00+00:00",
+  "delivery_mechanism": "delta_sharing",
+  "share_name": "caseops_handoff",
+  "shared_object_name": "gold_ai_ready_assets",
+  "validation_scope": "producer_side_only",
+  "validation_status": "not_provisioned",
+  "validation_reason": "Producer-side artifact validation completed with no check failures. Delta Share provisioning status is 'designed': the share has not been created in Unity Catalog. Runtime validation cannot proceed until setup_sql is executed in a Databricks workspace with CREATE SHARE privilege. This is not an error \u2014 it is the honest C-1 baseline state.",
+  "checks_passed": [
+    "delivery_event_exists",
+    "delivery_event_parseable",
+    "delivery_event_schema_version",
+    "delivery_event_status_known",
+    "delivery_mechanism_known",
+    "cross_id_consistency",
+    "bundle_path_referenced",
+    "routing_labels_present",
+    "share_manifest_exists",
+    "share_manifest_parseable",
+    "share_manifest_has_setup_sql",
+    "share_manifest_has_c2_queries",
+    "share_provisioning_acknowledged",
+    "evidence_sufficiency"
+  ],
+  "checks_failed": [
+    "bundle_path_exists"
+  ],
+  "check_details": [
+    {
+      "check_name": "delivery_event_exists",
+      "passed": true,
+      "detail": "Found: output/delivery/delivery_event_run-fda-example-0001.json"
+    },
+    {
+      "check_name": "delivery_event_parseable",
+      "passed": true,
+      "detail": "Parsed as DeliveryEvent (delivery_event_id=de000001-0000-0000-0000-000000000001)."
+    },
+    {
+      "check_name": "delivery_event_schema_version",
+      "passed": true,
+      "detail": "schema_version='v0.2.0' is correct."
+    },
+    {
+      "check_name": "delivery_event_status_known",
+      "passed": true,
+      "detail": "status='prepared' is a known delivery status."
+    },
+    {
+      "check_name": "delivery_mechanism_known",
+      "passed": true,
+      "detail": "delivery_mechanism='delta_sharing' matches C-0 decision."
+    },
+    {
+      "check_name": "cross_id_consistency",
+      "passed": true,
+      "detail": "delivery_event_id, pipeline_run_id, and batch_id are internally consistent."
+    },
+    {
+      "check_name": "bundle_path_referenced",
+      "passed": true,
+      "detail": "bundle_artifact_path='output/reports/handoff_bundle_run-fda-example-0001.json'."
+    },
+    {
+      "check_name": "bundle_path_exists",
+      "passed": false,
+      "detail": "Bundle artifact not found at: output/reports/handoff_bundle_run-fda-example-0001.json"
+    },
+    {
+      "check_name": "routing_labels_present",
+      "passed": true,
+      "detail": "routing_labels present: ['regulatory_review']."
+    },
+    {
+      "check_name": "share_manifest_exists",
+      "passed": true,
+      "detail": "Found: output/delivery/delta_share_preparation_manifest.json"
+    },
+    {
+      "check_name": "share_manifest_parseable",
+      "passed": true,
+      "detail": "Parsed share manifest (status='designed')."
+    },
+    {
+      "check_name": "share_manifest_has_setup_sql",
+      "passed": true,
+      "detail": "setup_sql present (1247 chars)."
+    },
+    {
+      "check_name": "share_manifest_has_c2_queries",
+      "passed": true,
+      "detail": "4 C-2 validation query descriptor(s) present."
+    },
+    {
+      "check_name": "share_provisioning_acknowledged",
+      "passed": true,
+      "detail": "Share provisioning status is acknowledged as 'designed'."
+    },
+    {
+      "check_name": "evidence_sufficiency",
+      "passed": true,
+      "detail": "Evidence is appropriate for claimed status 'not_provisioned' (scope=producer_side_only, workspace=local_repo_only)."
+    }
+  ],
+  "observations": [
+    "Delivery event 'de000001-0000-0000-0000-000000000001' validated: schema_version=v0.2.0, status='prepared', exported_record_count=3, routing_labels=['regulatory_review'].",
+    "Share preparation manifest parsed: status='designed', c2_validation_queries=4.",
+    "Share provisioning status is 'designed': the Delta Share has not been executed in Unity Catalog. To proceed, run setup_sql from the manifest in a Databricks SQL notebook with CREATE SHARE privilege.",
+    "Workspace mode is 'local_repo_only': no live Databricks workspace queries were executed. Runtime validation evidence (share queryability, delivery event table row, payload conformance) was not collected.",
+    "1 check(s) failed: ['bundle_path_exists'].",
+    "Overall validation status: 'not_provisioned'. Checks passed: 14. Checks failed: 1."
+  ],
+  "artifacts_checked": [
+    "output/delivery/delivery_event_run-fda-example-0001.json",
+    "output/delivery/delta_share_preparation_manifest.json"
+  ],
+  "queries_executed": [],
+  "workspace_mode": "local_repo_only",
+  "schema_version": "v0.2.0"
+}

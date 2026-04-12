@@ -93,9 +93,9 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C-1 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) has been implemented. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), and a local-safe bundle integrity and consistency validation layer (B-6).
+**V1 is complete. V2 Phases C-1 and C-2 are complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. This repo now includes a validated personal Databricks bootstrap pass (A-3B), a full evaluation and observability layer (A-4), real Databricks MLflow evaluation experiments populated with metrics for all four pipeline quality dimensions (bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability), an explicit Gold → Bedrock handoff contract (B-0), a repo-enforced contract validator (B-1), a contract-enforced export materialization path (B-2), a clean export/handoff module boundary (B-3), structured handoff outcome observability with batch-level reporting (B-4), a single reviewable batch handoff manifest/review bundle (B-5), a local-safe bundle integrity and consistency validation layer (B-6), a Delta Sharing-oriented delivery augmentation layer with per-batch delivery events (C-1), and a bounded runtime validation and observability layer with 15 explicit checks and an honest 4-state integration health model (C-2).
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C-1 (Export Delivery Implementation) is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work. Phase C-2 (runtime validation) is the next V2 phase.
+This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 has started. Phase C-1 (Export Delivery Implementation) is complete. Phase C-2 (Runtime Integration Validation) is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2 — Future Work. Phase C-2 producer-side validation layer is implemented; live Delta Share provisioning in a Databricks workspace completes the runtime validation.
 
 **Phase A-0 — Repo foundation and core documentation** is complete.
 
@@ -249,7 +249,19 @@ The validator exposes `validate_handoff_bundle(bundle_json_path)` for file-based
 
 The `--delivery-dir` flag activates C-1 delivery augmentation: export payloads are written at `schema_version: v0.2.0` with delivery provenance fields populated; a `DeliveryEvent` artifact (JSON + text) is written per batch; a `SharePreparationManifest` with Unity Catalog SQL DDL templates is written alongside. When `--delivery-dir` is omitted, V1 behavior is fully preserved.
 
-Total test count: **613 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, and Delta Share preparation layer.
+**Phase C-2 — Runtime Integration Validation** is complete (producer-side validation layer). C-2 adds a bounded, honest, 15-check delivery-layer validation layer that validates the C-1 artifacts locally without requiring a live Databricks workspace. The producer-side validation produces an explicit integration health status (`not_provisioned` by default — the honest baseline before Unity Catalog share provisioning). Full runtime end-to-end validation (`validated` status) is achievable after executing the setup SQL in a personal Databricks workspace.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| Delivery validation schema | `src/schemas/delivery_validation.py` | ✅ New C-2 |
+| Delivery validation logic | `src/pipelines/delivery_validation.py` | ✅ New C-2 |
+| Validation result fixture | `examples/expected_delivery_validation_result.json` | ✅ New C-2 |
+| C-2 runtime validation design and runbook | `docs/delivery-runtime-validation.md` | ✅ New C-2 |
+| C-2 test suite | `tests/test_delivery_validation.py` (134 tests) | ✅ New C-2 |
+
+Integration health states (C-2): `not_provisioned` (share designed, not yet in Unity Catalog — honest default), `partially_validated` (producer-side correct, share provisioned, no live queries run), `validated` (confirmed in personal Databricks workspace), `failed` (schema error, ID mismatch, or parse failure).
+
+Total test count: **747 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, and delivery-layer runtime validation.
 
 See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
@@ -429,6 +441,56 @@ in a Databricks workspace. Runtime end-to-end validation is Phase C-2.
 When `--delivery-dir` is active, export payloads are written at `schema_version: v0.2.0` with
 three new optional provenance fields: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`.
 When `--delivery-dir` is omitted, V1 export behavior (v0.1.0) is fully preserved.
+
+---
+
+## Running the C-2 Delivery Validation
+
+Requires Python 3.9+ and `pydantic` (v2). Run the C-1 Delivery Demo first to generate delivery artifacts.
+
+```bash
+# Run the delivery validation against the C-1 artifacts
+python -c "
+from pathlib import Path
+import glob
+from src.pipelines.delivery_validation import (
+    validate_delivery_layer,
+    format_validation_result_text,
+    write_validation_result,
+)
+
+# Locate delivery event (adjust run_id to match your run)
+events = sorted(glob.glob('output/delivery/delivery_event_*.json'))
+if not events:
+    print('No delivery event found. Run the C-1 delivery demo first.')
+else:
+    # Extract run_id from filename
+    import re
+    run_id = re.sub(r'^delivery_event_|\.json$', '', Path(events[-1]).name)
+    result = validate_delivery_layer(
+        pipeline_run_id=run_id,
+        delivery_event_path=Path(events[-1]),
+        share_manifest_path=Path('output/delivery/delta_share_preparation_manifest.json'),
+        workspace_mode='local_repo_only',
+    )
+    print(format_validation_result_text(result))
+    json_path, text_path = write_validation_result(result, Path('output/validation'))
+    print(f'Written: {json_path}')
+"
+
+# Expected: status = 'not_provisioned' — correct and honest.
+# This means: delivery artifacts are correct producer-side; Delta Share not yet
+# executed in Unity Catalog. Run setup_sql from the manifest in Databricks SQL
+# to proceed toward 'validated' status (see docs/delivery-runtime-validation.md).
+```
+
+C-2 integration health states:
+- `not_provisioned` — Share designed in repo, not yet executed in Unity Catalog (honest default)
+- `partially_validated` — Producer-side correct; share provisioned; no live queries run
+- `validated` — Confirmed in personal Databricks workspace
+- `failed` — Schema error, ID mismatch, or parse failure
+
+See [`docs/delivery-runtime-validation.md`](./docs/delivery-runtime-validation.md) for the full C-2 design, check catalogue, and personal Databricks runtime validation runbook.
 
 ---
 
