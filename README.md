@@ -14,28 +14,28 @@
 
 <br/>
 
-> A governed, Databricks-native document intelligence pipeline that converts unstructured enterprise documents into structured, traceable, evaluation-ready AI assets for downstream retrieval and agent workflows.
+> A Databricks-native governed document intelligence pipeline — the upstream preparation layer that converts unstructured enterprise documents into traceable, schema-validated AI-ready assets before downstream Bedrock retrieval and agent reasoning begins.
 
 ---
 
 ## What This Project Does
 
-Enterprise operations generate large volumes of unstructured documents — regulatory notices, incident reports, standard operating procedures, quality reviews, and technical advisories. These documents contain operationally significant information that is difficult to query, route, or reason over at scale without structured transformation.
+Enterprise operations accumulate large volumes of unstructured documents — regulatory notices, incident reports, standard operating procedures, quality reviews, and technical advisories. These documents carry operationally significant information, but without structured, governed transformation, they cannot be reliably extracted from, classified, or consumed by downstream AI retrieval and agent systems.
 
-This project builds a **production-aware document intelligence pipeline** on Databricks that:
+This repo implements the **governed upstream transformation layer** on Databricks — the system that must exist before any downstream retrieval, RAG, or agent reasoning begins:
 
-1. **Ingests** unstructured documents into governed Unity Catalog Volumes
+1. **Ingests** unstructured documents into governed Unity Catalog Volumes with full source provenance
 2. **Parses** raw document content using `ai_parse_document` and normalizes it into a Bronze layer
 3. **Extracts** structured fields from parsed content using `ai_extract` into a Silver layer
 4. **Classifies and routes** documents using `ai_classify` into a Gold layer of AI-ready assets
-5. **Evaluates** every stage for extraction quality, schema validity, and traceability completeness using MLflow
-6. **Exports** Gold-tier structured assets to downstream Bedrock retrieval and agent systems
+5. **Evaluates** every stage for extraction quality, schema validity, and cross-layer traceability using MLflow
+6. **Exports** contract-enforced Gold-tier assets to downstream Bedrock retrieval and agent systems
 
 ---
 
 ## Positioning
 
-This is the Databricks-native upstream layer of the **Bedrock CaseOps** system. This repo owns **governed document transformation and AI-ready asset preparation**. Bedrock CaseOps owns what happens after the handoff: retrieval, agentic reasoning, escalation, and case-support workflows.
+This repo is the **upstream governed preparation layer** of the Bedrock CaseOps architecture. It owns the complete ingestion-to-handoff pipeline — governed document transformation, structured extraction, schema validation, classification, routing, and AI-ready asset materialization. Retrieval, agent reasoning, escalation, and case-support belong to the [Bedrock CaseOps Control Tower](https://github.com/NavidBroumandfar/bedrock-caseops-control-tower).
 
 | Concern | This Repo | Bedrock CaseOps |
 |---|---|---|
@@ -572,4 +572,4 @@ If you're exploring this project, interested in governed AI data pipelines, or o
 
 ---
 
-*This project was developed with AI-assisted workflows. Architecture, design decisions, and technical boundaries remained intentional throughout; AI tooling supported the implementation workflow as part of a modern development practice.*
+*This project was developed with AI-assisted workflows. The system architecture, agent design, schema contracts, evaluation framework, and safety boundaries were intentionally designed and directed by the author, with AI tooling used to support and accelerate implementation as part of a modern engineering workflow.*
