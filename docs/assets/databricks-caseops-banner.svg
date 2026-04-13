@@ -1,0 +1,83 @@
+<svg width="960" height="200" viewBox="0 0 960 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="960" height="200" fill="#0D1117"/>
+  <!-- Outer border -->
+  <rect x="0.5" y="0.5" width="959" height="199" stroke="#21262D" stroke-width="1"/>
+  <!-- Databricks red left accent bar -->
+  <rect width="4" height="200" fill="#FF3621"/>
+
+  <!-- Title -->
+  <text x="28" y="60"
+        font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="26" font-weight="700" fill="#F0F6FC">Databricks CaseOps Lakehouse</text>
+
+  <!-- Subtitle -->
+  <text x="28" y="88"
+        font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="13.5" fill="#8B949E">Governed document intelligence pipeline &#xB7; Upstream AI asset preparation layer</text>
+
+  <!-- Pipeline flow -->
+  <text x="28" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6E7681">Unstructured Docs</text>
+  <text x="178" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#444D5C">&#x2192;</text>
+  <text x="193" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#CD7F32">Bronze</text>
+  <text x="241" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#444D5C">&#x2192;</text>
+  <text x="256" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#A8B4C8">Silver</text>
+  <text x="301" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#444D5C">&#x2192;</text>
+  <text x="316" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#D4A017">Gold</text>
+  <text x="353" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#444D5C">&#x2192;</text>
+  <text x="368" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6E7681">Bedrock CaseOps</text>
+
+  <!-- Tag pills -->
+  <rect x="28" y="138" width="82" height="20" rx="10" fill="#FF362112" stroke="#FF362135"/>
+  <text x="69" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#FF8070" text-anchor="middle">Databricks</text>
+
+  <rect x="118" y="138" width="100" height="20" rx="10" fill="#1F6FEB12" stroke="#1F6FEB35"/>
+  <text x="168" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#79B8FF" text-anchor="middle">Unity Catalog</text>
+
+  <rect x="226" y="138" width="58" height="20" rx="10" fill="#0194E212" stroke="#0194E235"/>
+  <text x="255" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#3DC0D0" text-anchor="middle">MLflow</text>
+
+  <rect x="292" y="138" width="56" height="20" rx="10" fill="#3776AB12" stroke="#3776AB35"/>
+  <text x="320" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5B9BD5" text-anchor="middle">Python</text>
+
+  <rect x="356" y="138" width="112" height="20" rx="10" fill="#2EA04312" stroke="#2EA04335"/>
+  <text x="412" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#56D364" text-anchor="middle">Non-Production</text>
+
+  <rect x="476" y="138" width="90" height="20" rx="10" fill="#8B949E12" stroke="#8B949E35"/>
+  <text x="521" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#9BA8B3" text-anchor="middle">1,425 Tests</text>
+
+  <!-- Vertical divider -->
+  <line x1="622" y1="22" x2="622" y2="178" stroke="#21262D" stroke-width="1"/>
+
+  <!-- PIPELINE LAYERS label -->
+  <text x="648" y="48" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#6E7681" letter-spacing="1.4">PIPELINE LAYERS</text>
+  <line x1="648" y1="56" x2="948" y2="56" stroke="#21262D" stroke-width="1"/>
+
+  <!-- Bronze block -->
+  <rect x="648" y="68" width="90" height="30" rx="5" fill="#CD7F3210" stroke="#CD7F3228"/>
+  <text x="693" y="87" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#E6A85A" text-anchor="middle">Bronze Layer</text>
+
+  <text x="746" y="87" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#444D5C">&#x2192;</text>
+
+  <!-- Silver block -->
+  <rect x="764" y="68" width="90" height="30" rx="5" fill="#A8B4C810" stroke="#A8B4C828"/>
+  <text x="809" y="87" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#C0CAD8" text-anchor="middle">Silver Layer</text>
+
+  <text x="862" y="87" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#444D5C">&#x2192;</text>
+
+  <!-- Gold block -->
+  <rect x="880" y="68" width="68" height="30" rx="5" fill="#D4A01710" stroke="#D4A01728"/>
+  <text x="914" y="87" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#E8C040" text-anchor="middle">Gold Layer</text>
+
+  <!-- Subtexts -->
+  <text x="693" y="112" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" fill="#6E7681" text-anchor="middle">Ingest &#xB7; Parse</text>
+  <text x="809" y="112" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" fill="#6E7681" text-anchor="middle">Extract &#xB7; Validate</text>
+  <text x="914" y="112" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" fill="#6E7681" text-anchor="middle">Classify &#xB7; Export</text>
+
+  <!-- Downstream section -->
+  <line x1="648" y1="128" x2="948" y2="128" stroke="#21262D" stroke-width="1"/>
+  <text x="648" y="147" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#6E7681">&#x2193;  Handoff via contract-enforced Gold export payload</text>
+  <text x="648" y="167" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#8B949E">&#x2192; Bedrock CaseOps Control Tower</text>
+
+</svg>

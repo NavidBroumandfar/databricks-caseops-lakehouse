@@ -1,6 +1,20 @@
-# Databricks CaseOps Lakehouse
+<div align="center">
+  <img src="./docs/assets/databricks-caseops-banner.svg" alt="Databricks CaseOps Lakehouse" width="100%"/>
+</div>
 
-A governed, Databricks-native document intelligence pipeline that converts unstructured enterprise documents into structured, traceable, evaluation-ready AI assets for downstream retrieval and agent workflows.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
+[![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
+[![Tests](https://img.shields.io/badge/Tests-1%2C425%20passing-2EA043?style=flat-square)](./tests/)
+[![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
+
+</div>
+
+<br/>
+
+> A governed, Databricks-native document intelligence pipeline that converts unstructured enterprise documents into structured, traceable, evaluation-ready AI assets for downstream retrieval and agent workflows.
 
 ---
 
@@ -40,7 +54,7 @@ This repo is the **governed upstream structuring layer**. It does not reason ove
 
 ---
 
-## Default Document Domain
+## Supported Document Domains
 
 The pipeline is designed for document-heavy operational and regulatory workflows:
 
@@ -93,263 +107,17 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 ## Project Status
 
-**V1 is complete. V2 Phase C is complete. V2 Phases D-0, D-1, and D-2 are complete. V2 Phases E-0, E-1, and E-2 are complete. Phase E (Enterprise Operational Hardening) is complete. V2 is complete.** Phases A-0 through B-6 are complete, and the final V1 MLflow live-workspace evaluation checkpoint has been successfully executed. Phase C-1 (Export Delivery Implementation) and Phase C-2 (Runtime Integration Validation) have been implemented. Phase D-0 (Multi-Domain Framework) is complete. Phase D-1 (CISA Advisory Domain) is complete. Phase D-2 (Incident Report Domain) is complete — the pipeline now executes **three active domains**: FDA warning letters, CISA cybersecurity advisories, and incident reports. Phase E-0 (Human Review and Reprocessing) is complete. Phase E-1 (Environment Separation) is complete. Phase E-2 (Governance Monitoring) is complete — the pipeline now produces a structured, deterministic governance monitoring artifact that summarizes pipeline quality, handoff health, review queue pressure, schema/contract drift signals, and bounded governance flags across batches.
+**V1 and V2 are both complete.**
 
-This remains a controlled, portfolio-safe, non-production project — no enterprise deployment, no production credentials, no live Bedrock integration, no live orchestration. **V2 is complete.** V2 phases (C: live handoff integration; D: multi-domain expansion; E: enterprise operational hardening) are documented in [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) § V2 Scope and [`docs/roadmap.md`](./docs/roadmap.md) § V2.
+**Phase 1 (V1 — Core Governed Pipeline)** delivered the full Bronze → Silver → Gold document intelligence pipeline: Unity Catalog-governed ingestion, `ai_parse_document`-based Bronze parsing, `ai_extract`-based Silver structured field extraction, `ai_classify`-based Gold classification and routing, MLflow evaluation across all four quality dimensions (parse quality, extraction quality, classification quality, traceability), and the complete Gold → Bedrock handoff preparation layer — including contract definition, schema enforcement, export materialization, batch bundle packaging, and integrity validation. V1 was validated end-to-end in a personal Databricks workspace using real AI Functions against public FDA sample documents.
 
-**Phase A-0 — Repo foundation and core documentation** is complete.
+**Phase 2 (V2 — Hardening and Expansion)** added live handoff integration via Delta Sharing with a producer-side delivery layer (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
-**Phase A-1 — Bronze ingestion and parsing pipeline** is complete:
+**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally and was validated in a personal Databricks workspace. Total test coverage: **1,425 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, and operational hardening.
 
-| Deliverable | Path | Status |
-|---|---|---|
-| Bronze schema (Pydantic v2) | `src/schemas/bronze_schema.py` | ✅ Complete |
-| Unity Catalog config | `src/pipelines/catalog_config.yaml` | ✅ Complete |
-| Bronze ingestion script | `src/pipelines/ingest_bronze.py` | ✅ Complete |
-| Bronze evaluation script | `src/evaluation/eval_bronze.py` | ✅ Complete |
-| Sample FDA warning letter fixture | `examples/fda_warning_letter_sample.md` | ✅ Complete |
-
-**Phase A-2 — Silver extraction and validation** is complete. The local-safe implementation slice is delivered:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Silver schema (Pydantic v2) | `src/schemas/silver_schema.py` | ✅ Complete |
-| Extraction config | `src/pipelines/extraction_config.yaml` | ✅ Complete |
-| Extraction prompt templates | `src/utils/extraction_prompts.py` | ✅ Complete |
-| Silver extraction pipeline | `src/pipelines/extract_silver.py` | ✅ Complete |
-| Silver evaluation script | `src/evaluation/eval_silver.py` | ✅ Complete |
-| Expected Silver fixture | `examples/expected_silver_fda_warning_letter.json` | ✅ Complete |
-
-**Phase A-3 — Gold classification and routing** is complete. The local-safe implementation slice is delivered:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Gold schema (Pydantic v2) | `src/schemas/gold_schema.py` | ✅ Complete |
-| Classification taxonomy | `src/utils/classification_taxonomy.py` | ✅ Complete |
-| Classification config | `src/pipelines/classification_config.yaml` | ✅ Complete |
-| Gold classification pipeline | `src/pipelines/classify_gold.py` | ✅ Complete |
-| Gold evaluation script | `src/evaluation/eval_gold.py` | ✅ Complete |
-| Expected Gold fixture | `examples/expected_gold_fda_warning_letter.json` | ✅ Complete |
-
-**Phase A-3B — Personal Databricks Bootstrap Consolidation** is complete. This bridging phase captured a validated personal-workspace end-to-end SQL execution pass against real Databricks AI Functions and public FDA sample documents. It is non-production and does not imply enterprise deployment or MLflow automation.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Bronze parse smoke SQL | `notebooks/bootstrap/01_bronze_parse_smoke.sql` | ✅ Complete |
-| Bronze bootstrap v1 SQL | `notebooks/bootstrap/02_bronze_bootstrap_v1.sql` | ✅ Complete |
-| Silver extraction smoke SQL | `notebooks/bootstrap/03_silver_extract_smoke_v1.sql` | ✅ Complete |
-| Gold classification smoke SQL | `notebooks/bootstrap/04_gold_classify_route_smoke_v1.sql` | ✅ Complete |
-| Bootstrap evaluation SQL | `notebooks/bootstrap/05_bootstrap_evaluation_v1.sql` | ✅ Complete |
-| Bootstrap documentation | `docs/databricks-bootstrap.md` | ✅ Complete |
-| Resource layout example | `config/databricks.resources.example.yml` | ✅ Complete |
-
-**Validated bootstrap results** (4 public FDA sample PDFs, personal serverless SQL warehouse):
-
-| Metric | Value |
-|---|---|
-| Total documents | 4 |
-| Bronze parse success | 4 / 4 |
-| Silver extraction records | 4 / 4 |
-| Gold export-ready | 3 / 4 |
-| Quarantine | 1 / 4 |
-| Full lineage present | 4 / 4 |
-
-The quarantine record is a governance signal, not a failure — it confirms rule-based routing is functioning correctly. See [`docs/databricks-bootstrap.md`](./docs/databricks-bootstrap.md) for full details, constraints, and next steps.
-
-**Phase A-4 — Evaluation and Observability** is complete. This phase implements the formal evaluation layer across all pipeline stages:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Traceability evaluator | `src/evaluation/eval_traceability.py` | ✅ Complete |
-| Full-pipeline orchestrator | `src/evaluation/run_evaluation.py` | ✅ Complete |
-| Report models | `src/evaluation/report_models.py` | ✅ Complete |
-| Report writer | `src/evaluation/report_writer.py` | ✅ Complete |
-| A-4 test suite | `tests/` (84 tests) | ✅ Complete | Evaluation layer tests |
-| Evaluation usage guide | `examples/evaluation/README.md` | ✅ Complete |
-
-The evaluation layer explicitly handles the A-3B bootstrap path: null `classification_confidence`, placeholder `pipeline_run_id` values, and the distinction between bootstrap-origin records and target-state MLflow pipeline records. A-4.1 runtime inspection confirmed that scalar confidence is not available from `ai_classify` in the validated bootstrap path, and that the conservative quarantine behavior (1 of 4 records quarantined) matched expectations. See [`docs/evaluation-plan.md`](./docs/evaluation-plan.md) for the full approach.
-
-**V1 MLflow Live-Workspace Checkpoint** — The final V1 closeout milestone has been completed: all four evaluation stages (Bronze parse quality, Silver extraction quality, Gold classification quality, pipeline traceability) were executed end-to-end and logged to real Databricks MLflow experiments in a personal, non-production workspace. This closes the gap between "evaluation layer implemented locally" and "evaluation run logged to a real MLflow tracking server." The experiments were populated using the `caseops/` experiment root path via `Databricks-safe MLflow experiment path resolution` (`src/evaluation/mlflow_experiment_paths.py`). This is a personal workspace validation only — not an enterprise deployment and not connected to live Bedrock integration.
+For the full delivery history, phase-by-phase detail, and roadmap, see [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) and [`docs/roadmap.md`](./docs/roadmap.md).
 
 To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-demo) section below.
-
-**Phase B-0 — Bedrock Handoff Contract Preparation** is complete. The single authoritative contract artifact is [`docs/bedrock-handoff-contract.md`](./docs/bedrock-handoff-contract.md). It defines the `export_payload` structure, required vs optional fields, routing label → Bedrock consumer mapping, and `export_ready` / `quarantine` semantics for the Gold → Bedrock handoff. No live AWS/Bedrock integration was delivered.
-
-**Phase B-1 — Handoff Contract Materialization and Validation** is complete. B-1 converts the B-0 documentation contract into repo-enforced, testable behavior:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Contract validator | `src/schemas/bedrock_contract.py` | ✅ Complete |
-| Contract-valid fixture | `examples/contract_valid_fda_export_payload.json` | ✅ Complete |
-| B-1 test suite | `tests/test_bedrock_contract_validation.py` (53 tests) | ✅ Complete |
-| Gold schema alignment | `src/schemas/gold_schema.py` (`classification_confidence` Optional) | ✅ Updated |
-| Pipeline alignment | `src/pipelines/classify_gold.py` (null-confidence safe routing) | ✅ Updated |
-
-**Phase B-2 — Contract-Enforced Export Materialization** is complete. B-2 makes the pipeline obey the B-1 contract during real export materialization — invalid downstream payloads cannot silently pass as valid exports:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Contract-enforced export path | `src/pipelines/classify_gold.py` (B-1 validation gates every write) | ✅ Updated B-2 |
-| B-2 materialization test suite | `tests/test_b2_export_materialization.py` (18 tests) | ✅ New B-2 |
-| Invalid payload fixture | `examples/invalid_export_payload_missing_fields.json` | ✅ New B-2 |
-| Quarantine record fixture | `examples/quarantine_gold_record.json` | ✅ New B-2 |
-
-**Phase B-3 — Export Packaging Refactor and Handoff Service Boundary** is complete. B-3 extracts export/handoff materialization into a dedicated module with a clean internal service boundary:
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Export/handoff module | `src/pipelines/export_handoff.py` | ✅ New B-3 |
-| Simplified pipeline | `src/pipelines/classify_gold.py` (delegates to `execute_export`) | ✅ Updated B-3 |
-| B-3 test suite | `tests/test_b3_export_handoff.py` (28 tests) | ✅ New B-3 |
-
-Module boundary: `classify_gold.py` assembles the Gold record and delegates all export packaging to `export_handoff.py`. B-2 behavior is preserved exactly.
-
-**Phase B-4 — Export Outcome Observability and Handoff Reporting** is complete. B-4 makes Gold → Bedrock handoff outcomes operationally visible and reviewable at batch level. Each pipeline run now produces a structured `HandoffBatchReport` showing what was exported, quarantined, contract-blocked, or skipped, and why.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Handoff reporting module | `src/pipelines/handoff_report.py` | ✅ New B-4 |
-| Pipeline integration | `src/pipelines/classify_gold.py` (outcome fields + `report_dir`) | ✅ Updated B-4 |
-| B-4 test suite | `tests/test_b4_handoff_report.py` (68 tests) | ✅ New B-4 |
-
-Outcome categories: `exported`, `quarantined`, `contract_blocked`, `skipped_not_export_ready`. Reason codes: `none`, `routing_quarantine`, `contract_validation_failed`, `export_not_attempted`. The batch report is written as JSON + text artifacts when `--report-dir` is provided.
-
-**Phase B-5 — Handoff Batch Manifest and Review Bundle** is complete. B-5 packages the full Gold/export batch into a single, coherent, reviewable batch handoff bundle. A `HandoffBatchManifest` links batch metadata, aggregate outcome counts, per-record artifact references (Gold + export paths by outcome category), and B-4 report artifacts into one reviewable unit.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Batch manifest/review bundle module | `src/pipelines/handoff_bundle.py` | ✅ New B-5 |
-| Pipeline integration | `src/pipelines/classify_gold.py` (`bundle_dir` + `--bundle-dir`) | ✅ Updated B-5 |
-| B-5 test suite | `tests/test_b5_handoff_bundle.py` (84 tests) | ✅ New B-5 |
-| Expected manifest fixture | `examples/expected_handoff_batch_manifest.json` | ✅ New B-5 |
-
-The bundle is written as JSON + text artifacts when `--bundle-dir` is provided. When `--report-dir` is also provided, the bundle references the B-4 report artifacts. The manifest captures exported_records (with export_artifact_path), quarantined_records, contract_blocked_records, and skipped_records.
-
-**Phase B-6 — Handoff Bundle Integrity and Consistency Validation** is complete. B-6 proves the B-5 bundle is internally trustworthy and review-safe. A dedicated validator checks the bundle for structural correctness, count consistency, reference integrity, identifier uniqueness, and filesystem path existence — locally and deterministically, with no live dependencies.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Bundle validation module | `src/pipelines/handoff_bundle_validation.py` | ✅ New B-6 |
-| B-6 test suite | `tests/test_b6_bundle_validation.py` (92 tests) | ✅ New B-6 |
-
-The validator exposes `validate_handoff_bundle(bundle_json_path)` for file-based validation and `validate_handoff_bundle_from_manifest(manifest, check_paths=False)` for in-memory validation. It produces a `BundleValidationResult` with `bundle_valid`, `failed_checks`, `count_mismatches`, `missing_paths`, `duplicate_identifiers`, `contradictions`, and full per-check detail. 24 explicit checks across 5 categories.
-
-**Phase C-1 — Export Delivery Implementation** is complete. C-1 implements the upstream producer-side delivery augmentation, adding the Delta Sharing-oriented delivery layer on top of the existing B-phase handoff preparation. The V1 file export path is fully preserved. C-1 is additive and honest: all delivery events carry `status = 'prepared'`; runtime validation (live share query, consumer receipt) is Phase C-2.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Delivery event schema | `src/schemas/delivery_event.py` | ✅ New C-1 |
-| Delivery event materialization | `src/pipelines/delivery_events.py` | ✅ New C-1 |
-| Delta Share prep layer | `src/pipelines/delta_share_handoff.py` | ✅ New C-1 |
-| v0.2.0 provenance fields | `src/schemas/gold_schema.py` (3 optional fields + `SCHEMA_VERSION_V2`) | ✅ Updated C-1 |
-| Pipeline delivery integration | `src/pipelines/classify_gold.py` (`--delivery-dir`) | ✅ Updated C-1 |
-| Delivery event fixture | `examples/expected_delivery_event.json` | ✅ New C-1 |
-| Delivery event test suite | `tests/test_delivery_events.py` | ✅ New C-1 |
-| Delta Share handoff test suite | `tests/test_delta_share_handoff.py` | ✅ New C-1 |
-
-The `--delivery-dir` flag activates C-1 delivery augmentation: export payloads are written at `schema_version: v0.2.0` with delivery provenance fields populated; a `DeliveryEvent` artifact (JSON + text) is written per batch; a `SharePreparationManifest` with Unity Catalog SQL DDL templates is written alongside. When `--delivery-dir` is omitted, V1 behavior is fully preserved.
-
-**Phase C-2 — Runtime Integration Validation** is complete (producer-side validation layer). C-2 adds a bounded, honest, 15-check delivery-layer validation layer that validates the C-1 artifacts locally without requiring a live Databricks workspace. The producer-side validation produces an explicit integration health status (`not_provisioned` by default — the honest baseline before Unity Catalog share provisioning). Full runtime end-to-end validation (`validated` status) is achievable after executing the setup SQL in a personal Databricks workspace.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Delivery validation schema | `src/schemas/delivery_validation.py` | ✅ New C-2 |
-| Delivery validation logic | `src/pipelines/delivery_validation.py` | ✅ New C-2 |
-| Validation result fixture | `examples/expected_delivery_validation_result.json` | ✅ New C-2 |
-| C-2 runtime validation design and runbook | `docs/delivery-runtime-validation.md` | ✅ New C-2 |
-| C-2 test suite | `tests/test_delivery_validation.py` (134 tests) | ✅ New C-2 |
-
-Integration health states (C-2): `not_provisioned` (share designed, not yet in Unity Catalog — honest default), `partially_validated` (producer-side correct, share provisioned, no live queries run), `validated` (confirmed in personal Databricks workspace), `failed` (schema error, ID mismatch, or parse failure).
-
-**Phase D-0 — Multi-Domain Framework** is complete. D-0 establishes the multi-domain framework layer as the architectural foundation for D-1 (CISA advisories) and D-2 (incident reports). FDA warning letters remain the only fully executable domain after D-0.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Domain registry | `src/utils/domain_registry.py` | ✅ New D-0 |
-| Domain schema registry | `src/schemas/domain_schema_registry.py` | ✅ New D-0 |
-| Prompt routing framework | `src/utils/extraction_prompts.py` (`get_prompt_for_domain`) | ✅ Updated D-0 |
-| Taxonomy D-0 extensions | `src/utils/classification_taxonomy.py` (`DOMAIN_ROUTING_MAP`, `is_domain_executable`, `resolve_routing_label_for_domain`) | ✅ Updated D-0 |
-| Pipeline domain routing | `extract_silver.py`, `classify_gold.py` (`select_extractor`, `select_classifier`) | ✅ Updated D-0 |
-| D-0 test suite | `tests/test_domain_registry.py` | ✅ New D-0 |
-
-D-0 domain state post-D-0: `fda_warning_letter` → `active`; `cisa_advisory` → `planned` (D-1); `incident_report` → `planned` (D-2). Both are now `active` after D-1 and D-2.
-
-**Phase D-1 — CISA Advisory Domain** is complete. D-1 is the first real multi-domain expansion built on the D-0 framework. CISA advisory records are now fully executable through the entire pipeline.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| `CISAAdvisoryFields` Pydantic schema + coverage helper | `src/schemas/silver_schema.py` | ✅ New D-1 |
-| CISA schema registry activation | `src/schemas/domain_schema_registry.py` | ✅ Updated D-1 |
-| CISA extraction prompt (`cisa_advisory_extract_v1`) | `src/utils/extraction_prompts.py` | ✅ New D-1 |
-| CISA domain activation (status: ACTIVE) | `src/utils/domain_registry.py` | ✅ Updated D-1 |
-| `security_ops` routing activation in V1_ROUTING_MAP | `src/utils/classification_taxonomy.py` | ✅ Updated D-1 |
-| `LocalCISAAdvisoryExtractor` + `validate_cisa_extracted_fields` | `src/pipelines/extract_silver.py` | ✅ New D-1 |
-| `LocalCISAAdvisoryClassifier` | `src/pipelines/classify_gold.py` | ✅ New D-1 |
-| CISA Bedrock contract validation (`REQUIRED_CISA_EXTRACTED_FIELDS`) | `src/schemas/bedrock_contract.py` | ✅ Updated D-1 |
-| CISA sample advisory fixture | `examples/cisa_advisory_sample.md` | ✅ New D-1 |
-| Expected Silver/Gold CISA output fixtures | `examples/expected_silver_cisa_advisory.json`, `examples/expected_gold_cisa_advisory.json` | ✅ New D-1 |
-| D-1 test suite (123 tests) | `tests/test_d1_cisa_domain.py` | ✅ New D-1 |
-
-D-1 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `planned` (D-2 pending at time of D-1). `security_ops` is now an active routing label alongside `regulatory_review`.
-
-**Phase D-2 — Incident Report Domain** is complete. D-2 is the second real multi-domain expansion built on the D-0 framework. Incident report records are now fully executable through the entire pipeline.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| `IncidentReportFields` Pydantic schema + coverage helper | `src/schemas/silver_schema.py` | ✅ New D-2 |
-| Incident schema registry activation | `src/schemas/domain_schema_registry.py` | ✅ Updated D-2 |
-| Incident extraction prompt (`incident_report_extract_v1`) | `src/utils/extraction_prompts.py` | ✅ New D-2 |
-| Incident domain activation (status: ACTIVE) | `src/utils/domain_registry.py` | ✅ Updated D-2 |
-| `incident_management` routing activation in V1_ROUTING_MAP | `src/utils/classification_taxonomy.py` | ✅ Updated D-2 |
-| `LocalIncidentReportExtractor` + `validate_incident_extracted_fields` | `src/pipelines/extract_silver.py` | ✅ New D-2 |
-| `LocalIncidentReportClassifier` | `src/pipelines/classify_gold.py` | ✅ New D-2 |
-| Incident Bedrock contract validation (`REQUIRED_INCIDENT_EXTRACTED_FIELDS`) | `src/schemas/bedrock_contract.py` | ✅ Updated D-2 |
-| Incident sample report fixture | `examples/incident_report_sample.md` | ✅ New D-2 |
-| Expected Silver/Gold incident output fixtures | `examples/expected_silver_incident_report.json`, `examples/expected_gold_incident_report.json` | ✅ New D-2 |
-| D-2 test suite (125 tests) | `tests/test_d2_incident_domain.py` | ✅ New D-2 |
-
-D-2 domain state: `fda_warning_letter` → `active` (V1); `cisa_advisory` → `active` (D-1 ✅); `incident_report` → `active` (D-2 ✅). All three reference domains are now executable. `incident_management` is now an active routing label alongside `regulatory_review` and `security_ops`. No planned domains remain.
-
-**Phase E-1 — Environment Separation** is complete. E-1 adds a bounded, explicit environment-separation layer that makes the pipeline configuration-aware across dev, staging, and prod environments. All resource names (Unity Catalog catalog, table FQNs, Volume paths, MLflow experiment paths) are derived deterministically from the environment name. No secrets, credentials, or workspace-specific values are required or introduced. The pipeline is not production-deployed; this phase documents what a multi-environment deployment would look like without claiming it.
-
-**Phase E-2 — Governance Monitoring** is complete. E-2 adds a structured, deterministic governance monitoring layer that aggregates existing evaluation, handoff, review queue, and environment artifacts into a `GovernanceReport` artifact. The governance report captures quality summaries (Bronze/Silver/Gold/traceability), handoff health (exported/quarantined/contract-blocked/skipped rates), review queue pressure, schema/contract drift indicators, and bounded governance flags. Both machine-readable (JSON) and human-readable (text) outputs are produced. Phase E (Enterprise Operational Hardening) is now complete.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Governance monitoring schema | `src/schemas/governance_monitoring.py` | ✅ New E-2 |
-| Governance monitoring pipeline | `src/pipelines/governance_monitoring.py` | ✅ New E-2 |
-| Reference governance report fixture | `examples/expected_governance_report.json` | ✅ New E-2 |
-| E-2 test suite | `tests/test_e2_governance_monitoring.py` (104 tests) | ✅ New E-2 |
-
-Governance signal categories (bounded vocabulary): `quality_degradation`, `traceability_defect`, `contract_schema_inconsistency`, `review_queue_pressure`, `export_handoff_reliability_concern`, `environment_config_mismatch`. Overall health status: `healthy`, `degraded`, `critical`. All derivation is deterministic — no live Databricks workspace, no secrets, no Bedrock runtime logic required.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Environment model | `src/utils/environment_config.py` | ✅ New E-1 |
-| MLflow path environment awareness | `src/evaluation/mlflow_experiment_paths.py` | ✅ Updated E-1 |
-| Dev environment config example | `config/databricks.resources.dev.example.yml` | ✅ New E-1 |
-| Staging environment config example | `config/databricks.resources.staging.example.yml` | ✅ New E-1 |
-| Prod environment config example | `config/databricks.resources.prod.example.yml` | ✅ New E-1 |
-| E-1 test suite | `tests/test_environment_config.py` (106 tests) | ✅ New E-1 |
-
-**Phase E-0 — Human Review and Reprocessing** is complete. E-0 adds a structured, upstream human review queue layer for records that should not flow cleanly through the automated path without human attention.
-
-| Deliverable | Path | Status |
-|---|---|---|
-| Review queue schema | `src/schemas/review_queue.py` | ✅ New E-0 |
-| Review decision schema | `src/schemas/review_decision.py` | ✅ New E-0 |
-| Review queue derivation pipeline | `src/pipelines/review_queue.py` | ✅ New E-0 |
-| Pipeline integration | `src/pipelines/classify_gold.py` (`--review-queue-dir`) | ✅ Updated E-0 |
-| Review queue fixture | `examples/expected_review_queue.json` | ✅ New E-0 |
-| Review decision fixture | `examples/expected_review_decision.json` | ✅ New E-0 |
-| Reprocessing request fixture | `examples/expected_reprocessing_request.json` | ✅ New E-0 |
-| E-0 test suite | `tests/test_e0_review_queue.py` (111 tests) | ✅ New E-0 |
-
-The review queue is derived deterministically from pipeline summaries. Records with `outcome_category` == `quarantined`, `contract_blocked`, or `skipped_not_export_ready` with `unknown` document type enter the queue. Review reason categories: `quarantined`, `contract_blocked`, `extraction_failed`. Review decisions: `approve_for_export`, `confirm_quarantine`, `request_reprocessing`, `reject_unresolved`. The automated pipeline path is fully preserved — the review queue is additive and optional via `--review-queue-dir`.
-
-Total test count: **1425 tests** across all pipeline stages, contract validation, export materialization, export handoff boundary, handoff outcome observability, batch handoff bundle packaging, bundle integrity validation, delivery event materialization, Delta Share preparation layer, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue and reprocessing layer, E-1 environment separation layer, and E-2 governance monitoring layer.
-
-See [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) for the full roadmap and [`docs/roadmap.md`](./docs/roadmap.md) for phase detail.
 
 ---
 
@@ -445,9 +213,9 @@ python src/pipelines/classify_gold.py \
 
 # Gold record: output/gold/<gold_record_id>.json
 # Export payload (if export-ready and contract-valid): output/gold/exports/regulatory_review/<document_id>.json
-# Invalid payloads are blocked before write (B-2) — see contract_validation_errors in pipeline output
+# Invalid payloads are blocked before write — see contract_validation_errors in pipeline output
 
-# Optional: produce a B-4 handoff batch report
+# Optional: produce a handoff batch report
 python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
@@ -456,7 +224,7 @@ python src/pipelines/classify_gold.py \
 # Report artifacts: output/reports/handoff_report_<run_id>.json  (machine-readable)
 #                   output/reports/handoff_report_<run_id>.txt   (human-readable)
 
-# Optional: produce a B-5 batch manifest/review bundle (may be combined with --report-dir)
+# Optional: produce a batch manifest and review bundle (may be combined with --report-dir)
 python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
@@ -465,9 +233,9 @@ python src/pipelines/classify_gold.py \
 
 # Bundle artifacts: output/reports/handoff_bundle_<run_id>.json  (machine-readable manifest)
 #                   output/reports/handoff_bundle_<run_id>.txt   (human-readable review summary)
-# The bundle references all per-record artifact paths and the B-4 report when both flags are used.
+# The bundle references all per-record artifact paths and the handoff report when both flags are used.
 
-# Optional: run B-6 bundle integrity validation against the generated bundle
+# Optional: run bundle integrity validation against the generated bundle
 python -c "
 from pathlib import Path
 from src.pipelines.handoff_bundle_validation import validate_handoff_bundle, format_validation_result_text
@@ -493,7 +261,7 @@ a successful classification and export-ready result.
 
 ---
 
-## Running the C-1 Delivery Demo
+## Running the Delivery Demo
 
 Requires Python 3.9+ and `pydantic` (v2). Run the full Gold Demo first to generate artifacts.
 
@@ -506,7 +274,7 @@ python src/pipelines/ingest_bronze.py \
 
 python src/pipelines/extract_silver.py --input-dir output/bronze
 
-# 4. Classify Gold with full delivery augmentation (C-1)
+# 4. Classify Gold with delivery augmentation enabled
 python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
@@ -514,23 +282,24 @@ python src/pipelines/classify_gold.py \
   --bundle-dir output/reports \
   --delivery-dir output/delivery
 
-# New C-1 artifacts:
-#   output/delivery/delivery_event_<run_id>.json   — DeliveryEvent record (v0.2.0)
+# Delivery artifacts:
+#   output/delivery/delivery_event_<run_id>.json   — DeliveryEvent record (schema v0.2.0)
 #   output/delivery/delivery_event_<run_id>.txt    — Human-readable delivery event summary
-#   output/delivery/delta_share_preparation_manifest.json — Share config + SQL DDL templates
+#   output/delivery/delta_share_preparation_manifest.json — Share config + Unity Catalog SQL DDL
 ```
 
 The delivery event JSON carries `status: "prepared"` — the producer-side layer is complete.
 The Delta Share preparation manifest contains the Unity Catalog SQL DDL to provision the share
-in a Databricks workspace. Runtime end-to-end validation is Phase C-2.
+in a Databricks workspace. See [Running Delivery Validation](#running-delivery-validation) to
+validate the delivery artifacts locally.
 
 When `--delivery-dir` is active, export payloads are written at `schema_version: v0.2.0` with
-three new optional provenance fields: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`.
-When `--delivery-dir` is omitted, V1 export behavior (v0.1.0) is fully preserved.
+three optional provenance fields: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`.
+When `--delivery-dir` is omitted, baseline export behavior (v0.1.0) is fully preserved.
 
 ---
 
-## Running the E-0 Review Queue
+## Running the Review Queue
 
 Requires Python 3.9+ and `pydantic` (v2). Run the Gold Demo first to generate pipeline artifacts.
 
@@ -543,7 +312,7 @@ python src/pipelines/classify_gold.py \
   --bundle-dir output/reports \
   --review-queue-dir output/review_queue
 
-# E-0 artifacts:
+# Review queue artifacts:
 #   output/review_queue/review_queue_<run_id>.json  — ReviewQueueArtifact (machine-readable)
 #   output/review_queue/review_queue_<run_id>.txt   — Human-readable review queue summary
 ```
@@ -602,12 +371,12 @@ See `examples/expected_review_queue.json`, `examples/expected_review_decision.js
 
 ---
 
-## Running the C-2 Delivery Validation
+## Running Delivery Validation
 
-Requires Python 3.9+ and `pydantic` (v2). Run the C-1 Delivery Demo first to generate delivery artifacts.
+Requires Python 3.9+ and `pydantic` (v2). Run the Delivery Demo first to generate delivery artifacts.
 
 ```bash
-# Run the delivery validation against the C-1 artifacts
+# Run delivery validation against the generated delivery artifacts
 python -c "
 from pathlib import Path
 import glob
@@ -620,7 +389,7 @@ from src.pipelines.delivery_validation import (
 # Locate delivery event (adjust run_id to match your run)
 events = sorted(glob.glob('output/delivery/delivery_event_*.json'))
 if not events:
-    print('No delivery event found. Run the C-1 delivery demo first.')
+    print('No delivery event found. Run the Delivery Demo first.')
 else:
     # Extract run_id from filename
     import re
@@ -642,17 +411,17 @@ else:
 # to proceed toward 'validated' status (see docs/delivery-runtime-validation.md).
 ```
 
-C-2 integration health states:
+Integration health states:
 - `not_provisioned` — Share designed in repo, not yet executed in Unity Catalog (honest default)
 - `partially_validated` — Producer-side correct; share provisioned; no live queries run
 - `validated` — Confirmed in personal Databricks workspace
 - `failed` — Schema error, ID mismatch, or parse failure
 
-See [`docs/delivery-runtime-validation.md`](./docs/delivery-runtime-validation.md) for the full C-2 design, check catalogue, and personal Databricks runtime validation runbook.
+See [`docs/delivery-runtime-validation.md`](./docs/delivery-runtime-validation.md) for the full delivery validation design, check catalogue, and personal Databricks runtime validation runbook.
 
 ---
 
-## Running the A-4 Evaluation Layer
+## Running the Evaluation Layer
 
 Requires Python 3.9+ and `pydantic` (v2). Run the pipeline demos first to generate artifacts.
 
@@ -697,7 +466,7 @@ python src/evaluation/run_evaluation.py \
   --mlflow
 ```
 
-See [`examples/evaluation/README.md`](./examples/evaluation/README.md) for the full evaluation usage guide, including bootstrap-path context (null confidence, placeholder run IDs).
+See [`examples/evaluation/README.md`](./examples/evaluation/README.md) for the full evaluation usage guide, including bootstrap-path context notes on null confidence and placeholder run IDs.
 
 ---
 
@@ -709,51 +478,50 @@ databricks-caseops-lakehouse/
 ├── PROJECT_SPEC.md          # Scope and roadmap source of truth
 ├── ARCHITECTURE.md          # Technical design source of truth
 ├── config/
-│   ├── databricks.resources.example.yml          # Unity Catalog layout reference (base, no credentials)
-│   ├── databricks.resources.dev.example.yml      # E-1: Dev environment layout (no credentials)
-│   ├── databricks.resources.staging.example.yml  # E-1: Staging environment layout (no credentials)
-│   └── databricks.resources.prod.example.yml     # E-1: Prod environment layout reference (no credentials)
+│   ├── databricks.resources.example.yml          # Unity Catalog layout reference (no credentials)
+│   ├── databricks.resources.dev.example.yml      # Dev environment layout (no credentials)
+│   ├── databricks.resources.staging.example.yml  # Staging environment layout (no credentials)
+│   └── databricks.resources.prod.example.yml     # Prod environment layout reference (no credentials)
 ├── docs/
-│   ├── CURSOR_CONTEXT.md    # Agent orientation guide
 │   ├── roadmap.md
 │   ├── data-contracts.md
 │   ├── evaluation-plan.md
-│   ├── databricks-bootstrap.md   # A-3B personal bootstrap validation record
+│   ├── databricks-bootstrap.md   # Personal Databricks bootstrap validation record
 │   └── prompts/             # Excluded from version control
 ├── src/
 │   ├── schemas/             # Pydantic / JSON Schema definitions
-│   │   ├── bedrock_contract.py       # B-1: Gold export payload contract validator
-│   │   ├── delivery_event.py         # C-1: Delivery event schema (v0.2.0)
-│   │   ├── review_queue.py           # E-0: Human review queue schema
-│   │   ├── review_decision.py        # E-0: Review decision and reprocessing request schemas
-│   │   └── governance_monitoring.py  # E-2: Governance monitoring schema and flag vocabulary
+│   │   ├── bedrock_contract.py       # Gold export payload contract validator
+│   │   ├── delivery_event.py         # Delivery event schema (v0.2.0)
+│   │   ├── review_queue.py           # Human review queue schema
+│   │   ├── review_decision.py        # Review decision and reprocessing request schemas
+│   │   └── governance_monitoring.py  # Governance monitoring schema and flag vocabulary
 │   ├── pipelines/           # Bronze → Silver → Gold pipeline logic
-│   │   ├── export_handoff.py             # B-3: Export packaging and handoff service boundary
-│   │   ├── handoff_report.py             # B-4: Export outcome observability and handoff reporting
-│   │   ├── handoff_bundle.py             # B-5: Batch manifest and review bundle packaging
-│   │   ├── handoff_bundle_validation.py  # B-6: Bundle integrity and consistency validation
-│   │   ├── delivery_events.py            # C-1: Delivery event materialization
-│   │   ├── delta_share_handoff.py        # C-1: Delta Sharing producer-side preparation layer
-│   │   ├── review_queue.py               # E-0: Human review queue derivation and materialization
-│   │   └── governance_monitoring.py      # E-2: Governance monitoring aggregation and reporting
-│   ├── evaluation/          # A-4 evaluation runners and report infrastructure
+│   │   ├── export_handoff.py             # Export packaging and handoff service boundary
+│   │   ├── handoff_report.py             # Export outcome observability and batch reporting
+│   │   ├── handoff_bundle.py             # Batch manifest and review bundle packaging
+│   │   ├── handoff_bundle_validation.py  # Bundle integrity and consistency validation
+│   │   ├── delivery_events.py            # Delivery event materialization
+│   │   ├── delta_share_handoff.py        # Delta Sharing producer-side preparation layer
+│   │   ├── review_queue.py               # Human review queue derivation and materialization
+│   │   └── governance_monitoring.py      # Governance monitoring aggregation and reporting
+│   ├── evaluation/          # Evaluation runners and report infrastructure
 │   │   ├── eval_bronze.py
 │   │   ├── eval_silver.py
-│   │   ├── eval_gold.py          # Null-confidence safe (A-3B / A-4)
-│   │   ├── eval_traceability.py  # Cross-layer traceability (A-4)
-│   │   ├── run_evaluation.py     # Full-pipeline orchestrator (A-4)
-│   │   ├── report_models.py      # Structured report dataclasses (A-4)
-│   │   ├── report_writer.py      # JSON + text report writer (A-4)
-│   │   └── mlflow_experiment_paths.py  # Environment-aware MLflow path resolution (E-1 updated)
+│   │   ├── eval_gold.py          # Null-confidence safe
+│   │   ├── eval_traceability.py  # Cross-layer traceability
+│   │   ├── run_evaluation.py     # Full-pipeline evaluation orchestrator
+│   │   ├── report_models.py      # Structured report dataclasses
+│   │   ├── report_writer.py      # JSON + text report writer
+│   │   └── mlflow_experiment_paths.py  # Environment-aware MLflow path resolution
 │   └── utils/               # Shared helpers
-│       └── environment_config.py         # E-1: Environment model and resource naming
+│       └── environment_config.py         # Environment model and resource naming
 ├── notebooks/
-│   └── bootstrap/           # Validated Databricks bootstrap SQL (A-3B)
-├── tests/                   # 1425 tests across all phases: A-4 through B-6, C-1, C-2, D-0, D-1, D-2, E-0, E-1, E-2
+│   └── bootstrap/           # Validated Databricks bootstrap SQL
+├── tests/                   # 1,425 tests across all pipeline stages and contract layers
 └── examples/
-    ├── evaluation/                       # A-4 usage guide
-    ├── expected_delivery_event.json      # C-1: Reference delivery event fixture
-    └── ...                              # Sample documents and expected outputs
+    ├── evaluation/                       # Evaluation usage guide
+    ├── expected_delivery_event.json      # Reference delivery event fixture
+    └── ...                              # Sample documents and expected output fixtures
 ```
 
 ---
@@ -775,6 +543,33 @@ This repo is not yet, and does not aim to be, a mature analytics backbone or ope
 
 ---
 
-## Related
+## Connected Repositories
 
-- `bedrock-caseops` — downstream retrieval and agent orchestration layer
+This repo is the **upstream governed preparation layer** in a two-repository architecture. The boundary between them is intentional and non-negotiable.
+
+| Repository | Role |
+|---|---|
+| **[databricks-caseops-lakehouse](https://github.com/NavidBroumandfar/databricks-caseops-lakehouse)** *(this repo)* | Upstream: governed document ingestion, parsing, extraction, classification, and AI-ready asset preparation on Databricks |
+| **[bedrock-caseops-control-tower](https://github.com/NavidBroumandfar/bedrock-caseops-control-tower)** | Downstream: retrieval, agent reasoning, validation, and escalation workflows on AWS / Amazon Bedrock |
+
+The handoff point between these systems is the formal **Gold export payload** — a schema-versioned, contract-enforced structured record produced by this repo and consumed by the Bedrock repo. The interface contract is defined in [`docs/bedrock-handoff-contract.md`](./docs/bedrock-handoff-contract.md).
+
+This repo does not own retrieval, generation, agent orchestration, or escalation logic. Those concerns belong entirely to the Bedrock CaseOps Control Tower.
+
+---
+
+## Let's Connect
+
+If you're exploring this project, interested in governed AI data pipelines, or open to discussing data platform and AI engineering roles — feel free to reach out.
+
+<div align="center">
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Navid%20Broumandfar-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/navid-broomandfar/)
+[![GitHub](https://img.shields.io/badge/GitHub-NavidBroumandfar-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NavidBroumandfar)
+[![Email](https://img.shields.io/badge/Email-Contact-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:broomandnavid@gmail.com)
+
+</div>
+
+---
+
+*This project was developed with AI-assisted workflows. Architecture, design decisions, and technical boundaries remained intentional throughout; AI tooling supported the implementation workflow as part of a modern development practice.*
