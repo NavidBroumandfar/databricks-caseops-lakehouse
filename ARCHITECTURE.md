@@ -121,7 +121,7 @@ Transform parsed text into a validated, schema-conformant record of structured f
 | `extraction_model` | string | Model identifier used by `ai_extract` |
 | `pipeline_run_id` | string | MLflow run ID for traceability |
 
-Domain-specific field sets (e.g., `fda_warning_letter_fields`) are implemented in `src/schemas/`. V1 implements the FDA warning letter field set only.
+Domain-specific field sets are implemented in `src/schemas/`. The current active domains are FDA warning letters, CISA advisories, and incident reports; additional domains require explicit registry, schema, prompt, classifier, contract, and test updates.
 
 Implementation: `src/schemas/silver_schema.py`
 
@@ -243,7 +243,7 @@ See `docs/evaluation-plan.md` § A-3B Bootstrap Path for full details on evaluat
 
 ### Boundary
 
-This repo's responsibility ends at the Gold export. Everything upstream of the handoff — ingestion, parsing, extraction, schema validation, classification, routing, traceability, and evaluation — is owned here. Everything downstream — retrieval index population, vector search, agentic reasoning, escalation, and case-support workflow orchestration — is owned by Bedrock CaseOps.
+This repo's responsibility ends at the Gold export and producer-side delivery preparation. Everything upstream of the handoff — ingestion, parsing, extraction, schema validation, classification, routing, traceability, and evaluation — is owned here. Everything downstream — retrieval index population, vector search, agent reasoning, escalation, and case-support workflow orchestration — is owned by Bedrock CaseOps.
 
 **The Gold `export_payload` is the interface contract between the two systems.** This repo prepares it; Bedrock CaseOps consumes it.
 
@@ -251,7 +251,7 @@ The complete contract is defined in [`docs/bedrock-handoff-contract.md`](./docs/
 
 ### B-0 Phase Context
 
-The Bedrock Handoff Design section reflects the output of **Phase B-0 — Bedrock Handoff Contract Preparation**. B-0 is a contract-hardening phase. Its purpose is to establish the Gold → Bedrock interface boundary clearly enough that live integration work (Phase B proper) can begin without ambiguity.
+The Bedrock Handoff Design section started with **Phase B-0 — Bedrock Handoff Contract Preparation** and was extended by V2-C producer-side delivery work. B-0 established the Gold → Bedrock interface boundary; V2-C added delivery events, Delta Share setup manifests, and validation checks without adding Bedrock runtime logic.
 
 B-0 does **not** deliver:
 - Live AWS or Bedrock integration
@@ -259,7 +259,7 @@ B-0 does **not** deliver:
 - Vector index configuration or retrieval logic
 - Event-driven delivery mechanisms
 
-The V1 delivery mechanism remains file-based (structured JSON export to a Unity Catalog Volume path). Live integration is Phase B proper.
+The V1 delivery mechanism remains file-based (structured JSON export to a Unity Catalog Volume path). The V2-C delivery layer is producer-side prepared; runtime Delta Share validation requires executing the generated setup SQL in a Databricks workspace.
 
 ### Contract
 
@@ -285,13 +285,13 @@ Full field definitions, optional fields, the complete provenance sub-object, and
 
 The `routing_label` field determines which downstream Bedrock system is the intended consumer.
 
-| Routing Label | Bedrock Consumer | V1 Status |
+| Routing Label | Bedrock Consumer | Current Status |
 |---|---|---|
-| `regulatory_review` | Bedrock regulatory intelligence index | **V1 active** — FDA warning letters only |
-| `security_ops` | Bedrock security operations index | Active (D-1 ✅) |
-| `incident_management` | Bedrock incident management workflow | Active (D-2 ✅) |
-| `quality_management` | Bedrock quality assurance workflow | Planned V2+ |
-| `knowledge_base` | General Bedrock knowledge base index | Planned V2+ |
+| `regulatory_review` | Bedrock regulatory intelligence index | Active — FDA warning letters |
+| `security_ops` | Bedrock security operations index | Active — CISA advisories |
+| `incident_management` | Bedrock incident management workflow | Active — incident reports |
+| `quality_management` | Bedrock quality assurance workflow | Planned future domain |
+| `knowledge_base` | General Bedrock knowledge base index | Planned future domain |
 | `quarantine` | Human review queue — not forwarded | Active (governance path) |
 
 Full routing label semantics are in `docs/bedrock-handoff-contract.md` § 5.
@@ -314,9 +314,9 @@ The V2 delivery mechanism was selected during Phase C-0. See [`docs/live-handoff
 
 The V1 file export path is **retained**. The V2 delivery layer adds:
 
-1. **Delta Share** (`caseops_handoff`): shares the `caseops.gold.ai_ready_assets` Gold table with a Bedrock CaseOps recipient via the Delta Sharing open protocol. Bedrock CaseOps queries the share to discover export-ready records. This is governed at the Unity Catalog level — access is auditable, schema-versioned, and routing-label-transparent.
+1. **Delta Share** (`caseops_handoff`): the repo generates the setup SQL and manifest needed to share the `caseops.gold.ai_ready_assets` Gold table with a Bedrock CaseOps recipient via the Delta Sharing open protocol. Once a Databricks operator provisions the share, Bedrock CaseOps can query it to discover export-ready records. This is governed at the Unity Catalog level — access is auditable, schema-versioned, and routing-label-transparent.
 
-2. **Delivery events table** (`caseops.gold.delivery_events`): a Unity Catalog Delta table that records a per-batch delivery notification after each successful pipeline run. Each row references the B-5 batch manifest path, record count, routing labels, and `schema_version`. Bedrock CaseOps reads this table to discover new batches.
+2. **Delivery events table** (`caseops.gold.delivery_events`): a Unity Catalog Delta table design that records a per-batch delivery notification after each successful pipeline run. Each row references the B-5 batch manifest path, record count, routing labels, and `schema_version`. The repo writes local delivery event artifacts and generates the table DDL; Bedrock CaseOps reads the table only after runtime provisioning.
 
 3. **Schema version bump**: payloads written in V2-C carry `schema_version: v0.2.0`. Three new optional fields are added to `provenance`: `delivery_mechanism`, `delta_share_name`, `delivery_event_id`. These are optional — v0.1.0 consumers are unaffected.
 
@@ -325,9 +325,9 @@ The V1 file export path is **retained**. The V2 delivery layer adds:
 | Boundary Artifact | Owner | V2 Change |
 |---|---|---|
 | Export payload file at Volume path | This repo writes | Unchanged from V1 |
-| `caseops.gold.ai_ready_assets` Delta table | This repo writes | Shared via Delta Share in V2-C |
-| `caseops_handoff` Delta Share | This repo provisions | New in V2-C |
-| `caseops.gold.delivery_events` Delta table | This repo writes | New in V2-C |
+| `caseops.gold.ai_ready_assets` Delta table | This repo writes in Databricks runtime; local demos write JSON artifacts | Shared via Delta Share after runtime provisioning |
+| `caseops_handoff` Delta Share | This repo generates setup SQL; operator provisions in Databricks | New in V2-C; not created by local runs |
+| `caseops.gold.delivery_events` Delta table | This repo generates DDL and local event artifacts; Databricks runtime writes table rows | New in V2-C; local default remains artifact-based |
 | B-5 batch manifest | This repo writes | Referenced in delivery event |
 | Delta Share consumption | Bedrock CaseOps | Consumer-side; not in this repo |
 | Delivery event polling / subscription | Bedrock CaseOps | Consumer-side; not in this repo |
@@ -646,7 +646,7 @@ Phase E-2 adds the governance monitoring layer on top of the completed E-0 (huma
 | Governance monitoring | E-2 complete: GovernanceReport, bounded flag vocabulary, deterministic aggregation from eval/handoff/review artifacts | Multi-run trend aggregation; V3+ governance evolution |
 | Streaming ingestion | Batch only | Databricks Auto Loader on Volume |
 | Model-based routing | Rule-based V1 | Classification model trained on Gold labels |
-| Live Bedrock integration | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Consumer-side integration at Bedrock CaseOps |
+| Bedrock handoff delivery | File export (V1) + Delta Sharing producer layer (C-1) + validation layer (C-2) | Runtime share provisioning evidence; consumer-side integration at Bedrock CaseOps |
 | Extraction model selection | Default `ai_extract` | Per-class model selection with A/B evaluation |
 
 No future evolution item should be treated as in-scope until explicitly added to `PROJECT_SPEC.md`.

@@ -108,7 +108,7 @@ This validation is locally executable. No Databricks workspace is required.
 **Step 1**: Run the C-1 delivery demo to generate artifacts:
 
 ```bash
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports \
@@ -163,7 +163,7 @@ This runbook describes the steps to achieve `status = 'validated'` in a personal
 
 **Step 1** — Generate C-1 delivery artifacts (local):
 ```bash
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports \

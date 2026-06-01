@@ -111,7 +111,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase 1 (V1 — Core Governed Pipeline)** delivered the full Bronze → Silver → Gold document intelligence pipeline: Unity Catalog-governed ingestion, `ai_parse_document`-based Bronze parsing, `ai_extract`-based Silver structured field extraction, `ai_classify`-based Gold classification and routing, MLflow evaluation across all four quality dimensions (parse quality, extraction quality, classification quality, traceability), and the complete Gold → Bedrock handoff preparation layer — including contract definition, schema enforcement, export materialization, batch bundle packaging, and integrity validation. V1 was validated end-to-end in a personal Databricks workspace using real AI Functions against public FDA sample documents.
 
-**Phase 2 (V2 — Hardening and Expansion)** added live handoff integration via Delta Sharing with a producer-side delivery layer (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
+**Phase 2 (V2 — Hardening and Expansion)** added producer-side handoff preparation via Delta Sharing manifests and delivery events (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
 **Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally and was validated in a personal Databricks workspace. Total test coverage: **1,425 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, and operational hardening.
 
@@ -121,27 +121,56 @@ To run the local Gold demo, see the [Running the Gold Demo](#running-the-gold-de
 
 ---
 
-## Running the Bronze Demo
+## June 2026 Audit Summary
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
+The audit found this repo is coherent as an upstream governed preparation layer: it ingests documents, creates Bronze/Silver/Gold records, validates contracts, prepares Gold handoff artifacts, and exposes producer-side delivery and governance outputs.
+
+It does not implement Bedrock runtime behavior, retrieval, RAG, agent reasoning, escalation, or case-support workflows. Those belong in the downstream Bedrock CaseOps Control Tower.
+
+The next milestone is runtime Databricks productionization: reproducible Jobs or Asset Bundles, real reusable AI Function adapters, Delta table writers, and manual Delta Share provisioning evidence that can move delivery validation from `not_provisioned` to `validated`.
+
+---
+
+## Local Setup and Verification
+
+Use Python 3.9+. The local shell may not expose `python`, so commands use `.venv/bin/python` after the virtual environment is created. If you do not use a virtual environment, replace `.venv/bin/python` with `python3`.
 
 ```bash
-# 1. Install the only required dependency
-pip install pydantic
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q
+```
 
-# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
-python src/pipelines/ingest_bronze.py \
+Equivalent Make targets:
+
+```bash
+make install-dev
+make test
+make audit
+```
+
+`make audit` currently runs the full local test suite. Runtime dependencies are in `requirements.txt`; development and test dependencies are in `requirements-dev.txt`. Generated local run artifacts are written under `output/` and should not be committed. Curated fixtures belong under `examples/`.
+
+---
+
+## Running the Bronze Demo
+
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+
+```bash
+# 1. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
 
 # Artifact is written to output/bronze/<bronze_record_id>.json
 
-# 3. Run Bronze evaluation against all artifacts in the output directory
-python src/evaluation/eval_bronze.py --input-dir output/bronze
+# 2. Run Bronze evaluation against all artifacts in the output directory
+.venv/bin/python src/evaluation/eval_bronze.py --input-dir output/bronze
 
 # Optional: evaluate a single artifact
-python src/evaluation/eval_bronze.py --input output/bronze/<bronze_record_id>.json
+.venv/bin/python src/evaluation/eval_bronze.py --input output/bronze/<bronze_record_id>.json
 ```
 
 The evaluation script prints a parse quality summary and writes a JSON evaluation artifact to `output/eval/`.
@@ -150,31 +179,28 @@ The evaluation script prints a parse quality summary and writes a JSON evaluatio
 
 ## Running the Silver Demo
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
-If you have already run the Bronze demo, skip step 2.
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+If you have already run the Bronze demo, skip the ingest step.
 
 ```bash
-# 1. Install the only required dependency
-pip install pydantic
-
-# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
-python src/pipelines/ingest_bronze.py \
+# 1. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
 
 # Artifact is written to output/bronze/<bronze_record_id>.json
 
-# 3. Extract structured fields from Bronze → produces a Silver JSON artifact
-python src/pipelines/extract_silver.py --input-dir output/bronze
+# 2. Extract structured fields from Bronze → produces a Silver JSON artifact
+.venv/bin/python src/pipelines/extract_silver.py --input-dir output/bronze
 
 # Artifact is written to output/silver/<extraction_id>.json
 
-# 4. Run Silver evaluation against all artifacts in the output directory
-python src/evaluation/eval_silver.py --input-dir output/silver
+# 3. Run Silver evaluation against all artifacts in the output directory
+.venv/bin/python src/evaluation/eval_silver.py --input-dir output/silver
 
 # Optional: evaluate a single artifact
-python src/evaluation/eval_silver.py --input output/silver/<extraction_id>.json
+.venv/bin/python src/evaluation/eval_silver.py --input output/silver/<extraction_id>.json
 ```
 
 The evaluation script prints an extraction quality summary (validity rate, field
@@ -186,28 +212,25 @@ reference fixture showing a successful extraction result.
 
 ## Running the Gold Demo
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed.
-If you have already run the Bronze and Silver demos, skip steps 2–3.
+Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+If you have already run the Bronze and Silver demos, skip the ingest and extraction steps.
 
 ```bash
-# 1. Install the only required dependency
-pip install pydantic
-
-# 2. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
-python src/pipelines/ingest_bronze.py \
+# 1. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
 
 # Artifact is written to output/bronze/<bronze_record_id>.json
 
-# 3. Extract structured fields from Bronze → produces a Silver JSON artifact
-python src/pipelines/extract_silver.py --input-dir output/bronze
+# 2. Extract structured fields from Bronze → produces a Silver JSON artifact
+.venv/bin/python src/pipelines/extract_silver.py --input-dir output/bronze
 
 # Artifact is written to output/silver/<extraction_id>.json
 
-# 4. Classify Silver records → produces Gold artifacts and export payloads
-python src/pipelines/classify_gold.py \
+# 3. Classify Silver records → produces Gold artifacts and export payloads
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze
 
@@ -216,7 +239,7 @@ python src/pipelines/classify_gold.py \
 # Invalid payloads are blocked before write — see contract_validation_errors in pipeline output
 
 # Optional: produce a handoff batch report
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports
@@ -225,7 +248,7 @@ python src/pipelines/classify_gold.py \
 #                   output/reports/handoff_report_<run_id>.txt   (human-readable)
 
 # Optional: produce a batch manifest and review bundle (may be combined with --report-dir)
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports \
@@ -236,7 +259,7 @@ python src/pipelines/classify_gold.py \
 # The bundle references all per-record artifact paths and the handoff report when both flags are used.
 
 # Optional: run bundle integrity validation against the generated bundle
-python -c "
+.venv/bin/python -c "
 from pathlib import Path
 from src.pipelines.handoff_bundle_validation import validate_handoff_bundle, format_validation_result_text
 import glob
@@ -246,11 +269,11 @@ if bundles:
     print(format_validation_result_text(result))
 "
 
-# 5. Run Gold evaluation against all artifacts in the output directory
-python src/evaluation/eval_gold.py --input-dir output/gold
+# 4. Run Gold evaluation against all artifacts in the output directory
+.venv/bin/python src/evaluation/eval_gold.py --input-dir output/gold
 
 # Optional: evaluate a single artifact
-python src/evaluation/eval_gold.py --input output/gold/<gold_record_id>.json
+.venv/bin/python src/evaluation/eval_gold.py --input output/gold/<gold_record_id>.json
 ```
 
 The evaluation script prints a classification quality summary (success rate,
@@ -267,15 +290,15 @@ Requires Python 3.9+ and `pydantic` (v2). Run the full Gold Demo first to genera
 
 ```bash
 # 1–3. Run the Bronze, Silver, Gold demos (if not already done)
-python src/pipelines/ingest_bronze.py \
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
 
-python src/pipelines/extract_silver.py --input-dir output/bronze
+.venv/bin/python src/pipelines/extract_silver.py --input-dir output/bronze
 
 # 4. Classify Gold with delivery augmentation enabled
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports \
@@ -305,7 +328,7 @@ Requires Python 3.9+ and `pydantic` (v2). Run the Gold Demo first to generate pi
 
 ```bash
 # Run the Gold pipeline with full report, bundle, and review queue output
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze \
   --report-dir output/reports \
@@ -377,7 +400,7 @@ Requires Python 3.9+ and `pydantic` (v2). Run the Delivery Demo first to generat
 
 ```bash
 # Run delivery validation against the generated delivery artifacts
-python -c "
+.venv/bin/python -c "
 from pathlib import Path
 import glob
 from src.pipelines.delivery_validation import (
@@ -427,7 +450,7 @@ Requires Python 3.9+ and `pydantic` (v2). Run the pipeline demos first to genera
 
 ```bash
 # Run the full evaluation pass across all three layers
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold
@@ -441,16 +464,16 @@ Or run individual evaluators:
 
 ```bash
 # Bronze: parse quality
-python src/evaluation/eval_bronze.py --input-dir output/bronze
+.venv/bin/python src/evaluation/eval_bronze.py --input-dir output/bronze
 
 # Silver: extraction quality
-python src/evaluation/eval_silver.py --input-dir output/silver
+.venv/bin/python src/evaluation/eval_silver.py --input-dir output/silver
 
 # Gold: classification quality (null-confidence safe)
-python src/evaluation/eval_gold.py --input-dir output/gold
+.venv/bin/python src/evaluation/eval_gold.py --input-dir output/gold
 
 # Cross-layer traceability
-python src/evaluation/eval_traceability.py \
+.venv/bin/python src/evaluation/eval_traceability.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold
@@ -459,7 +482,7 @@ python src/evaluation/eval_traceability.py \
 Optional MLflow logging (requires `mlflow` installed):
 
 ```bash
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold \
@@ -572,4 +595,4 @@ If you're exploring this project, interested in governed AI data pipelines, or o
 
 ---
 
-*This project was developed with AI-assisted workflows. The system architecture, agent design, schema contracts, evaluation framework, and safety boundaries were intentionally designed and directed by the author, with AI tooling used to support and accelerate implementation as part of a modern engineering workflow.*
+*This project was developed with AI-assisted workflows. The system architecture, schema contracts, evaluation framework, and safety boundaries were intentionally designed and directed by the author, with AI tooling used to support and accelerate implementation as part of a modern engineering workflow.*

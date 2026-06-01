@@ -651,9 +651,9 @@ V1 is complete as of April 2026. This means:
 
 **Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption. V1 B-phases established and hardened the export boundary — contract, validator, materialization, bundle, and integrity validation. V2-C executes across that boundary using a selected delivery protocol.
 
-**What is different from V1**: V1 B-phases prepared the handoff (file export to a Unity Catalog Volume path). V2-C delivers that handoff to a live Bedrock consumer. This is the first point in the project where output leaves this repo's infrastructure boundary and arrives at a Bedrock CaseOps consumer.
+**What is different from V1**: V1 B-phases prepared the handoff (file export to a Unity Catalog Volume path). V2-C adds producer-side Delta Sharing preparation, delivery events, and validation checks. Runtime delivery is not considered `validated` until the generated setup SQL is executed and queried in a Databricks workspace.
 
-**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, RAG, agent reasoning, or escalation logic — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share provisioning.
+**Scope boundary**: V2-C prepares the producer-side delivery surface. It does not implement retrieval indexes, vector search, RAG, agent reasoning, escalation logic, or a Bedrock consumer endpoint — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share setup SQL, delivery events, and validation artifacts.
 
 **C-0 decision (final)**: Delta Sharing is the selected primary delivery mechanism. The V1 file export path is **augmented, not replaced**. A `delivery_events` Delta table is added as the per-batch notification record. The contract version bumps from v0.1.0 to v0.2.0 (minor, additive). See [`docs/live-handoff-design.md`](./live-handoff-design.md) for the full design record.
 
@@ -797,8 +797,8 @@ See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
 **Completion criteria met:**
 - ✅ Domain registry established as single source of truth for domain status
-- ✅ FDA is the only ACTIVE domain — behavior unchanged
-- ✅ CISA and incident are PLANNED post-D-0 — registered structurally, not executable
+- ✅ At D-0 closeout, FDA was the only active domain and CISA/incident were planned framework entries
+- ✅ D-1 and D-2 later graduated CISA and incident to active executable domains
 - ✅ Prompt selection routes through domain registry
 - ✅ Schema branching has a clean architectural home
 - ✅ Classification/routing framework is structurally multi-domain-aware
@@ -1002,7 +1002,7 @@ export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
 
 **V2 is complete.** All of the following are true:
 
-- ✅ A live delivery mechanism exists and is validated: Gold export payloads delivered to a Bedrock CaseOps consumer without a manual copy step (Phase C — complete)
+- ✅ A producer-side delivery mechanism exists and is validation-ready: Gold export payloads can be exposed through Delta Sharing once the generated setup SQL is provisioned in Databricks; local validation honestly reports `not_provisioned` until runtime evidence exists (Phase C — complete)
 - ✅ CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
 - ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 - ✅ Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)

@@ -137,6 +137,7 @@ local_settings.*
 # ------------------------------------------------------------
 # Data files (never commit raw or processed data)
 # ------------------------------------------------------------
+output/
 *.csv
 *.tsv
 *.parquet

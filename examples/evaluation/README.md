@@ -28,16 +28,17 @@ Each evaluator:
 
 ## Prerequisites
 
-Python 3.9+, `pydantic` (v2). No Databricks workspace required for local evaluation.
+Python 3.9+, `pydantic` (v2). No Databricks workspace required for local evaluation. The local shell may not expose `python`, so examples use `.venv/bin/python`.
 
 ```bash
-pip install pydantic
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
 MLflow logging is optional:
 
 ```bash
-pip install mlflow
+.venv/bin/python -m pip install mlflow
 ```
 
 ---
@@ -48,16 +49,16 @@ The evaluation layer reads artifacts produced by the pipeline scripts. Run the f
 
 ```bash
 # 1. Ingest → Bronze artifacts
-python src/pipelines/ingest_bronze.py \
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
 
 # 2. Extract → Silver artifacts
-python src/pipelines/extract_silver.py --input-dir output/bronze
+.venv/bin/python src/pipelines/extract_silver.py --input-dir output/bronze
 
 # 3. Classify → Gold artifacts
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze
 ```
@@ -71,7 +72,7 @@ After these three steps, `output/bronze/`, `output/silver/`, and `output/gold/` 
 ### Bronze parse quality
 
 ```bash
-python src/evaluation/eval_bronze.py --input-dir output/bronze
+.venv/bin/python src/evaluation/eval_bronze.py --input-dir output/bronze
 ```
 
 Metrics produced:
@@ -85,7 +86,7 @@ Metrics produced:
 ### Silver extraction quality
 
 ```bash
-python src/evaluation/eval_silver.py --input-dir output/silver
+.venv/bin/python src/evaluation/eval_silver.py --input-dir output/silver
 ```
 
 Metrics produced:
@@ -99,7 +100,7 @@ Metrics produced:
 ### Gold classification quality
 
 ```bash
-python src/evaluation/eval_gold.py --input-dir output/gold
+.venv/bin/python src/evaluation/eval_gold.py --input-dir output/gold
 ```
 
 Metrics produced:
@@ -117,7 +118,7 @@ Metrics produced:
 ### Cross-layer traceability
 
 ```bash
-python src/evaluation/eval_traceability.py \
+.venv/bin/python src/evaluation/eval_traceability.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold
@@ -139,7 +140,7 @@ Metrics produced:
 ## Running the full evaluation in one command
 
 ```bash
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold
@@ -153,7 +154,7 @@ This runs all four evaluators, assembles an `EvaluationReport`, and writes:
 
 ```bash
 # Skip Gold if no Gold artifacts exist yet
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --skip-gold --skip-traceability
@@ -162,7 +163,7 @@ python src/evaluation/run_evaluation.py \
 ### With MLflow logging (optional)
 
 ```bash
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold \
@@ -219,7 +220,7 @@ The JSON report has this structure:
 ## Running the tests
 
 ```bash
-python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
 Tests cover:

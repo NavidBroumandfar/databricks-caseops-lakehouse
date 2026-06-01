@@ -69,18 +69,18 @@ Raw Documents (PDF, DOCX, TXT)
 
 ---
 
-## Default Document Domain
+## Document Domain Coverage
 
-The pipeline is designed for document-heavy operational and regulatory workflows. The table below lists the intended long-term domain coverage. **V1 implements a single domain: FDA warning letters.** All other document types are planned extensions (V2+).
+The pipeline is designed for document-heavy operational and regulatory workflows. V1 implemented a single executable domain, FDA warning letters. V2 expanded the local-safe pipeline to three active reference domains: FDA warning letters, CISA cybersecurity advisories, and incident reports.
 
-| Document Type | Source Domain | V1 Status |
+| Document Type | Source Domain | Current Status |
 |---|---|---|
-| FDA warning letters | Regulatory / compliance | **V1 — single executable domain** |
-| CISA cybersecurity advisories | Security operations | Planned (V2+) |
-| Incident reports | IT / quality operations | Planned (V2+) |
-| Standard operating procedures | Operations / quality | Planned (V2+) |
-| Quality audit records | Quality management | Planned (V2+) |
-| Technical support and case review records | Enterprise support | Planned (V2+) |
+| FDA warning letters | Regulatory / compliance | **Active** — V1 executable domain |
+| CISA cybersecurity advisories | Security operations | **Active** — V2 D-1 executable domain |
+| Incident reports | IT / quality operations | **Active** — V2 D-2 executable domain |
+| Standard operating procedures | Operations / quality | Planned future domain |
+| Quality audit records | Quality management | Planned future domain |
+| Technical support and case review records | Enterprise support | Planned future domain |
 
 These document types are chosen because they:
 
@@ -89,7 +89,7 @@ These document types are chosen because they:
 - Are publicly available in redacted or sample form for demonstration
 - Are document-heavy enough to justify a pipeline rather than manual review
 
-FDA warning letters are the V1 implementation domain because they have a well-defined, publicly available structure with clearly extractable fields, and published samples are freely accessible for non-commercial use.
+FDA warning letters were chosen as the V1 implementation domain because they have a well-defined, publicly available structure with clearly extractable fields, and published samples are freely accessible for non-commercial use.
 
 ---
 
@@ -361,7 +361,7 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 - Gold → Bedrock handoff preparation layer implemented (contract, validator, export materialization, batch bundle, integrity validation)
 - Live Databricks MLflow experiments successfully populated for all four pipeline evaluation stages
 - V1 remains single-domain, controlled, and non-production — no enterprise deployment, no production credentials
-- Downstream Bedrock live integration is explicitly future work (V2+)
+- Downstream Bedrock consumer-side integration remains outside this repo; V2-C later added producer-side Delta Sharing preparation without adding Bedrock runtime code
 
 ---
 
@@ -373,8 +373,8 @@ This is the first sub-phase of the broader Phase B (Bedrock Handoff Integration)
 
 V2 deepens the operational readiness and integration capability of this repo across three themes:
 
-1. **Live downstream integration** — Move from contract-only handoff preparation (V1) to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps consumption.
-2. **Multi-domain coverage** — Expand beyond FDA warning letters to CISA advisories and incident reports, both of which have draft schemas in `docs/data-contracts.md` and routing labels already defined.
+1. **Producer-side delivery preparation** — Move from contract-only handoff preparation (V1) to Delta Sharing setup manifests, delivery events, and validation checks that can support runtime provisioning evidence.
+2. **Multi-domain coverage** — Expand beyond FDA warning letters to CISA advisories and incident reports, both of which are now active executable domains.
 3. **Enterprise operational hardening** — Add human review workflow, environment separation, and governance monitoring.
 
 ### V2 Explicit Non-Goals
@@ -398,7 +398,7 @@ This boundary remains explicit and non-negotiable in V2:
 | Document ingestion, parsing, extraction | Yes | No |
 | Schema validation and traceability | Yes | No |
 | Classification, routing, and export | Yes | No |
-| Live export delivery to Bedrock | Yes — V2-C (Delta Sharing + delivery events) | Receives via Delta Share |
+| Producer-side export delivery preparation | Yes — V2-C (Delta Sharing setup manifests + delivery events) | Consumes the provisioned Delta Share outside this repo |
 | Multi-domain extraction and classification | Yes — V2-D (complete: FDA, CISA, incident) | No |
 | Human review queue (upstream intake side) | Yes — V2-E (complete) | Downstream review tools: No |
 | Retrieval, RAG, and agent reasoning | No | Yes |
@@ -408,16 +408,16 @@ This boundary remains explicit and non-negotiable in V2:
 
 #### Phase C — Live Handoff Integration and Export Delivery
 
-**Goal**: Move beyond file-only export preparation to a real, validated delivery slice connecting Gold exports to Bedrock CaseOps. V1 B-phases prepared and hardened the export boundary. V2-C executes across that boundary — delivering to a real Bedrock consumer using a selected delivery protocol.
+**Goal**: Move beyond file-only export preparation to a producer-side Delta Sharing delivery surface for Gold exports. V1 B-phases prepared and hardened the export boundary. V2-C adds delivery events, Delta Share setup manifests, and a validation vocabulary without implementing the Bedrock consumer runtime.
 
-**Status**: Complete. C-0 (design), C-1 (implementation), and C-2 (producer-side validation layer) are all complete. Phase D-0 is next.
+**Status**: Complete. C-0 (design), C-1 (implementation), and C-2 (producer-side validation layer) are all complete.
 
 Subphases:
 - **C-0** — Integration delivery mechanism design and selection. **Complete.** Decision: Delta Sharing as primary mechanism, augmenting (not replacing) the V1 file export path. See [`docs/live-handoff-design.md`](./docs/live-handoff-design.md) for the full design record.
-- **C-1** — Export delivery implementation. **Complete.** Implements the upstream producer-side delivery augmentation: `DeliveryEvent` schema (`src/schemas/delivery_event.py`), delivery event materialization (`src/pipelines/delivery_events.py`), Delta Sharing producer-side preparation layer (`src/pipelines/delta_share_handoff.py`), and integration into `classify_gold.py` via `--delivery-dir`. Export payloads written with `--delivery-dir` carry `schema_version: v0.2.0` and three new optional provenance fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`). V1 file export path fully preserved. 155 new tests. C-2 runtime validation not yet performed — `status = 'prepared'` in delivery events.
+- **C-1** — Export delivery implementation. **Complete.** Implements the upstream producer-side delivery augmentation: `DeliveryEvent` schema (`src/schemas/delivery_event.py`), delivery event materialization (`src/pipelines/delivery_events.py`), Delta Sharing producer-side preparation layer (`src/pipelines/delta_share_handoff.py`), and integration into `classify_gold.py` via `--delivery-dir`. Export payloads written with `--delivery-dir` carry `schema_version: v0.2.0` and three new optional provenance fields (`delivery_mechanism`, `delta_share_name`, `delivery_event_id`). V1 file export path fully preserved. 155 new tests. Delivery events carry `status = 'prepared'`; runtime validation status is assigned by the C-2 validator.
 - **C-2** — Runtime integration validation. **Complete (producer-side validation layer).** Implements a bounded, 15-check delivery-layer validation layer: `DeliveryValidationResult` schema (`src/schemas/delivery_validation.py`), `validate_delivery_layer()` entry point (`src/pipelines/delivery_validation.py`), 134 new tests. Honest status vocabulary: `validated`, `partially_validated`, `not_provisioned`, `failed`. Default local run produces `not_provisioned` — correct and honest. Live end-to-end validation (Delta Share query + delivery event table row + payload conformance) requires manual workspace provisioning; the runbook is in `docs/delivery-runtime-validation.md`.
 
-**Scope boundary**: V2-C delivers from this repo to a Bedrock consumer endpoint. It does not implement retrieval indexes, vector search, agent reasoning, or escalation logic — those remain Bedrock CaseOps. The furthest this repo reaches toward Bedrock is Delta Share provisioning — making data available for Bedrock to consume.
+**Scope boundary**: V2-C prepares the producer-side delivery surface. It does not implement retrieval indexes, vector search, agent reasoning, escalation logic, or the Bedrock consumer. The furthest this repo reaches toward Bedrock is Delta Share setup SQL, delivery events, and local/runtime validation checks. A local run remains `not_provisioned` until the share is actually created and queried in a Databricks workspace.
 
 #### Phase D — Multi-Domain Pipeline Expansion
 
@@ -449,7 +449,7 @@ Subphases:
 
 V2 is complete. All of the following are true:
 
-1. ✅ A live delivery mechanism exists and is validated: Gold export payloads can be delivered to a Bedrock CaseOps consumer endpoint without a manual copy step (Phase C — complete)
+1. ✅ A producer-side delivery mechanism exists and is validation-ready: Gold export payloads can be exposed through Delta Sharing once the generated setup SQL is provisioned in Databricks; local validation honestly reports `not_provisioned` until that runtime evidence exists (Phase C — complete)
 2. ✅ At least two additional document domains (CISA advisories, incident reports) can be processed end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
 3. ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 4. ✅ The pipeline can be deployed in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)

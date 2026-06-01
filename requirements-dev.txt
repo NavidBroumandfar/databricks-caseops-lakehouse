@@ -1,0 +1,8 @@
+# Development dependencies for local testing and audit commands.
+#
+# Runtime dependencies stay in requirements.txt. Keep this file limited to
+# tooling needed by contributors and CI-like local verification.
+
+-r requirements.txt
+
+pytest>=8.0,<9.0

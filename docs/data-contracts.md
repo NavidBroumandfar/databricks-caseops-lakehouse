@@ -111,7 +111,7 @@ Written after `ai_extract` completes and Pydantic validation runs. One record pe
 
 ### Domain-Specific Extracted Fields
 
-V1 implements the FDA warning letter field set only. CISA advisory and incident report schemas were implemented in V2 (Phase D-1 and D-2 respectively). All three domains are now active and executable. The field contracts below reflect the implemented schemas.
+V1 originally implemented the FDA warning letter field set. CISA advisory and incident report schemas were implemented in V2 (Phase D-1 and D-2 respectively). All three domains are now active and executable. The field contracts below reflect the implemented schemas.
 
 #### FDA Warning Letter Fields — V1
 

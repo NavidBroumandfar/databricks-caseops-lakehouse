@@ -1,8 +1,8 @@
 # Bedrock Handoff Contract — Gold → Bedrock CaseOps Interface
 
-> **Contract Phase**: B-0 — Bedrock Handoff Contract Preparation
-> **Status**: Established. This is the single authoritative contract artifact for the Gold layer handoff.
-> **This document does not describe live integration.** Live integration is Phase B proper.
+> **Contract Phase**: B-0 established the baseline; V2-C added producer-side delivery fields and artifacts.
+> **Status**: Established and current through contract version `v0.2.0`.
+> **This document describes the upstream handoff contract only.** It does not define Bedrock retrieval, RAG, agent reasoning, escalation, or consumer runtime behavior.
 > Authoritative technical design is in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 > Authoritative scope is in [`PROJECT_SPEC.md`](../PROJECT_SPEC.md).
 
@@ -22,7 +22,7 @@ The contract exists to:
 3. Allow Bedrock CaseOps implementation to proceed without ambiguity about upstream data shape
 4. Establish a stable, honest boundary that explicitly acknowledges current implementation limitations
 
-B-0 is a **contract-hardening phase**. Its purpose is to define the handoff clearly enough that live integration work (Phase B proper) can begin without contract ambiguity. No AWS credentials, Bedrock SDK code, S3 plumbing, vector index configuration, or live integration logic is delivered here.
+B-0 was the baseline **contract-hardening phase**. V2-C extended the contract with optional producer-side delivery provenance fields and delivery artifacts. No AWS credentials, Bedrock SDK code, S3 plumbing, vector index configuration, retrieval logic, or agent runtime logic is delivered by this repo.
 
 ---
 
@@ -38,6 +38,7 @@ B-0 is a **contract-hardening phase**. Its purpose is to define the handoff clea
 | Classification and routing | `ai_classify` produces document type labels and routing labels per the defined closed taxonomy |
 | Export payload construction | Gold records carry a fully-structured `export_payload` for all `export_ready = true` records |
 | Export payload materialization | One JSON file per `export_ready` record is written to a deterministic Volume path |
+| Producer-side delivery preparation | When delivery output is requested, the repo writes delivery event artifacts and a Delta Share preparation manifest with Unity Catalog SQL |
 | Lineage completeness | Every Gold record is traceable to its Silver extraction, Bronze parse, and source file via `document_id` |
 | Quarantine governance | Records failing quality thresholds are marked `export_ready = false` and routed to `quarantine` — never silently passed through |
 | Schema versioning | Every record and payload carries `schema_version`; breaking changes increment the major version |
@@ -55,21 +56,25 @@ B-0 is a **contract-hardening phase**. Its purpose is to define the handoff clea
 | Human-in-the-loop review for quarantined records | Bedrock CaseOps (or future shared tooling) |
 | Cross-case analytics and KPI dashboards | Bedrock CaseOps (or out of scope for both in V1) |
 | Export file consumption cadence and polling | Bedrock CaseOps |
+| Delta Share recipient activation and consumption | Bedrock CaseOps / Databricks operator outside this local repo |
+| Delivery event polling or subscription | Bedrock CaseOps |
 | Retry and backfill on downstream failure | Bedrock CaseOps |
 
-**The handoff boundary is the materialized export payload file at:**
+**The baseline handoff boundary is the materialized export payload file at:**
 
 ```
 /Volumes/caseops/gold/exports/<routing_label>/<document_id>.json
 ```
 
-This repo writes it. Bedrock CaseOps reads it. Neither system crosses the other's boundary.
+This repo writes it. Bedrock CaseOps reads it. In V2-C, the repo also prepares a producer-side Delta Share surface and delivery event artifacts. Local repo validation remains `not_provisioned` until the generated setup SQL is executed and queried in a Databricks workspace.
 
 ---
 
 ## 3. V1 Handoff Unit Definition
 
 The V1 handoff unit is a **single JSON file per export-ready Gold record**, materialized at a deterministic path in the Unity Catalog Volume.
+
+V2 preserves this handoff unit. It adds optional delivery provenance fields in `export_payload.provenance` and producer-side delivery artifacts; it does not replace the JSON export contract.
 
 ### What Constitutes a Valid Handoff Unit
 
@@ -134,6 +139,9 @@ The provenance object is **required** in every export payload. It provides trace
 | `classification_model` | string | Yes | Model identifier used by `ai_classify` |
 | `classification_confidence` | float or null | Target: Yes; Bootstrap: Null | `ai_classify` confidence score (0.0–1.0). **Null in the A-3B bootstrap path** — see § 9 Known Limitations |
 | `schema_version` | string | Yes | Contract version this payload was written against |
+| `delivery_mechanism` | string | No | V2-C optional provenance; currently `delta_sharing` when delivery output is requested |
+| `delta_share_name` | string | No | V2-C optional provenance; name of the prepared Delta Share, e.g. `caseops_handoff` |
+| `delivery_event_id` | string | No | V2-C optional provenance; links payloads to the producer-side delivery event |
 
 ### 4.4 Extracted Fields by Document Type
 
@@ -154,10 +162,33 @@ The provenance object is **required** in every export payload. It provides trace
 | `product_involved` | string | No | Product or product line named in the warning |
 | `summary` | string | No | Brief extracted summary of the warning content |
 
-**V2+ document types** (defined in schema, not yet executable end-to-end):
-- CISA advisory: `advisory_id`, `severity_level`, `cve_ids`, `remediation_available`, etc.
-- Incident report: `incident_date`, `incident_type`, `severity`, `root_cause`, etc.
-- Field definitions for these types are in `docs/data-contracts.md` § 3.
+**V2 — CISA Advisory (`document_type = 'cisa_advisory'`):**
+
+| Field | Type | Required in Payload | Description |
+|---|---|---|---|
+| `advisory_id` | string | Yes | CISA advisory identifier |
+| `title` | string | Yes | Advisory title |
+| `published_date` | string (ISO 8601 date) | Yes | Publication date |
+| `severity_level` | string | Yes | `Critical`, `High`, `Medium`, or `Low` |
+| `affected_products` | array[string] | No | Products, vendors, or platforms affected |
+| `cve_ids` | array[string] | No | CVE identifiers cited in the advisory |
+| `remediation_available` | boolean | Yes | Whether a remediation path is available |
+| `remediation_summary` | string | No | Remediation guidance summary |
+| `summary` | string | No | Brief extracted advisory summary |
+
+**V2 — Incident Report (`document_type = 'incident_report'`):**
+
+| Field | Type | Required in Payload | Description |
+|---|---|---|---|
+| `incident_id` | string | No | Incident identifier when present |
+| `incident_date` | string (ISO 8601 date) | Yes | Date of the incident |
+| `incident_type` | string | Yes | Incident category |
+| `severity` | string | Yes | Incident severity |
+| `affected_systems` | array[string] | No | Systems or services affected |
+| `root_cause` | string | No | Root cause when known |
+| `resolution_summary` | string | No | Resolution or mitigation summary |
+| `status` | string | Yes | `open`, `resolved`, or `under_review` |
+| `reported_by` | string | No | Reporter or source when available |
 
 ### 4.5 Complete V1 Payload Example (Target-State)
 
@@ -201,13 +232,13 @@ The following represents a valid, complete V1 export payload in the target state
 
 The `routing_label` in every Gold record and export payload determines the intended downstream Bedrock CaseOps consumer. This mapping is the routing contract between the two systems.
 
-| Routing Label | Bedrock Consumer / Workflow | Trigger Condition | V1 Execution Status |
+| Routing Label | Bedrock Consumer / Workflow | Trigger Condition | Current Execution Status |
 |---|---|---|---|
-| `regulatory_review` | Bedrock regulatory intelligence index | `document_type_label = 'fda_warning_letter'` (and future regulatory document types) | **V1 active** — FDA warning letters only |
-| `security_ops` | Bedrock security operations index | `document_type_label = 'cisa_advisory'` | Planned (V2+) — label defined, no live end-to-end path |
-| `incident_management` | Bedrock incident management workflow | `document_type_label = 'incident_report'` | Planned (V2+) — label defined, no live end-to-end path |
-| `quality_management` | Bedrock quality assurance workflow | `document_type_label = 'quality_audit_record'` or `'standard_operating_procedure'` | Planned (V2+) — labels defined, no live end-to-end path |
-| `knowledge_base` | General Bedrock knowledge base index | `document_type_label = 'technical_case_record'` | Planned (V2+) — label defined, no live end-to-end path |
+| `regulatory_review` | Bedrock regulatory intelligence index | `document_type_label = 'fda_warning_letter'` (and future regulatory document types) | Active — FDA warning letters |
+| `security_ops` | Bedrock security operations index | `document_type_label = 'cisa_advisory'` | Active — CISA advisories |
+| `incident_management` | Bedrock incident management workflow | `document_type_label = 'incident_report'` | Active — incident reports |
+| `quality_management` | Bedrock quality assurance workflow | `document_type_label = 'quality_audit_record'` or `'standard_operating_procedure'` | Planned future domain |
+| `knowledge_base` | General Bedrock knowledge base index | `document_type_label = 'technical_case_record'` | Planned future domain |
 | `quarantine` | Human review queue — NOT forwarded to Bedrock | Any record failing quality thresholds or classified as `unknown` | Active — governance path only |
 
 ### Routing Label Semantics
@@ -216,11 +247,11 @@ The `routing_label` in every Gold record and export payload determines the inten
 - The `quarantine` label signals governance rejection; such records have `export_ready = false` and are **never materialized** as export payload files
 - All non-`quarantine` routing labels indicate `export_ready = true` (subject to quality threshold satisfaction)
 - The routing label is immutable once written to a Gold record; reprocessing generates a new Gold record with a new `gold_record_id`
-- Non-quarantine routing labels for V2+ document types are defined here to allow Bedrock CaseOps to plan for them without requiring contract renegotiation when V2+ pipelines are enabled
+- Active non-quarantine routing labels are currently `regulatory_review`, `security_ops`, and `incident_management`
 
-### V1 Routing Constraint
+### Current Routing State
 
-In V1, only the `regulatory_review` path is executable end-to-end. The other non-quarantine labels are present in the taxonomy and schema but have no live downstream Bedrock consumer and no end-to-end pipeline validation for those document types. Implementing them is V2+ scope.
+V1 activated `regulatory_review` for FDA warning letters. V2-D activated `security_ops` for CISA advisories and `incident_management` for incident reports. Active here means this repo can extract, classify, route, validate, and materialize handoff payloads for those domains. Downstream Bedrock consumers remain outside this repo.
 
 ---
 
@@ -267,11 +298,11 @@ A quarantine rate greater than zero is expected and correct behavior. Quarantine
 
 ---
 
-## 7. V1 Delivery Mechanism Semantics
+## 7. Delivery Mechanism Semantics
 
-### Current V1 Delivery: Structured File Export
+### Baseline Delivery: Structured File Export
 
-In V1, Gold export-ready records are delivered as individual JSON files written to a Unity Catalog Volume path at Gold classification time.
+Gold export-ready records are delivered as individual JSON files written to a Unity Catalog Volume path at Gold classification time. This file export path is retained in V2.
 
 **Export path pattern:**
 
@@ -286,7 +317,7 @@ In V1, Gold export-ready records are delivered as individual JSON files written 
 /Volumes/caseops/gold/exports/security_ops/b2c3d4e5-f6a7-8901-bcde-fa2345678901.json
 ```
 
-**V1 delivery properties:**
+**File delivery properties:**
 
 | Property | Value |
 |---|---|
@@ -297,7 +328,7 @@ In V1, Gold export-ready records are delivered as individual JSON files written 
 | Overwrites | Not performed — reprocessing produces a new `document_id` and a new file |
 | Quarantine records | No file written — `export_ready = false` records produce no export file |
 
-**What Bedrock CaseOps is responsible for in V1:**
+**What Bedrock CaseOps is responsible for when consuming files:**
 
 - Discovering new export files (polling, batch scan, or future event notification)
 - Reading and parsing the JSON payload
@@ -311,15 +342,21 @@ In V1, Gold export-ready records are delivered as individual JSON files written 
 - That old files will be deleted or replaced
 - That `classification_confidence` will always be non-null (see § 9)
 
-### Planned V2 Delivery Mechanisms (Not in B-0 Scope)
+### V2-C Producer-Side Delivery Preparation
 
-| Mechanism | Description | Phase |
+V2-C adds a producer-side Delta Sharing delivery surface. It augments the file export path and does not replace it.
+
+| Artifact | Producer-Side Status | Runtime Status |
 |---|---|---|
-| Delta table subscription | Bedrock reads directly from `caseops.gold.ai_ready_assets` via Delta Sharing | V2+ |
-| API push | Structured HTTP push to a Bedrock ingestion endpoint | V2+ |
-| Event notification | CDC event or Volume trigger to initiate downstream indexing | V2+ |
+| `DeliveryEvent` JSON/text artifacts | Implemented locally by `src/pipelines/delivery_events.py` | Written as local artifacts when `--delivery-dir` is provided |
+| `delta_share_preparation_manifest.json` | Implemented locally by `src/pipelines/delta_share_handoff.py` | Contains Unity Catalog SQL to create the share and delivery table |
+| `caseops_handoff` Delta Share | Designed and generated as setup SQL | Not provisioned by local repo execution |
+| `caseops.gold.delivery_events` Delta table | DDL generated in the manifest | Exists only after the setup SQL is run in Databricks |
+| C-2 validation result | Implemented by `src/pipelines/delivery_validation.py` | Local default is `not_provisioned`; `validated` requires Databricks workspace evidence |
 
-These are future evolution items. None are in scope for B-0 or Phase B contract work.
+When `--delivery-dir` is active, payloads are written at `schema_version: v0.2.0` and may include `delivery_mechanism`, `delta_share_name`, and `delivery_event_id` in `provenance`. Without `--delivery-dir`, the V1-compatible v0.1.0 file export path remains valid.
+
+The contract does not claim a live Bedrock consumer exists in this repo. Delta Share consumption, event polling, retrieval indexing, RAG, and agent workflows belong to Bedrock CaseOps.
 
 ---
 
@@ -327,11 +364,11 @@ These are future evolution items. None are in scope for B-0 or Phase B contract 
 
 ### Schema Version Field
 
-Every record and export payload carries `schema_version`. Current contract version: **`v0.1.0`**.
+Every record and export payload carries `schema_version`. Current contract version: **`v0.2.0`**. Version `v0.1.0` remains valid for baseline V1 payloads that do not include delivery provenance fields.
 
 | Version Component | Increment Trigger |
 |---|---|
-| Patch (0.1.**x**) | Documentation-only; no schema field changes |
+| Patch (0.2.**x**) | Documentation-only; no schema field changes |
 | Minor (0.**x**.0) | Additive: new optional fields, new routing labels, new document type labels |
 | Major (**x**.0.0) | Breaking: field removal, type changes, renamed required fields, semantic changes |
 
@@ -349,9 +386,9 @@ Every record and export payload carries `schema_version`. Current contract versi
 - Use `schema_version` as the signal for its own schema migration handling
 - Not assume field presence beyond what is marked Required in this contract
 
-### V1 Contract Stability Commitment
+### Contract Stability Commitment
 
-The V1 contract (this document, version `v0.1.0`) is considered stable for the duration of Phase B. Contract revisions before Phase B completion require a new B-0 revision. Version increments are tracked in the document header and in `docs/data-contracts.md`.
+The v0.2.0 contract is a non-breaking extension of v0.1.0. V2-C added optional provenance fields only, so consumers that support v0.1.0 can ignore the new fields. Version increments are tracked in the document header and in `docs/data-contracts.md`.
 
 ---
 
@@ -363,12 +400,12 @@ These limitations are explicitly acknowledged. They must not be treated as resol
 |---|---|---|
 | `classification_confidence` is null in bootstrap-origin records | The A-3B bootstrap SQL path does not expose scalar confidence from `ai_classify`. Provenance `classification_confidence` is `null` for these records. | Known gap in bootstrap SQL path; target-state will populate this field |
 | `pipeline_run_id = 'bootstrap_sql_v1'` in bootstrap-origin records | A-3B records use a static placeholder, not a real MLflow run ID. `document_id`-based lineage is intact regardless. | Known; target-state MLflow pipeline will produce real run IDs |
-| Only `regulatory_review` routing path is V1-executable | All other non-quarantine routing labels are defined but map to no live downstream consumer and have no end-to-end validated pipeline | By design; V2+ scope |
-| No live Bedrock CaseOps consumer exists | Bedrock CaseOps does not yet have a live integration consuming from the export path. This contract defines what it will consume. | Expected at B-0 contract establishment; live integration is Phase B proper |
-| V1 delivery is file-based only | No push notification, CDC event, or streaming mechanism. Bedrock CaseOps must discover files by polling or batch scan. | By design for V1; streaming is V3+ scope |
+| Delta Share is producer-side prepared, not locally provisioned | The repo writes delivery event artifacts and a share preparation manifest. A Databricks operator must run the setup SQL and collect evidence before C-2 can return `validated`. | Honest local default is `not_provisioned` |
+| No Bedrock CaseOps runtime exists in this repo | This repo prepares payloads and producer-side delivery artifacts. It does not consume the Delta Share, build retrieval indexes, run RAG, or orchestrate agents. | By design; owned downstream |
+| File export remains the baseline delivery path | File export continues to work with or without V2-C delivery augmentation. | By design; v0.1.0 and v0.2.0 payloads are both valid |
 | Export confidence threshold not applied in bootstrap path | Bootstrap-origin records are marked `export_ready` based on label routing alone, not the full confidence-inclusive threshold | Explicitly documented in `docs/data-contracts.md` § 7 |
-| Multi-document class routing is not validated | The A-3B batch contained only FDA warning letters. CISA advisories, incident reports, and other V2+ document types are untested. | By design for V1 |
-| No human review workflow for quarantined records | Quarantined records sit in the Gold table and are not automatically routed to any review tool | V2+ scope |
+| Personal Databricks bootstrap evidence covers FDA only | CISA advisories and incident reports are active in the local deterministic pipeline and contract tests, but the A-3B personal Databricks AI Function bootstrap batch used FDA warning letters only. | Runtime adapter productionization is future work |
+| Human review is artifact-based | The repo creates review queue, decision, and reprocessing request artifacts. It does not provide a UI or downstream case management workflow. | By design; upstream-only |
 
 ---
 
@@ -395,20 +432,18 @@ B-0 is complete when all of the following criteria are verifiably satisfied:
 
 ---
 
-## 11. Out of Scope for B-0
+## 11. Out of Scope for This Repo
 
-The following are explicitly excluded from B-0 and must not be treated as delivered by this phase:
+The following are explicitly excluded and must not be treated as delivered by this repo:
 
 | Out of Scope | Rationale |
 |---|---|
 | AWS credentials, IAM roles, or S3 configuration | Production credentials never in this repo; not a Databricks-layer concern |
 | Bedrock SDK code or API client implementation | Bedrock CaseOps implementation; not this repo |
-| Live ingestion endpoint on the Bedrock side | Phase B proper |
+| Live ingestion endpoint on the Bedrock side | Bedrock CaseOps implementation; not this repo |
 | Vector embedding or retrieval index configuration | Bedrock CaseOps owns retrieval |
 | Agent reasoning logic or escalation rules | Bedrock CaseOps owns orchestration |
-| Multi-domain pipeline execution (V2+ document types) | V2+ scope |
+| Delta Share consumer implementation | Bedrock CaseOps owns consumption, polling, and downstream handling |
 | Streaming or event-driven delivery | V3+ scope |
-| Human-in-the-loop review tooling | V2+ scope |
-| Delta Sharing configuration | V2+ delivery mechanism |
-| MLflow experiment population with live metrics | Requires live Databricks pipeline execution |
-| Production Databricks deployment or Asset Bundles | Not in scope for this portfolio-safe project |
+| Review UI or case management tooling | Downstream or future shared tooling; this repo produces upstream review artifacts only |
+| Production Databricks deployment or Asset Bundles | Future productionization work; no production deployment is claimed here |

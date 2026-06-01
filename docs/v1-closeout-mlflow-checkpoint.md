@@ -45,14 +45,15 @@ what to update in the repo afterward.
 
 | Requirement | Check |
 |---|---|
-| Python 3.9+ | `python --version` |
-| `pydantic` v2 | `pip show pydantic` |
-| `mlflow` | `pip show mlflow` |
+| Python 3.9+ | `.venv/bin/python --version` or `python3 --version` |
+| `pydantic` v2 | `.venv/bin/python -m pip show pydantic` |
+| `mlflow` | `.venv/bin/python -m pip show mlflow` |
 
 Install if needed:
 
 ```bash
-pip install pydantic mlflow
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt mlflow
 ```
 
 ### Databricks Workspace
@@ -122,9 +123,9 @@ git-ignored).
 
 Before executing, confirm each of the following:
 
-- [ ] `python --version` returns 3.9 or higher
-- [ ] `pip show mlflow` shows mlflow is installed
-- [ ] `pip show pydantic` shows pydantic v2 is installed
+- [ ] `.venv/bin/python --version` returns 3.9 or higher, or `python3 --version` if not using a virtual environment
+- [ ] `.venv/bin/python -m pip show mlflow` shows mlflow is installed
+- [ ] `.venv/bin/python -m pip show pydantic` shows pydantic v2 is installed
 - [ ] `MLFLOW_TRACKING_URI`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` are set in the current shell (if targeting Databricks MLflow)
 - [ ] `CASEOPS_MLFLOW_EXPERIMENT_ROOT` is set to an absolute workspace path (e.g. `/Users/you@example.com/caseops`) — **required when `MLFLOW_TRACKING_URI=databricks`**
 - [ ] `examples/fda_warning_letter_sample.md` exists in the repo
@@ -141,7 +142,7 @@ Run all commands from the repo root.
 
 ```bash
 # Bronze: ingest the sample FDA warning letter
-python src/pipelines/ingest_bronze.py \
+.venv/bin/python src/pipelines/ingest_bronze.py \
   --input examples/fda_warning_letter_sample.md \
   --document-class-hint fda_warning_letter \
   --source-system local_dev
@@ -151,14 +152,14 @@ Expected: `output/bronze/<bronze_record_id>.json` written.
 
 ```bash
 # Silver: extract structured fields from Bronze
-python src/pipelines/extract_silver.py --input-dir output/bronze
+.venv/bin/python src/pipelines/extract_silver.py --input-dir output/bronze
 ```
 
 Expected: `output/silver/<extraction_id>.json` written.
 
 ```bash
 # Gold: classify and route Silver records
-python src/pipelines/classify_gold.py \
+.venv/bin/python src/pipelines/classify_gold.py \
   --input-dir output/silver \
   --bronze-dir output/bronze
 ```
@@ -169,7 +170,7 @@ Expected: `output/gold/<gold_record_id>.json` written. Export payload at
 ### Step 2 — Run the full evaluation pass with MLflow logging
 
 ```bash
-python src/evaluation/run_evaluation.py \
+.venv/bin/python src/evaluation/run_evaluation.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold \
@@ -189,7 +190,7 @@ If using Databricks MLflow: open your workspace UI, navigate to
 
 If using local MLflow:
 ```bash
-mlflow ui
+.venv/bin/python -m mlflow ui
 ```
 Then open `http://localhost:5000` and verify the `caseops/pipeline/end_to_end` experiment.
 
@@ -198,10 +199,10 @@ Then open `http://localhost:5000` and verify the `caseops/pipeline/end_to_end` e
 For explicit per-stage MLflow runs (separate experiments per layer):
 
 ```bash
-python src/evaluation/eval_bronze.py --input-dir output/bronze --mlflow
-python src/evaluation/eval_silver.py --input-dir output/silver --mlflow
-python src/evaluation/eval_gold.py --input-dir output/gold --mlflow
-python src/evaluation/eval_traceability.py \
+.venv/bin/python src/evaluation/eval_bronze.py --input-dir output/bronze --mlflow
+.venv/bin/python src/evaluation/eval_silver.py --input-dir output/silver --mlflow
+.venv/bin/python src/evaluation/eval_gold.py --input-dir output/gold --mlflow
+.venv/bin/python src/evaluation/eval_traceability.py \
   --bronze-dir output/bronze \
   --silver-dir output/silver \
   --gold-dir output/gold \
