@@ -190,6 +190,27 @@ still required before claiming a repeatable Databricks deployment.
 
 ---
 
+## Runtime Handoff Validation — Phase 3 Slice
+
+Phase 3 targets the transition from producer-side Delta Share preparation to
+runtime-confirmed delivery validation. A true `validated` status still requires
+a Databricks operator to run the generated share setup SQL and validation
+queries in a personal workspace.
+
+The first Phase 3 implementation slice adds sanitized evidence intake:
+
+| Component | Purpose |
+|---|---|
+| `DeliveryRuntimeEvidence` | Public-safe schema for summarized Databricks validation query results |
+| `examples/runtime_evidence_personal_databricks_template.json` | Template for evidence capture without URLs, activation links, tokens, or personal identifiers |
+| `validate_delivery_layer(..., runtime_evidence_path=...)` | Requires parsed runtime evidence before returning `validated` for `personal_databricks` mode |
+
+Local-only validation remains `not_provisioned` or `partially_validated`. The
+repo still does not execute Unity Catalog APIs, call Delta Sharing SDKs, or
+include Bedrock runtime logic.
+
+---
+
 ## Evaluation and Observability Layer
 
 ### Design Principle
@@ -399,18 +420,18 @@ Phase C-2 implements a bounded, producer-side delivery-layer validation and obse
 | Module | Path | Role |
 |---|---|---|
 | Delivery validation schema | `src/schemas/delivery_validation.py` | `DeliveryValidationResult`, `CheckResult`; status/scope/workspace vocabulary |
-| Delivery validation logic | `src/pipelines/delivery_validation.py` | 15 check functions + `validate_delivery_layer()` entry point |
+| Delivery validation logic | `src/pipelines/delivery_validation.py` | Producer-side and runtime-evidence checks + `validate_delivery_layer()` entry point |
 
 **C-2 validation status vocabulary (definitive):**
 
 | Status | Meaning |
 |---|---|
-| `validated` | All critical checks passed; workspace_mode = `personal_databricks` |
+| `validated` | All critical checks passed; workspace_mode = `personal_databricks`; sanitized runtime evidence is present |
 | `partially_validated` | All critical checks passed; local_repo_only; share is provisioned |
 | `not_provisioned` | Share manifest status = `designed`; local_repo_only (honest default) |
 | `failed` | Critical check failure: schema mismatch, ID inconsistency, parse error |
 
-**C-2 checks (15 total):** `delivery_event_exists`, `delivery_event_parseable`, `delivery_event_schema_version`, `delivery_event_status_known`, `delivery_mechanism_known`, `cross_id_consistency`, `bundle_path_referenced`, `bundle_path_exists`, `routing_labels_present`, `share_manifest_exists`, `share_manifest_parseable`, `share_manifest_has_setup_sql`, `share_manifest_has_c2_queries`, `share_provisioning_acknowledged`, `evidence_sufficiency`.
+**Core checks:** `delivery_event_exists`, `delivery_event_parseable`, `delivery_event_schema_version`, `delivery_event_status_known`, `delivery_mechanism_known`, `cross_id_consistency`, `bundle_path_referenced`, `bundle_path_exists`, `routing_labels_present`, `share_manifest_exists`, `share_manifest_parseable`, `share_manifest_has_setup_sql`, `share_manifest_has_c2_queries`, `share_provisioning_acknowledged`, `evidence_sufficiency`, plus Phase 3 runtime evidence checks when `runtime_evidence_path` is supplied.
 
 **Honesty invariant:** The `evidence_sufficiency` check prevents `validated` from ever being assigned for `local_repo_only` runs. A locally-correct producer-side artifact set always produces `not_provisioned` (share not yet executed in Unity Catalog) or `partially_validated` — never `validated`.
 

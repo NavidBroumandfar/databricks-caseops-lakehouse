@@ -1,8 +1,9 @@
 # Delivery Runtime Validation — Phase C-2
 
 > **Phase**: C-2 — Runtime Integration Validation
-> **Status**: C-2 implemented (producer-side validation layer complete).
-> Runtime end-to-end validation (live Delta Share query) is pending manual provisioning.
+> **Status**: C-2 implemented (producer-side validation layer complete). Phase 3
+> evidence intake has started. Runtime end-to-end validation (live Delta Share
+> query) is still pending manual provisioning and sanitized evidence capture.
 > **Authoritative scope**: [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) § Phase C-2
 > **Technical design**: [`ARCHITECTURE.md`](../ARCHITECTURE.md) § Phase C-1 Delivery Layer
 > **C-0 design record**: [`docs/live-handoff-design.md`](./live-handoff-design.md)
@@ -20,6 +21,11 @@ C-2 is about:
 - Making the **integration health state explicit**: prepared / not_provisioned / partially_validated / validated / failed
 - Recording validation results in a **structured, honest, and reviewable way**
 - Defining the **runbook for live workspace validation** without executing it unconditionally
+
+Phase 3 extends this with a sanitized runtime evidence artifact. The repo can
+now validate evidence summaries collected after a Databricks operator provisions
+the share and runs the validation queries. This still does not make live calls
+or store credentials.
 
 C-2 is **not** about:
 
@@ -57,10 +63,18 @@ C-2 adds a bounded, producer-side validation layer that checks the C-1 artifacts
 | File | Role |
 |---|---|
 | `src/schemas/delivery_validation.py` | Pydantic schema for `DeliveryValidationResult` and `CheckResult`; validation status/scope/workspace vocabulary |
-| `src/pipelines/delivery_validation.py` | 15 named check functions + `validate_delivery_layer()` entry point |
+| `src/pipelines/delivery_validation.py` | Delivery validation check functions + `validate_delivery_layer()` entry point |
 | `examples/expected_delivery_validation_result.json` | Reference fixture for the expected validation result shape |
 | `docs/delivery-runtime-validation.md` | This document (C-2 design record and runbook) |
 | `tests/test_delivery_validation.py` | Test suite for the C-2 validation layer |
+
+### Phase 3 evidence intake files
+
+| File | Role |
+|---|---|
+| `src/schemas/runtime_evidence.py` | Sanitized Databricks runtime evidence schema |
+| `examples/runtime_evidence_personal_databricks_template.json` | Public-safe template for runtime evidence capture |
+| `src/pipelines/delivery_validation.py` | Optional `runtime_evidence_path` support and evidence checks |
 
 ---
 
@@ -70,16 +84,16 @@ The C-2 validation layer uses four explicit statuses. These must not be collapse
 
 | Status | Meaning | Conditions |
 |---|---|---|
-| `validated` | All checks passed with runtime workspace evidence | `workspace_mode = 'personal_databricks'` AND `validation_scope = 'end_to_end'` AND zero failed checks |
+| `validated` | All checks passed with runtime workspace evidence | `workspace_mode = 'personal_databricks'` AND `validation_scope = 'end_to_end'` AND provisioned manifest AND sanitized runtime evidence AND zero failed checks |
 | `partially_validated` | Producer-side artifacts correct; runtime evidence not collected | `workspace_mode = 'local_repo_only'` AND zero failed checks AND share is provisioned |
 | `not_provisioned` | Delta Share not yet executed in Unity Catalog | Share manifest `status = 'designed'` AND `workspace_mode = 'local_repo_only'` |
 | `failed` | One or more checks explicitly failed | Schema mismatch, ID inconsistency, parse failure, evidence sufficiency violation |
 
-**Honesty rule**: `validated` MUST NOT be assigned for local-only runs or producer-side-only scope. The `check_evidence_sufficiency` check enforces this and will downgrade `validated` to `failed` if the workspace_mode or scope is insufficient.
+**Honesty rule**: `validated` MUST NOT be assigned for local-only runs, producer-side-only scope, or personal workspace claims without sanitized runtime evidence. The `check_evidence_sufficiency` check enforces this and will downgrade `validated` to `failed` if the workspace mode, scope, or evidence is insufficient.
 
 ---
 
-## 5. The 15 Validation Checks
+## 5. Validation Checks
 
 | Check Name | What It Validates |
 |---|---|
@@ -98,6 +112,12 @@ The C-2 validation layer uses four explicit statuses. These must not be collapse
 | `share_manifest_has_c2_queries` | `c2_validation_queries` list is non-empty |
 | `share_provisioning_acknowledged` | Manifest `status` is `'designed'` or `'provisioned'` |
 | `evidence_sufficiency` | Claimed `validation_status` is honest given `workspace_mode` and `validation_scope` |
+| `runtime_evidence_exists` | Sanitized evidence exists when a provisioned personal workspace run is claimed |
+| `runtime_evidence_parseable` | Evidence parses as `DeliveryRuntimeEvidence` |
+| `runtime_evidence_sanitized` | Evidence confirms URLs, activation links, tokens, and personal identifiers were removed |
+| `runtime_evidence_pipeline_run_matches` | Evidence IDs match the delivery event and pipeline run |
+| `runtime_evidence_queries_passed` | Required validation queries were executed and passed |
+| `runtime_evidence_assertions_passed` | Share, Gold records, delivery event row, routing labels, and schema versions were observed |
 
 ---
 
@@ -187,21 +207,36 @@ Run the `c2_validation_queries` from the manifest in order:
 3. `query_delivery_events` — verifies the delivery event row is readable
 4. `verify_routing_label_transparency` — verifies routing labels are visible per-record
 
-**Step 5** — Record runtime evidence:
+**Step 5** — Record sanitized runtime evidence:
 
-Save the query results as JSON or text files in `output/validation/runtime_evidence/`. These are the proof artifacts for `status = 'validated'`.
+Use `examples/runtime_evidence_personal_databricks_template.json` as the
+public-safe evidence shape. Save a filled copy under
+`output/validation/runtime_evidence/`.
+
+Do not paste raw Databricks exports directly into the repo. The evidence file
+must contain only sanitized summaries: query names, pass/fail status, row
+counts, observed field names, and boolean assertions. Remove workspace URLs,
+recipient activation links, tokens, account identifiers, email addresses, and
+personal identifiers before writing the artifact.
 
 **Step 6** — Run C-2 validation with runtime evidence:
 
 ```python
+from pathlib import Path
+
 result = validate_delivery_layer(
     pipeline_run_id=run_id,
     delivery_event_path=Path(f"output/delivery/delivery_event_{run_id}.json"),
     share_manifest_path=Path("output/delivery/delta_share_preparation_manifest.json"),
+    runtime_evidence_path=Path("output/validation/runtime_evidence/runtime_evidence.json"),
     workspace_mode="personal_databricks",
 )
-# Expected: status = 'validated' (if all checks pass)
+# Expected: status = 'validated' only if all producer-side and runtime evidence checks pass.
 ```
+
+If `workspace_mode="personal_databricks"` is used without `runtime_evidence_path`
+after the manifest is marked `provisioned`, validation returns `failed`. This is
+intentional: Phase 3 requires evidence, not just a workspace-mode assertion.
 
 ---
 
@@ -214,7 +249,7 @@ After C-2, this repo can report one of the following states explicitly:
 | **prepared** | C-1 delivery event written; share configured in repo | Run `classify_gold.py --delivery-dir` |
 | **not_provisioned** | Producer-side artifacts correct; share not yet in Unity Catalog | Default C-2 result on local run |
 | **partially_validated** | Producer-side correct; share provisioned; runtime evidence pending | Share provisioned but C-2 not run with workspace |
-| **validated** | Runtime-confirmed in personal Databricks workspace | All 6 C-2 validation targets passed in workspace |
+| **validated** | Runtime-confirmed in personal Databricks workspace | Share is provisioned, required validation queries passed, and sanitized runtime evidence is provided |
 | **failed** | Validation check explicitly failed | Schema error, ID mismatch, missing required field |
 
 These states must never be collapsed. The C-2 `DeliveryValidationResult` records the state explicitly per run.
@@ -254,9 +289,10 @@ The boundary defined in C-0 and implemented in C-1 is unchanged in C-2.
 |---|---|
 | Repo gains a structured runtime validation/result layer | ✅ `src/schemas/delivery_validation.py` + `src/pipelines/delivery_validation.py` |
 | Repo gains structured runtime validation evidence recording | ✅ `write_validation_result()` → JSON + text artifacts |
-| Producer-side delivery observability is clearer after C-2 | ✅ 5-state integration health model, 15 named checks |
+| Producer-side delivery observability is clearer after C-2 | ✅ Explicit integration health model and named checks |
 | V1 file export path still exists and is not broken | ✅ No changes to V1 path in C-2 |
 | No Bedrock runtime logic enters this repo | ✅ C-2 is producer-side only |
 | Docs clearly distinguish C-1 implemented vs C-2 validated vs pending external proof | ✅ This document + updated core docs |
 | Tests cover the new validation layer | ✅ `tests/test_delivery_validation.py` |
 | No doc falsely claims end-to-end external validation | ✅ Status 'not_provisioned' is the honest default |
+| Phase 3 evidence can be validated without secrets | ✅ `DeliveryRuntimeEvidence` schema + `runtime_evidence_path` support |

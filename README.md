@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
-[![Tests](https://img.shields.io/badge/Tests-1%2C425%20passing-2EA043?style=flat-square)](./tests/)
+[![Tests](https://img.shields.io/badge/Tests-1%2C453%20passing-2EA043?style=flat-square)](./tests/)
 [![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
 
 </div>
@@ -113,7 +113,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase 2 (V2 — Hardening and Expansion)** added producer-side handoff preparation via Delta Sharing manifests and delivery events (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
-**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally and was validated in a personal Databricks workspace. Total test coverage: **1,425 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, and operational hardening.
+**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally and was validated in a personal Databricks workspace. Total test coverage: **1,453 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, and Phase 3 evidence intake.
 
 For the full delivery history, phase-by-phase detail, and roadmap, see [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) and [`docs/roadmap.md`](./docs/roadmap.md).
 
@@ -540,7 +540,7 @@ databricks-caseops-lakehouse/
 │       └── environment_config.py         # Environment model and resource naming
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL
-├── tests/                   # 1,425 tests across all pipeline stages and contract layers
+├── tests/                   # 1,453 tests across all pipeline stages and contract layers
 └── examples/
     ├── evaluation/                       # Evaluation usage guide
     ├── expected_delivery_event.json      # Reference delivery event fixture

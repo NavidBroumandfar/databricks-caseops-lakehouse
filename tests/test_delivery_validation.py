@@ -8,7 +8,7 @@ Covers:
   - Scope vocabulary validation (producer_side_only/end_to_end)
   - Workspace mode vocabulary validation (local_repo_only/personal_databricks)
   - Schema version enforcement (must be v0.2.0)
-  - Individual check functions (all 15)
+  - Individual check functions (producer-side and Phase 3 runtime evidence)
   - validate_delivery_layer() — main entry point
   - Status derivation: not_provisioned for designed share + local workspace
   - Status derivation: partially_validated for no failures + local workspace
@@ -54,6 +54,12 @@ from src.schemas.delivery_validation import (
     CHECK_DELIVERY_MECHANISM_KNOWN,
     CHECK_EVIDENCE_SUFFICIENCY,
     CHECK_ROUTING_LABELS_PRESENT,
+    CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
+    CHECK_RUNTIME_EVIDENCE_EXISTS,
+    CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+    CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+    CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+    CHECK_RUNTIME_EVIDENCE_SANITIZED,
     CHECK_SHARE_MANIFEST_EXISTS,
     CHECK_SHARE_MANIFEST_HAS_C2_QUERIES,
     CHECK_SHARE_MANIFEST_HAS_SETUP_SQL,
@@ -82,6 +88,12 @@ from src.pipelines.delivery_validation import (
     check_delivery_mechanism_known,
     check_evidence_sufficiency,
     check_routing_labels_present,
+    check_runtime_evidence_assertions_passed,
+    check_runtime_evidence_exists,
+    check_runtime_evidence_parseable,
+    check_runtime_evidence_pipeline_run_matches,
+    check_runtime_evidence_queries_passed,
+    check_runtime_evidence_sanitized,
     check_share_manifest_exists,
     check_share_manifest_has_c2_queries,
     check_share_manifest_has_setup_sql,
@@ -93,6 +105,11 @@ from src.pipelines.delivery_validation import (
     load_validation_result,
     validate_delivery_layer,
     write_validation_result,
+)
+from src.schemas.runtime_evidence import (
+    REQUIRED_RUNTIME_ASSERTIONS,
+    REQUIRED_RUNTIME_QUERY_NAMES,
+    DeliveryRuntimeEvidence,
 )
 from src.schemas.delivery_event import (
     DEFAULT_SHARE_NAME,
@@ -168,6 +185,56 @@ def _write_delivery_event_json(tmp_path: Path, event: DeliveryEvent) -> Path:
 def _write_share_manifest_json(tmp_path: Path, manifest: dict) -> Path:
     path = tmp_path / "delta_share_preparation_manifest.json"
     path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return path
+
+
+def _make_runtime_evidence_dict(
+    pipeline_run_id: str = "run-test-0001",
+    delivery_event_id: str = "de000001-0000-0000-0000-000000000001",
+    share_name: str = DEFAULT_SHARE_NAME,
+    shared_object_name: str = DEFAULT_SHARED_OBJECT_NAME,
+) -> dict:
+    return {
+        "evidence_version": "v0.1.0",
+        "captured_at": "2026-06-01T00:00:00+00:00",
+        "workspace_mode": WORKSPACE_MODE_PERSONAL_DATABRICKS,
+        "validation_scope": VALIDATION_SCOPE_END_TO_END,
+        "pipeline_run_id": pipeline_run_id,
+        "delivery_event_id": delivery_event_id,
+        "share_name": share_name,
+        "shared_object_name": shared_object_name,
+        "manifest_status": "provisioned",
+        "queries": [
+            {
+                "name": name,
+                "executed": True,
+                "passed": True,
+                "row_count": 1,
+                "observed_fields": ["document_id", "routing_label", "schema_version"],
+                "notes": "Sanitized result satisfied the expected condition.",
+            }
+            for name in REQUIRED_RUNTIME_QUERY_NAMES
+        ],
+        "runtime_assertions": {
+            name: True
+            for name in REQUIRED_RUNTIME_ASSERTIONS
+        },
+        "sanitization": {
+            "workspace_url_removed": True,
+            "activation_links_removed": True,
+            "tokens_removed": True,
+            "personal_identifiers_removed": True,
+        },
+        "notes": [
+            "Sanitized personal Databricks runtime evidence.",
+            "Sensitive runtime values were removed before this artifact was written.",
+        ],
+    }
+
+
+def _write_runtime_evidence_json(tmp_path: Path, evidence: dict) -> Path:
+    path = tmp_path / "runtime_evidence.json"
+    path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     return path
 
 
@@ -754,19 +821,15 @@ class TestCheckEvidenceSufficiency:
         assert r.passed is False
         assert "local_repo_only" in (r.detail or "")
 
-    def test_passes_validated_with_personal_databricks_producer_side_scope(self):
-        """
-        validate_delivery_layer() always uses producer_side_only scope (it checks repo
-        artifacts). When workspace_mode is personal_databricks, 'validated' is acceptable
-        because the caller asserts runtime evidence was collected in the workspace.
-        """
+    def test_fails_validated_with_personal_databricks_producer_side_scope(self):
         r = check_evidence_sufficiency(
             VALIDATION_STATUS_VALIDATED,
             WORKSPACE_MODE_PERSONAL_DATABRICKS,
             VALIDATION_SCOPE_PRODUCER_SIDE_ONLY,
             [],
         )
-        assert r.passed is True
+        assert r.passed is False
+        assert "end_to_end" in (r.detail or "")
 
     def test_fails_validated_when_checks_failed(self):
         r = check_evidence_sufficiency(
@@ -778,13 +841,27 @@ class TestCheckEvidenceSufficiency:
         assert r.passed is False
 
     def test_passes_validated_with_full_evidence(self):
+        evidence = DeliveryRuntimeEvidence.model_validate(
+            _make_runtime_evidence_dict(pipeline_run_id="run-evidence")
+        )
+        r = check_evidence_sufficiency(
+            VALIDATION_STATUS_VALIDATED,
+            WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            VALIDATION_SCOPE_END_TO_END,
+            [],
+            runtime_evidence=evidence,
+        )
+        assert r.passed is True
+
+    def test_fails_validated_without_runtime_evidence(self):
         r = check_evidence_sufficiency(
             VALIDATION_STATUS_VALIDATED,
             WORKSPACE_MODE_PERSONAL_DATABRICKS,
             VALIDATION_SCOPE_END_TO_END,
             [],
         )
-        assert r.passed is True
+        assert r.passed is False
+        assert "no parsed runtime evidence" in (r.detail or "")
 
     def test_check_name_is_correct(self):
         r = check_evidence_sufficiency(
@@ -794,6 +871,123 @@ class TestCheckEvidenceSufficiency:
             [],
         )
         assert r.check_name == CHECK_EVIDENCE_SUFFICIENCY
+
+
+class TestRuntimeEvidenceChecks:
+    def test_runtime_evidence_not_required_for_local_repo_only(self):
+        r = check_runtime_evidence_exists(
+            runtime_evidence_path=None,
+            workspace_mode=WORKSPACE_MODE_LOCAL_REPO_ONLY,
+            share_provisioned=True,
+        )
+        assert r.passed is True
+
+    def test_runtime_evidence_required_for_personal_provisioned_share(self):
+        r = check_runtime_evidence_exists(
+            runtime_evidence_path=None,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert r.check_name == CHECK_RUNTIME_EVIDENCE_EXISTS
+
+    def test_runtime_evidence_parseable_for_valid_artifact(self, tmp_path):
+        evidence_path = _write_runtime_evidence_json(
+            tmp_path,
+            _make_runtime_evidence_dict(pipeline_run_id="run-evidence"),
+        )
+        r, parsed = check_runtime_evidence_parseable(
+            runtime_evidence_path=evidence_path,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is True
+        assert parsed is not None
+        assert parsed.pipeline_run_id == "run-evidence"
+
+    def test_runtime_evidence_parse_fails_for_unsanitized_note(self, tmp_path):
+        evidence = _make_runtime_evidence_dict()
+        evidence["notes"] = ["Recipient activation link was present before redaction."]
+        evidence_path = _write_runtime_evidence_json(tmp_path, evidence)
+        r, parsed = check_runtime_evidence_parseable(
+            runtime_evidence_path=evidence_path,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert parsed is None
+
+    def test_runtime_evidence_sanitized_requires_all_flags(self):
+        evidence_dict = _make_runtime_evidence_dict()
+        evidence_dict["sanitization"]["tokens_removed"] = False
+        evidence = DeliveryRuntimeEvidence.model_validate(evidence_dict)
+        r = check_runtime_evidence_sanitized(
+            evidence=evidence,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert r.check_name == CHECK_RUNTIME_EVIDENCE_SANITIZED
+
+    def test_runtime_evidence_pipeline_run_must_match(self):
+        evidence = DeliveryRuntimeEvidence.model_validate(
+            _make_runtime_evidence_dict(pipeline_run_id="run-a")
+        )
+        event = _make_delivery_event(pipeline_run_id="run-b")
+        r = check_runtime_evidence_pipeline_run_matches(
+            evidence=evidence,
+            pipeline_run_id="run-b",
+            event=event,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert "pipeline_run_id mismatch" in (r.detail or "")
+
+    def test_runtime_evidence_queries_require_all_required_queries(self):
+        evidence_dict = _make_runtime_evidence_dict()
+        evidence_dict["queries"] = evidence_dict["queries"][:-1]
+        evidence = DeliveryRuntimeEvidence.model_validate(evidence_dict)
+        r = check_runtime_evidence_queries_passed(
+            evidence=evidence,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert "missing required queries" in (r.detail or "")
+
+    def test_runtime_evidence_queries_fail_when_required_query_failed(self):
+        evidence_dict = _make_runtime_evidence_dict()
+        evidence_dict["queries"][0]["passed"] = False
+        evidence = DeliveryRuntimeEvidence.model_validate(evidence_dict)
+        r = check_runtime_evidence_queries_passed(
+            evidence=evidence,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert "failed required queries" in (r.detail or "")
+
+    def test_runtime_evidence_assertions_require_all_true(self):
+        evidence_dict = _make_runtime_evidence_dict()
+        evidence_dict["runtime_assertions"]["schema_versions_visible"] = False
+        evidence = DeliveryRuntimeEvidence.model_validate(evidence_dict)
+        r = check_runtime_evidence_assertions_passed(
+            evidence=evidence,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is False
+        assert "schema_versions_visible" in (r.detail or "")
+
+    def test_runtime_evidence_assertions_pass_for_valid_evidence(self):
+        evidence = DeliveryRuntimeEvidence.model_validate(_make_runtime_evidence_dict())
+        r = check_runtime_evidence_assertions_passed(
+            evidence=evidence,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+            share_provisioned=True,
+        )
+        assert r.passed is True
 
 
 # ---------------------------------------------------------------------------
@@ -894,8 +1088,8 @@ class TestValidateDeliveryLayerStatusDerivation:
         # Status must NEVER be 'validated' for local_repo_only workspace
         assert result.validation_status != VALIDATION_STATUS_VALIDATED
 
-    def test_validated_possible_for_personal_databricks(self, tmp_path):
-        """With personal_databricks workspace and provisioned share, status can be 'validated'."""
+    def test_personal_databricks_without_evidence_fails_when_share_provisioned(self, tmp_path):
+        """personal_databricks mode alone is not enough for Phase 3 validation."""
         run_id = "run-test-006"
         bundle = tmp_path / "bundle.json"
         bundle.write_text("{}", encoding="utf-8")
@@ -913,7 +1107,41 @@ class TestValidateDeliveryLayerStatusDerivation:
             share_manifest_path=mn_path,
             workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
         )
+        assert result.validation_status == VALIDATION_STATUS_FAILED
+        assert CHECK_RUNTIME_EVIDENCE_PARSEABLE in result.checks_failed
+
+    def test_validated_possible_for_personal_databricks_with_runtime_evidence(self, tmp_path):
+        """With sanitized runtime evidence and provisioned share, status can be validated."""
+        run_id = "run-test-006-evidence"
+        delivery_event_id = "de000001-0000-0000-0000-000000000006"
+        bundle = tmp_path / "bundle.json"
+        bundle.write_text("{}", encoding="utf-8")
+        event = _make_delivery_event(
+            pipeline_run_id=run_id,
+            delivery_event_id=delivery_event_id,
+            bundle_artifact_path=str(bundle),
+        )
+        ev_path = _write_delivery_event_json(tmp_path, event)
+        manifest = _make_share_manifest_dict(status="provisioned")
+        mn_path = _write_share_manifest_json(tmp_path, manifest)
+        evidence_path = _write_runtime_evidence_json(
+            tmp_path,
+            _make_runtime_evidence_dict(
+                pipeline_run_id=run_id,
+                delivery_event_id=delivery_event_id,
+            ),
+        )
+
+        result = validate_delivery_layer(
+            pipeline_run_id=run_id,
+            delivery_event_path=ev_path,
+            share_manifest_path=mn_path,
+            runtime_evidence_path=evidence_path,
+            workspace_mode=WORKSPACE_MODE_PERSONAL_DATABRICKS,
+        )
         assert result.validation_status == VALIDATION_STATUS_VALIDATED
+        assert result.validation_scope == VALIDATION_SCOPE_END_TO_END
+        assert sorted(result.queries_executed) == sorted(REQUIRED_RUNTIME_QUERY_NAMES)
 
     def test_failed_when_manifest_has_no_setup_sql(self, tmp_path):
         run_id = "run-test-007"
@@ -950,7 +1178,7 @@ class TestValidateDeliveryLayerChecks:
             workspace_mode=WORKSPACE_MODE_LOCAL_REPO_ONLY,
         )
         all_run_check_names = {r.check_name for r in result.check_details}
-        # All 15 checks should be present
+        # All registered delivery validation checks should be present.
         for check_name in ALL_CHECK_NAMES:
             assert check_name in all_run_check_names, (
                 f"Expected check '{check_name}' to be present in check_details"
@@ -1020,7 +1248,7 @@ class TestValidateDeliveryLayerChecks:
         )
         assert result.queries_executed == []
 
-    def test_validation_scope_is_always_producer_side_only(self, tmp_path):
+    def test_validation_scope_is_producer_side_only_for_local_workspace(self, tmp_path):
         run_id = "run-scope"
         event = _make_delivery_event(pipeline_run_id=run_id)
         ev_path = _write_delivery_event_json(tmp_path, event)
@@ -1417,6 +1645,20 @@ class TestExampleFixture:
         assert result.validation_status == VALIDATION_STATUS_NOT_PROVISIONED
         assert result.schema_version == VALIDATION_SCHEMA_VERSION
         assert result.workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY
+
+    def test_runtime_evidence_template_is_valid(self):
+        fixture_path = (
+            Path(__file__).resolve().parents[1]
+            / "examples"
+            / "runtime_evidence_personal_databricks_template.json"
+        )
+        assert fixture_path.exists(), f"Fixture not found: {fixture_path}"
+        raw = json.loads(fixture_path.read_text(encoding="utf-8"))
+        evidence = DeliveryRuntimeEvidence.model_validate(raw)
+        assert evidence.workspace_mode == WORKSPACE_MODE_PERSONAL_DATABRICKS
+        assert evidence.validation_scope == VALIDATION_SCOPE_END_TO_END
+        assert evidence.missing_required_queries() == []
+        assert evidence.missing_or_false_assertions() == []
 
     def test_example_fixture_has_check_details(self):
         fixture_path = (

@@ -1,0 +1,77 @@
+{
+  "evidence_version": "v0.1.0",
+  "captured_at": "2026-06-01T00:00:00+00:00",
+  "workspace_mode": "personal_databricks",
+  "validation_scope": "end_to_end",
+  "pipeline_run_id": "replace-with-pipeline-run-id",
+  "delivery_event_id": "replace-with-delivery-event-id",
+  "share_name": "caseops_handoff",
+  "shared_object_name": "gold_ai_ready_assets",
+  "manifest_status": "provisioned",
+  "queries": [
+    {
+      "name": "confirm_share_exists",
+      "executed": true,
+      "passed": true,
+      "row_count": 2,
+      "observed_fields": [
+        "database",
+        "table"
+      ],
+      "notes": "Sanitized result shows the shared Gold table and delivery_events object."
+    },
+    {
+      "name": "query_export_ready_records",
+      "executed": true,
+      "passed": true,
+      "row_count": 1,
+      "observed_fields": [
+        "document_id",
+        "routing_label",
+        "schema_version"
+      ],
+      "notes": "Sanitized result includes at least one export-ready Gold record."
+    },
+    {
+      "name": "query_delivery_events",
+      "executed": true,
+      "passed": true,
+      "row_count": 1,
+      "observed_fields": [
+        "delivery_event_id",
+        "batch_id",
+        "status",
+        "exported_record_count"
+      ],
+      "notes": "Sanitized result includes the delivery event row for this batch."
+    },
+    {
+      "name": "verify_routing_label_transparency",
+      "executed": true,
+      "passed": true,
+      "row_count": 1,
+      "observed_fields": [
+        "routing_label"
+      ],
+      "notes": "Sanitized result shows non-quarantine routing labels are visible."
+    }
+  ],
+  "runtime_assertions": {
+    "share_exists": true,
+    "gold_table_visible": true,
+    "export_ready_records_visible": true,
+    "delivery_event_row_visible": true,
+    "routing_labels_visible": true,
+    "schema_versions_visible": true
+  },
+  "sanitization": {
+    "workspace_url_removed": true,
+    "activation_links_removed": true,
+    "tokens_removed": true,
+    "personal_identifiers_removed": true
+  },
+  "notes": [
+    "Template only. Replace IDs and row counts with sanitized runtime observations.",
+    "Do not include raw query output, account identifiers, activation material, or credential-like values."
+  ]
+}

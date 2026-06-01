@@ -54,7 +54,7 @@ personal_databricks
 Phase: C-2
 Architecture context: ARCHITECTURE.md § Phase C-1 Delivery Layer — Implementation Status
 Design decision: docs/live-handoff-design.md § 11 (C-2 Validation Direction)
-C-2 design: docs/delivery-runtime-validation.md
+C-2 / Phase 3 design: docs/delivery-runtime-validation.md
 """
 
 from __future__ import annotations
@@ -168,6 +168,12 @@ CHECK_BUNDLE_PATH_EXISTS = "bundle_path_exists"
 CHECK_ROUTING_LABELS_PRESENT = "routing_labels_present"
 CHECK_EVIDENCE_SUFFICIENCY = "evidence_sufficiency"
 CHECK_SHARE_PROVISIONING_ACKNOWLEDGED = "share_provisioning_acknowledged"
+CHECK_RUNTIME_EVIDENCE_EXISTS = "runtime_evidence_exists"
+CHECK_RUNTIME_EVIDENCE_PARSEABLE = "runtime_evidence_parseable"
+CHECK_RUNTIME_EVIDENCE_SANITIZED = "runtime_evidence_sanitized"
+CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES = "runtime_evidence_pipeline_run_matches"
+CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED = "runtime_evidence_queries_passed"
+CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED = "runtime_evidence_assertions_passed"
 
 ALL_CHECK_NAMES = (
     CHECK_DELIVERY_EVENT_EXISTS,
@@ -185,6 +191,12 @@ ALL_CHECK_NAMES = (
     CHECK_ROUTING_LABELS_PRESENT,
     CHECK_EVIDENCE_SUFFICIENCY,
     CHECK_SHARE_PROVISIONING_ACKNOWLEDGED,
+    CHECK_RUNTIME_EVIDENCE_EXISTS,
+    CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+    CHECK_RUNTIME_EVIDENCE_SANITIZED,
+    CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+    CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+    CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
 )
 
 

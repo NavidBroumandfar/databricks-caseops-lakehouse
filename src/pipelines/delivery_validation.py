@@ -36,12 +36,11 @@ What this module validates (producer-side, locally executable)
    - The claimed validation_status is honest given workspace_mode and scope
    - 'validated' MUST NOT be assigned for local_repo_only runs
    - 'validated' MUST NOT be assigned for producer_side_only scope
+   - 'validated' MUST have sanitized Phase 3 runtime evidence
 
 What this module does NOT validate
 -----------------------------------
-- Whether the Delta Share is live and queryable in Unity Catalog
 - Whether Bedrock CaseOps has received or acknowledged delivery
-- Whether SQL validation queries returned the expected results
 - Any live Unity Catalog API or Delta Sharing SDK call
 - Any live Databricks workspace operation
 
@@ -88,6 +87,12 @@ from src.schemas.delivery_validation import (
     CHECK_DELIVERY_MECHANISM_KNOWN,
     CHECK_EVIDENCE_SUFFICIENCY,
     CHECK_ROUTING_LABELS_PRESENT,
+    CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
+    CHECK_RUNTIME_EVIDENCE_EXISTS,
+    CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+    CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+    CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+    CHECK_RUNTIME_EVIDENCE_SANITIZED,
     CHECK_SHARE_MANIFEST_EXISTS,
     CHECK_SHARE_MANIFEST_HAS_C2_QUERIES,
     CHECK_SHARE_MANIFEST_HAS_SETUP_SQL,
@@ -104,6 +109,11 @@ from src.schemas.delivery_validation import (
     WORKSPACE_MODE_PERSONAL_DATABRICKS,
     CheckResult,
     DeliveryValidationResult,
+)
+from src.schemas.runtime_evidence import (
+    DeliveryRuntimeEvidence,
+    REQUIRED_RUNTIME_ASSERTIONS,
+    REQUIRED_RUNTIME_QUERY_NAMES,
 )
 
 
@@ -434,23 +444,218 @@ def check_share_provisioning_acknowledged(manifest_dict: Optional[dict]) -> Chec
     )
 
 
+def check_runtime_evidence_exists(
+    runtime_evidence_path: Optional[Path],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> CheckResult:
+    """Check that Phase 3 runtime evidence exists when a live workspace is claimed."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return _pass(
+            CHECK_RUNTIME_EVIDENCE_EXISTS,
+            "Runtime evidence is not required for local-only or not-provisioned validation.",
+        )
+    if runtime_evidence_path is None:
+        return _fail(
+            CHECK_RUNTIME_EVIDENCE_EXISTS,
+            "workspace_mode='personal_databricks' with a provisioned share requires "
+            "runtime_evidence_path.",
+        )
+    if not runtime_evidence_path.exists():
+        return _fail(
+            CHECK_RUNTIME_EVIDENCE_EXISTS,
+            f"Runtime evidence artifact not found at: {runtime_evidence_path}",
+        )
+    return _pass(CHECK_RUNTIME_EVIDENCE_EXISTS, f"Found: {runtime_evidence_path}")
+
+
+def check_runtime_evidence_parseable(
+    runtime_evidence_path: Optional[Path],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> Tuple[CheckResult, Optional[DeliveryRuntimeEvidence]]:
+    """Parse the sanitized Phase 3 runtime evidence artifact when required."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return (
+            _pass(
+                CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+                "Runtime evidence parsing is not required for this validation context.",
+            ),
+            None,
+        )
+    if runtime_evidence_path is None or not runtime_evidence_path.exists():
+        return (
+            _fail(
+                CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+                "Runtime evidence path is missing or does not exist.",
+            ),
+            None,
+        )
+    try:
+        raw = json.loads(runtime_evidence_path.read_text(encoding="utf-8"))
+        evidence = DeliveryRuntimeEvidence.model_validate(raw)
+        return (
+            _pass(
+                CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+                f"Parsed runtime evidence for pipeline_run_id={evidence.pipeline_run_id}.",
+            ),
+            evidence,
+        )
+    except Exception as exc:
+        return (
+            _fail(CHECK_RUNTIME_EVIDENCE_PARSEABLE, f"Failed to parse runtime evidence: {exc}"),
+            None,
+        )
+
+
+def check_runtime_evidence_sanitized(
+    evidence: Optional[DeliveryRuntimeEvidence],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> CheckResult:
+    """Check that the evidence artifact confirms sensitive runtime values were removed."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return _pass(
+            CHECK_RUNTIME_EVIDENCE_SANITIZED,
+            "Runtime evidence sanitization is not required for this validation context.",
+        )
+    if evidence is None:
+        return _fail(CHECK_RUNTIME_EVIDENCE_SANITIZED, "No runtime evidence to check.")
+    if not evidence.sanitization.all_confirmed():
+        return _fail(
+            CHECK_RUNTIME_EVIDENCE_SANITIZED,
+            "Runtime evidence sanitization flags must all be true before the artifact "
+            "can support status='validated'.",
+        )
+    return _pass(
+        CHECK_RUNTIME_EVIDENCE_SANITIZED,
+        "Runtime evidence sanitization flags confirm URLs, activation links, tokens, "
+        "and personal identifiers were removed.",
+    )
+
+
+def check_runtime_evidence_pipeline_run_matches(
+    evidence: Optional[DeliveryRuntimeEvidence],
+    pipeline_run_id: str,
+    event: Optional[DeliveryEvent],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> CheckResult:
+    """Check that runtime evidence refers to the same pipeline and delivery event."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return _pass(
+            CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+            "Runtime evidence ID matching is not required for this validation context.",
+        )
+    if evidence is None:
+        return _fail(
+            CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+            "No runtime evidence to check.",
+        )
+
+    errors: List[str] = []
+    if evidence.pipeline_run_id != pipeline_run_id:
+        errors.append(
+            f"pipeline_run_id mismatch: evidence has '{evidence.pipeline_run_id}', "
+            f"expected '{pipeline_run_id}'."
+        )
+    if event and event.delivery_event_id and evidence.delivery_event_id:
+        if evidence.delivery_event_id != event.delivery_event_id:
+            errors.append(
+                f"delivery_event_id mismatch: evidence has '{evidence.delivery_event_id}', "
+                f"event has '{event.delivery_event_id}'."
+            )
+    if event and event.share_name and evidence.share_name != event.share_name:
+        errors.append(
+            f"share_name mismatch: evidence has '{evidence.share_name}', "
+            f"event has '{event.share_name}'."
+        )
+    if event and event.shared_object_name and evidence.shared_object_name != event.shared_object_name:
+        errors.append(
+            f"shared_object_name mismatch: evidence has '{evidence.shared_object_name}', "
+            f"event has '{event.shared_object_name}'."
+        )
+
+    if errors:
+        return _fail(CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES, " | ".join(errors))
+    return _pass(
+        CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+        "Runtime evidence IDs match the delivery event and requested pipeline run.",
+    )
+
+
+def check_runtime_evidence_queries_passed(
+    evidence: Optional[DeliveryRuntimeEvidence],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> CheckResult:
+    """Check that all required Phase 3 validation queries were executed and passed."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return _pass(
+            CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+            "Runtime query evidence is not required for this validation context.",
+        )
+    if evidence is None:
+        return _fail(CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED, "No runtime evidence to check.")
+
+    missing = evidence.missing_required_queries()
+    failed = evidence.failed_required_queries()
+    if missing or failed:
+        details = []
+        if missing:
+            details.append(f"missing required queries: {missing}")
+        if failed:
+            details.append(f"failed required queries: {failed}")
+        return _fail(CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED, "; ".join(details))
+    return _pass(
+        CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+        f"Required runtime queries passed: {list(REQUIRED_RUNTIME_QUERY_NAMES)}.",
+    )
+
+
+def check_runtime_evidence_assertions_passed(
+    evidence: Optional[DeliveryRuntimeEvidence],
+    workspace_mode: str,
+    share_provisioned: bool,
+) -> CheckResult:
+    """Check the Phase 3 acceptance assertions represented in runtime evidence."""
+    if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY or not share_provisioned:
+        return _pass(
+            CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
+            "Runtime acceptance assertions are not required for this validation context.",
+        )
+    if evidence is None:
+        return _fail(CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED, "No runtime evidence to check.")
+
+    missing_or_false = evidence.missing_or_false_assertions()
+    if missing_or_false:
+        return _fail(
+            CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
+            f"Runtime assertions missing or false: {missing_or_false}. "
+            f"Required: {list(REQUIRED_RUNTIME_ASSERTIONS)}.",
+        )
+    return _pass(
+        CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
+        f"Required runtime assertions passed: {list(REQUIRED_RUNTIME_ASSERTIONS)}.",
+    )
+
+
 def check_evidence_sufficiency(
     validation_status: str,
     workspace_mode: str,
     validation_scope: str,
     checks_failed: List[str],
+    runtime_evidence: Optional[DeliveryRuntimeEvidence] = None,
 ) -> CheckResult:
     """
     Validate that the claimed validation_status is honest given available evidence.
 
     Rules enforced:
     - 'validated' requires workspace_mode == 'personal_databricks'
+    - 'validated' requires validation_scope == 'end_to_end'
+    - 'validated' requires a parsed runtime evidence artifact
     - 'validated' requires no failed checks
     - Any other status combination is acceptable
-
-    Note: validation_scope is always 'producer_side_only' for validate_delivery_layer()
-    because this function only checks repo artifacts. The workspace_mode claim of
-    'personal_databricks' is the caller's assertion that runtime evidence was collected.
 
     This check is the honesty gate of the validation layer.
     """
@@ -462,10 +667,18 @@ def check_evidence_sufficiency(
                 "Full validation requires personal_databricks workspace access. "
                 "Use 'partially_validated' or 'not_provisioned' for local-only runs.",
             )
-        # Note: validation_scope is always 'producer_side_only' for this function
-        # (it only checks repo artifacts). The workspace_mode claim of
-        # 'personal_databricks' is the caller's assertion that runtime evidence
-        # was collected in a Databricks workspace. That is sufficient for 'validated'.
+        if validation_scope != VALIDATION_SCOPE_END_TO_END:
+            return _fail(
+                CHECK_EVIDENCE_SUFFICIENCY,
+                "Status 'validated' claimed but validation_scope is not 'end_to_end'. "
+                "Full validation requires sanitized runtime evidence from Databricks SQL.",
+            )
+        if runtime_evidence is None:
+            return _fail(
+                CHECK_EVIDENCE_SUFFICIENCY,
+                "Status 'validated' claimed but no parsed runtime evidence artifact "
+                "was provided.",
+            )
         if checks_failed:
             return _fail(
                 CHECK_EVIDENCE_SUFFICIENCY,
@@ -489,6 +702,7 @@ def _derive_validation_status(
     checks_failed: List[str],
     parsed_manifest: Optional[dict],
     workspace_mode: str,
+    runtime_evidence: Optional[DeliveryRuntimeEvidence] = None,
 ) -> tuple[str, str]:
     """
     Derive the validation_status and validation_reason from check results and context.
@@ -500,7 +714,7 @@ def _derive_validation_status(
     - Non-critical failures (bundle path, routing labels) → informational; do not force 'failed'
     - Share not provisioned + local workspace → 'not_provisioned'
     - No critical failures + local workspace + share provisioned → 'partially_validated'
-    - No critical failures + personal_databricks → 'validated'
+    - No critical failures + personal_databricks + runtime evidence → 'validated'
     """
     # Critical failures that make the status 'failed' regardless of other factors.
     # Non-critical failures (bundle_path_exists, bundle_path_referenced,
@@ -513,6 +727,11 @@ def _derive_validation_status(
         CHECK_CROSS_ID_CONSISTENCY,
         CHECK_SHARE_MANIFEST_HAS_SETUP_SQL,
         CHECK_SHARE_MANIFEST_HAS_C2_QUERIES,
+        CHECK_RUNTIME_EVIDENCE_PARSEABLE,
+        CHECK_RUNTIME_EVIDENCE_SANITIZED,
+        CHECK_RUNTIME_EVIDENCE_PIPELINE_RUN_MATCHES,
+        CHECK_RUNTIME_EVIDENCE_QUERIES_PASSED,
+        CHECK_RUNTIME_EVIDENCE_ASSERTIONS_PASSED,
     }
 
     critical_failed = [c for c in checks_failed if c in _CRITICAL_CHECKS]
@@ -534,22 +753,23 @@ def _derive_validation_status(
         and parsed_manifest.get("status") == "provisioned"
     )
 
+    if not share_provisioned:
+        return (
+            VALIDATION_STATUS_NOT_PROVISIONED,
+            "Producer-side artifact validation completed. "
+            "Delta Share provisioning status is 'designed': the share has not been "
+            "created in Unity Catalog. "
+            "Runtime validation cannot proceed until setup_sql is executed in a "
+            "Databricks workspace with CREATE SHARE privilege. "
+            "This is not an error — it is the honest C-1 baseline state. "
+            + (
+                f"Non-critical check failures noted: {checks_failed}. "
+                if checks_failed
+                else ""
+            ),
+        )
+
     if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY:
-        if not share_provisioned:
-            return (
-                VALIDATION_STATUS_NOT_PROVISIONED,
-                "Producer-side artifact validation completed. "
-                "Delta Share provisioning status is 'designed': the share has not been "
-                "created in Unity Catalog. "
-                "Runtime validation cannot proceed until setup_sql is executed in a "
-                "Databricks workspace with CREATE SHARE privilege. "
-                "This is not an error — it is the honest C-1 baseline state. "
-                + (
-                    f"Non-critical check failures noted: {checks_failed}. "
-                    if checks_failed
-                    else ""
-                ),
-            )
         return (
             VALIDATION_STATUS_PARTIALLY_VALIDATED,
             "Producer-side artifact validation completed. "
@@ -567,10 +787,20 @@ def _derive_validation_status(
         )
 
     # workspace_mode == personal_databricks
+    if runtime_evidence is None:
+        return (
+            VALIDATION_STATUS_FAILED,
+            "Workspace mode is 'personal_databricks' and the share manifest is "
+            "provisioned, but no valid sanitized runtime evidence was provided. "
+            "Phase 3 requires evidence from the Databricks validation queries "
+            "before status can be 'validated'.",
+        )
+
     return (
         VALIDATION_STATUS_VALIDATED,
         "All critical producer-side checks passed. "
-        "Workspace mode is 'personal_databricks' with runtime evidence provided. "
+        "Workspace mode is 'personal_databricks' with sanitized runtime evidence "
+        "from the required validation queries. "
         "Delivery layer is confirmed as runtime-checkable in the personal workspace."
         + (
             f" Non-critical check failures noted: {checks_failed}."
@@ -588,6 +818,7 @@ def _build_observations(
     checks_passed: List[str],
     checks_failed: List[str],
     share_provisioned: bool,
+    runtime_evidence: Optional[DeliveryRuntimeEvidence] = None,
 ) -> List[str]:
     """Build the ordered observations list for the validation result."""
     observations: List[str] = []
@@ -630,6 +861,17 @@ def _build_observations(
             "were executed. Runtime validation evidence (share queryability, "
             "delivery event table row, payload conformance) was not collected."
         )
+    elif runtime_evidence is not None:
+        observations.append(
+            "Runtime evidence parsed for personal_databricks validation: "
+            f"queries={sorted(runtime_evidence.query_names())}, "
+            f"assertions={sorted(runtime_evidence.runtime_assertions.keys())}."
+        )
+    else:
+        observations.append(
+            "Workspace mode is 'personal_databricks', but no valid sanitized runtime "
+            "evidence artifact was provided."
+        )
 
     if checks_failed:
         observations.append(
@@ -654,23 +896,26 @@ def validate_delivery_layer(
     pipeline_run_id: str,
     delivery_event_path: Optional[Path] = None,
     share_manifest_path: Optional[Path] = None,
+    runtime_evidence_path: Optional[Path] = None,
     expected_delivery_event_id: Optional[str] = None,
     workspace_mode: str = WORKSPACE_MODE_LOCAL_REPO_ONLY,
 ) -> DeliveryValidationResult:
     """
-    Run the C-2 producer-side delivery-layer validation for a given pipeline run.
+    Run delivery-layer validation for a given pipeline run.
 
     This function validates the C-1 delivery artifacts (delivery event JSON and
-    share preparation manifest) for the specified pipeline run. It is locally
-    executable, credential-free, and does not require a live Databricks workspace.
+    share preparation manifest) and, when provided, Phase 3 sanitized runtime
+    evidence from Databricks validation queries. It remains locally executable,
+    credential-free, and does not call a Databricks API.
 
     The result is always honest about what was and was not validated:
     - If no delivery event artifact exists, status is 'failed'.
-    - If the Delta Share has not been provisioned and workspace is local,
+    - If the Delta Share has not been provisioned,
       status is 'not_provisioned'.
     - If repo-side artifacts are correct but no runtime evidence exists,
       status is 'partially_validated'.
-    - Status 'validated' requires personal_databricks workspace mode.
+    - Status 'validated' requires personal_databricks workspace mode,
+      manifest status 'provisioned', and a parsed sanitized runtime evidence file.
 
     Parameters
     ----------
@@ -683,6 +928,10 @@ def validate_delivery_layer(
     share_manifest_path
         Path to the Delta Share preparation manifest JSON artifact.
         If None or the file does not exist, CHECK_SHARE_MANIFEST_EXISTS fails.
+    runtime_evidence_path
+        Optional path to sanitized Phase 3 Databricks runtime evidence.
+        Required for status 'validated' when workspace_mode='personal_databricks'
+        and the share manifest status is 'provisioned'.
     expected_delivery_event_id
         Optional delivery event ID for cross-reference consistency check.
         If provided, must match delivery_event.delivery_event_id.
@@ -699,7 +948,11 @@ def validate_delivery_layer(
     """
     validation_run_id = str(uuid.uuid4())
     validated_at = datetime.now(tz=timezone.utc).isoformat()
-    validation_scope = VALIDATION_SCOPE_PRODUCER_SIDE_ONLY
+    validation_scope = (
+        VALIDATION_SCOPE_END_TO_END
+        if workspace_mode == WORKSPACE_MODE_PERSONAL_DATABRICKS
+        else VALIDATION_SCOPE_PRODUCER_SIDE_ONLY
+    )
     artifacts_checked: List[str] = []
     all_check_results: List[CheckResult] = []
 
@@ -738,6 +991,59 @@ def validate_delivery_layer(
     all_check_results.append(check_share_manifest_has_c2_queries(parsed_manifest))
     all_check_results.append(check_share_provisioning_acknowledged(parsed_manifest))
 
+    share_provisioned = (
+        parsed_manifest is not None
+        and parsed_manifest.get("status") == "provisioned"
+    )
+
+    # --- Runtime evidence checks (Phase 3) ---
+    all_check_results.append(
+        check_runtime_evidence_exists(
+            runtime_evidence_path=runtime_evidence_path,
+            workspace_mode=workspace_mode,
+            share_provisioned=share_provisioned,
+        )
+    )
+    if runtime_evidence_path:
+        artifacts_checked.append(str(runtime_evidence_path))
+
+    r_runtime_parse, parsed_runtime_evidence = check_runtime_evidence_parseable(
+        runtime_evidence_path=runtime_evidence_path,
+        workspace_mode=workspace_mode,
+        share_provisioned=share_provisioned,
+    )
+    all_check_results.append(r_runtime_parse)
+    all_check_results.append(
+        check_runtime_evidence_sanitized(
+            evidence=parsed_runtime_evidence,
+            workspace_mode=workspace_mode,
+            share_provisioned=share_provisioned,
+        )
+    )
+    all_check_results.append(
+        check_runtime_evidence_pipeline_run_matches(
+            evidence=parsed_runtime_evidence,
+            pipeline_run_id=pipeline_run_id,
+            event=parsed_event,
+            workspace_mode=workspace_mode,
+            share_provisioned=share_provisioned,
+        )
+    )
+    all_check_results.append(
+        check_runtime_evidence_queries_passed(
+            evidence=parsed_runtime_evidence,
+            workspace_mode=workspace_mode,
+            share_provisioned=share_provisioned,
+        )
+    )
+    all_check_results.append(
+        check_runtime_evidence_assertions_passed(
+            evidence=parsed_runtime_evidence,
+            workspace_mode=workspace_mode,
+            share_provisioned=share_provisioned,
+        )
+    )
+
     # --- Derive preliminary pass/fail sets ---
     checks_passed = [r.check_name for r in all_check_results if r.passed]
     checks_failed = [r.check_name for r in all_check_results if not r.passed]
@@ -747,6 +1053,7 @@ def validate_delivery_layer(
         checks_failed=checks_failed,
         parsed_manifest=parsed_manifest,
         workspace_mode=workspace_mode,
+        runtime_evidence=parsed_runtime_evidence,
     )
 
     # --- Evidence sufficiency check (applied post-status derivation) ---
@@ -755,6 +1062,7 @@ def validate_delivery_layer(
         workspace_mode=workspace_mode,
         validation_scope=validation_scope,
         checks_failed=checks_failed,
+        runtime_evidence=parsed_runtime_evidence,
     )
     all_check_results.append(r_evidence)
 
@@ -769,12 +1077,6 @@ def validate_delivery_layer(
                 f"{r_evidence.detail}"
             )
 
-    # --- Share provisioning state (for observations) ---
-    share_provisioned = (
-        parsed_manifest is not None
-        and parsed_manifest.get("status") == "provisioned"
-    )
-
     # --- Build observations ---
     observations = _build_observations(
         parsed_event=parsed_event,
@@ -784,6 +1086,7 @@ def validate_delivery_layer(
         checks_passed=checks_passed,
         checks_failed=checks_failed,
         share_provisioned=share_provisioned,
+        runtime_evidence=parsed_runtime_evidence,
     )
 
     # --- Resolve delivery details for the result record ---
@@ -817,7 +1120,11 @@ def validate_delivery_layer(
         check_details=all_check_results,
         observations=observations,
         artifacts_checked=artifacts_checked,
-        queries_executed=[],
+        queries_executed=(
+            sorted(parsed_runtime_evidence.query_names())
+            if parsed_runtime_evidence is not None
+            else []
+        ),
         workspace_mode=workspace_mode,
         schema_version=VALIDATION_SCHEMA_VERSION,
     )

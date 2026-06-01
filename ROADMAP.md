@@ -115,6 +115,12 @@ required before Phase 2 is complete.
 
 Goal: promote delivery status from `not_provisioned` to `validated` in a real workspace.
 
+Status: started. The first Phase 3 slice adds a sanitized runtime evidence
+schema, a public-safe evidence template, and `runtime_evidence_path` support in
+the delivery validator. The repo can now validate evidence captured from a
+Databricks workspace, but no live workspace evidence has been collected by this
+local change.
+
 1. Provision the Delta Share from the generated manifest.
    - Run `setup_sql` in Databricks SQL with the required Unity Catalog privileges.
 
@@ -128,9 +134,11 @@ Goal: promote delivery status from `not_provisioned` to `validated` in a real wo
 4. Capture runtime evidence.
    - Store sanitized evidence artifacts under an ignored or clearly documented path.
    - Do not commit tokens, activation links, workspace URLs, or personal identifiers.
+   - Current slice: use `examples/runtime_evidence_personal_databricks_template.json` as the sanitized evidence shape; store filled evidence under `output/validation/runtime_evidence/`.
 
 5. Run the C-2 validator in `personal_databricks` mode.
    - The expected final status is `validated`.
+   - Current slice: `validate_delivery_layer(..., runtime_evidence_path=..., workspace_mode='personal_databricks')` can reach `validated` only when the manifest is `provisioned` and the sanitized runtime evidence passes all checks.
 
 Acceptance criteria:
 

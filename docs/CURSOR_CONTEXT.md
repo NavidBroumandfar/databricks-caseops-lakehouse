@@ -64,11 +64,11 @@ When starting any task in this repository, always read files in this exact order
 - Real Databricks MLflow experiments populated for all four evaluation stages: bronze parse quality, silver extraction quality, gold classification quality, pipeline traceability — logged April 2026 via `CASEOPS_MLFLOW_EXPERIMENT_ROOT`-qualified paths using `src/evaluation/mlflow_experiment_paths.py`
 - An explicit Gold → Bedrock handoff contract (B-0), repo-enforced contract validator (B-1), contract-enforced export materialization path (B-2), clean export/handoff module boundary (B-3), structured handoff outcome observability (B-4), a single reviewable batch handoff bundle/manifest (B-5), and a local-safe bundle integrity validation layer (B-6)
 - A Delta Sharing-oriented producer-side delivery augmentation (C-1) with delivery events and share preparation manifests
-- A bounded 15-check delivery-layer runtime validation layer (C-2) with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary
+- A bounded delivery-layer runtime validation layer (C-2, extended by Phase 3 evidence checks) with honest `not_provisioned` / `partially_validated` / `validated` / `failed` status vocabulary
 - A D-0 multi-domain framework layer: domain registry, domain schema registry, domain-aware prompt routing, taxonomy D-0 extensions, and domain-registry routing in `select_extractor()` / `select_classifier()`
 - A D-1 CISA advisory domain: `CISAAdvisoryFields`, `LocalCISAAdvisoryExtractor`, `LocalCISAAdvisoryClassifier`, `security_ops` routing active
 - A D-2 incident report domain: `IncidentReportFields`, `LocalIncidentReportExtractor`, `LocalIncidentReportClassifier`, `incident_management` routing active
-- 1425 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue, E-1 environment separation, and E-2 governance monitoring
+- 1453 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue, E-1 environment separation, E-2 governance monitoring, Phase 2 runtime adapters, and Phase 3 evidence intake
 
 **V2 is complete. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 is complete. Phase E-2 is complete. Phase E is complete.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
 
@@ -77,6 +77,13 @@ The first slice adds injectable Spark-backed AI Function adapters and Delta
 table I/O helpers in `src/pipelines/databricks_runtime.py`. This is not a full
 Databricks deployment yet: Asset Bundles, Jobs/Workflows wiring, runtime
 resource validation, and live workspace smoke evidence remain pending.
+
+Forward `ROADMAP.md` Phase 3 has also started. The first slice adds a sanitized
+runtime evidence schema (`src/schemas/runtime_evidence.py`), a public-safe
+template (`examples/runtime_evidence_personal_databricks_template.json`), and
+`runtime_evidence_path` support in `validate_delivery_layer()`. This is evidence
+intake only; live Databricks workspace evidence is still required before the
+delivery layer can honestly report `validated`.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
@@ -190,8 +197,8 @@ is C-2. No live Unity Catalog provisioning, no Bedrock SDK, no real Delta Share 
 **Phase C-2 — Runtime Integration Validation** is complete (producer-side validation layer).
 C-2 adds a bounded, credential-free, locally executable delivery-layer validation layer. Key deliverables:
 `src/schemas/delivery_validation.py` (`DeliveryValidationResult`, `CheckResult`; status/scope/workspace
-vocabulary with 4 statuses, 2 scopes, 2 workspace modes, 15 check name constants);
-`src/pipelines/delivery_validation.py` (15 named check functions + `validate_delivery_layer()` entry
+vocabulary with 4 statuses, 2 scopes, 2 workspace modes, and named check constants);
+`src/pipelines/delivery_validation.py` (named check functions + `validate_delivery_layer()` entry
 point + `format_validation_result_text()` + `write_validation_result()` + `load_validation_result()`);
 `examples/expected_delivery_validation_result.json` (C-2 reference fixture; status `not_provisioned`);
 `docs/delivery-runtime-validation.md` (C-2 design record, check catalogue, and runtime validation runbook);
@@ -207,7 +214,7 @@ The module boundary (through the first Phase 2 slice) is:
   `handoff_bundle_validation.py`  → validates the bundle is internally consistent and trustworthy
   `delivery_events.py`            → builds DeliveryEvent from summaries → writes event artifacts
   `delta_share_handoff.py`        → defines share config → generates SQL templates → writes share prep manifest
-  `delivery_validation.py`        → runs 15 checks on C-1 delivery artifacts → produces DeliveryValidationResult
+  `delivery_validation.py`        → runs producer-side and runtime-evidence checks → produces DeliveryValidationResult
   `domain_registry.py`            → D-0: authoritative domain status registry; `require_active_domain()` guards all domain-specific operations
   `domain_schema_registry.py`     → D-0: per-domain Silver schema family routing; `build_fields_for_domain()` factory
   `extraction_prompts.py`         → D-0: `get_prompt_for_domain()` domain-aware prompt selection
@@ -216,6 +223,7 @@ The module boundary (through the first Phase 2 slice) is:
   `environment_config.py`         → E-1: `Environment` enum, `EnvironmentConfig` frozen dataclass, `get_environment_config()` factory; deterministic catalog/table/volume/MLflow naming per env
   `governance_monitoring.py`      → E-2: `build_governance_report()` aggregates eval/handoff/review artifacts into `GovernanceReport`; bounded flag vocabulary; deterministic health status derivation; JSON + text outputs
   `databricks_runtime.py`         → Phase 2 slice: Spark-injected `ai_parse_document`, `ai_extract`, `ai_classify` adapters plus Delta table I/O helpers; no PySpark import, credentials, workspace URLs, or agent logic
+  `runtime_evidence.py`           → Phase 3 slice: sanitized Databricks runtime evidence schema; supports `validated` only after share/query evidence is captured outside the repo
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

@@ -28,7 +28,7 @@
 | B-6 | Handoff Bundle Integrity and Consistency Validation | ✅ Complete | Local-safe validator that proves the B-5 bundle is internally trustworthy and review-safe |
 | C-0 | Live Handoff: Delivery Mechanism Design | ✅ Complete (V2) | Delta Sharing selected as primary; delivery events as secondary; V1 file path retained |
 | C-1 | Live Handoff: Export Delivery Implementation | ✅ Complete (V2) | Producer-side delivery augmentation: DeliveryEvent schema + Delta Share prep layer |
-| C-2 | Live Handoff: Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
+| C-2 | Live Handoff: Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 
 ---
 
@@ -635,7 +635,7 @@ V1 is complete as of April 2026. This means:
 |---|---|---|---|
 | C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
 | C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
-| C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
+| C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
 | D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
 | D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
 | D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
@@ -725,8 +725,8 @@ V1 is complete as of April 2026. This means:
 **Goal**: Implement a bounded delivery-layer validation and observability layer for the C-1 delivery artifacts. Provide explicit, honest integration health signals. Define the runbook for live workspace validation.
 
 **What C-2 delivered**:
-- `src/schemas/delivery_validation.py` — `DeliveryValidationResult` schema with 4-state status vocabulary (`validated`, `partially_validated`, `not_provisioned`, `failed`), scope vocabulary, workspace mode vocabulary, and 15 check name constants
-- `src/pipelines/delivery_validation.py` — 15 named check functions + `validate_delivery_layer()` main entry point. Locally executable, credential-free, no Databricks workspace required
+- `src/schemas/delivery_validation.py` — `DeliveryValidationResult` schema with 4-state status vocabulary (`validated`, `partially_validated`, `not_provisioned`, `failed`), scope vocabulary, workspace mode vocabulary, and 15 C-2 check name constants at C-2 closeout
+- `src/pipelines/delivery_validation.py` — 15 C-2 named check functions + `validate_delivery_layer()` main entry point at C-2 closeout. Locally executable, credential-free, no Databricks workspace required
 - `examples/expected_delivery_validation_result.json` — Reference C-2 validation result fixture
 - `docs/delivery-runtime-validation.md` — C-2 design record, check catalogue, and personal Databricks runtime validation runbook
 - `tests/test_delivery_validation.py` — 134 focused tests. 747 total tests pass
