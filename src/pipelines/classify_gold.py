@@ -500,36 +500,57 @@ class LocalIncidentReportClassifier(DocumentClassifier):
 
 
 # ---------------------------------------------------------------------------
-# Databricks ai_classify adapter (placeholder)
+# Databricks ai_classify adapter
 # ---------------------------------------------------------------------------
 
 
 class DatabricksAiClassifyAdapter(DocumentClassifier):
     """
-    Adapter placeholder for Databricks ai_classify.
+    Spark-backed adapter for Databricks ai_classify.
 
-    In a live Databricks execution environment this class would call:
-        spark.sql("SELECT ai_classify(parsed_text, :labels)", ...)
-
-    It is intentionally not implemented here because:
-    1. There is no Spark session available in a local run.
-    2. No credentials or workspace URLs should live in this file.
-
-    To enable Databricks execution, subclass this and inject a SparkSession
-    and the label taxonomy definition.
+    Local execution still uses deterministic rule-based classifiers. In
+    Databricks Jobs or notebooks, inject a SparkSession-like object and,
+    optionally, a closed label taxonomy. No credentials, workspace URLs, or
+    Spark imports are stored in this repo.
     """
 
     _MODEL_ID = "ai_classify/v1"
+
+    def __init__(
+        self,
+        spark: Optional[object] = None,
+        label_taxonomy: Optional[object] = None,
+        instructions: Optional[str] = None,
+        version: str = "2.0",
+    ) -> None:
+        self.spark = spark
+        self.label_taxonomy = label_taxonomy
+        self.instructions = instructions
+        self.version = version
 
     @property
     def model_id(self) -> str:
         return self._MODEL_ID
 
     def classify(self, silver: dict) -> dict:
+        if self.spark is not None:
+            from src.pipelines.databricks_runtime import (
+                DEFAULT_CLASSIFICATION_INSTRUCTIONS,
+                DatabricksAiClassifyRuntimeAdapter,
+            )
+
+            adapter = DatabricksAiClassifyRuntimeAdapter(
+                spark=self.spark,
+                label_taxonomy=self.label_taxonomy,
+                instructions=self.instructions or DEFAULT_CLASSIFICATION_INSTRUCTIONS,
+                version=self.version,
+            )
+            return adapter.classify(silver)
+
         raise NotImplementedError(
             "DatabricksAiClassifyAdapter requires a live Databricks runtime. "
-            "Use LocalFDAWarningLetterClassifier for local execution, or inject "
-            "a SparkSession and override this method for Databricks cluster execution."
+            "Use a local deterministic classifier for local execution, or inject "
+            "a SparkSession."
         )
 
 

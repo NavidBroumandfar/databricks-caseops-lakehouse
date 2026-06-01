@@ -430,35 +430,62 @@ class LocalFDAWarningLetterExtractor(FieldExtractor):
 
 
 # ---------------------------------------------------------------------------
-# Databricks ai_extract adapter (placeholder)
+# Databricks ai_extract adapter
 # ---------------------------------------------------------------------------
 
 class DatabricksAiExtractAdapter(FieldExtractor):
     """
-    Adapter placeholder for Databricks ai_extract.
+    Spark-backed adapter for Databricks ai_extract.
 
-    In a live Databricks execution environment this class would call:
-        spark.sql("SELECT ai_extract(parsed_text, :schema)", ...)
-
-    It is intentionally not implemented here because:
-    1. There is no Spark session available in a local run.
-    2. No credentials or workspace URLs should live in this file.
-
-    To enable Databricks execution, subclass this and inject a SparkSession
-    and the extraction schema definition.
+    Local execution still uses deterministic rule-based extractors. In
+    Databricks Jobs or notebooks, inject a SparkSession-like object and an
+    extraction schema. No credentials, workspace URLs, or Spark imports are
+    stored in this repo.
     """
 
     _MODEL_ID = "ai_extract/v1"
+
+    def __init__(
+        self,
+        spark: Optional[object] = None,
+        extraction_schema: Optional[object] = None,
+        instructions: Optional[str] = None,
+        version: str = "2.0",
+    ) -> None:
+        self.spark = spark
+        self.extraction_schema = extraction_schema
+        self.instructions = instructions
+        self.version = version
 
     @property
     def model_id(self) -> str:
         return self._MODEL_ID
 
     def extract(self, parsed_text: str) -> dict:
+        if self.spark is not None:
+            if self.extraction_schema is None:
+                raise ValueError(
+                    "DatabricksAiExtractAdapter requires an extraction_schema "
+                    "when a SparkSession is injected."
+                )
+
+            from src.pipelines.databricks_runtime import (
+                DEFAULT_EXTRACTION_INSTRUCTIONS,
+                DatabricksAiExtractRuntimeAdapter,
+            )
+
+            adapter = DatabricksAiExtractRuntimeAdapter(
+                spark=self.spark,
+                extraction_schema=self.extraction_schema,
+                instructions=self.instructions or DEFAULT_EXTRACTION_INSTRUCTIONS,
+                version=self.version,
+            )
+            return adapter.extract(parsed_text)
+
         raise NotImplementedError(
             "DatabricksAiExtractAdapter requires a live Databricks runtime. "
-            "Use LocalFDAWarningLetterExtractor for local execution, or inject "
-            "a SparkSession and override this method for Databricks cluster execution."
+            "Use a local deterministic extractor for local execution, or inject "
+            "a SparkSession and extraction_schema."
         )
 
 

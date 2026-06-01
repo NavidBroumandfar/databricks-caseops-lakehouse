@@ -72,6 +72,12 @@ When starting any task in this repository, always read files in this exact order
 
 **V2 is complete. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 is complete. Phase E-2 is complete. Phase E is complete.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
 
+Forward `ROADMAP.md` Phase 2 has started after the June 2026 audit cleanup.
+The first slice adds injectable Spark-backed AI Function adapters and Delta
+table I/O helpers in `src/pipelines/databricks_runtime.py`. This is not a full
+Databricks deployment yet: Asset Bundles, Jobs/Workflows wiring, runtime
+resource validation, and live workspace smoke evidence remain pending.
+
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
 - No enterprise deployment or production credentials
@@ -193,7 +199,7 @@ point + `format_validation_result_text()` + `write_validation_result()` + `load_
 Default local run produces `status = 'not_provisioned'` (honest baseline). `validated` requires
 `workspace_mode='personal_databricks'` and execution of share setup SQL in a Databricks workspace.
 
-The module boundary (through D-0) is:
+The module boundary (through the first Phase 2 slice) is:
   `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle → writes C-1 delivery event
   `export_handoff.py`             → validates contract → writes export artifact → returns `ExportResult`
   `handoff_report.py`             → derives outcome categories → aggregates batch report → writes report artifacts
@@ -209,6 +215,7 @@ The module boundary (through D-0) is:
   `review_queue.py`               → E-0: derives `ReviewQueueArtifact` from pipeline summaries; writes review queue artifacts
   `environment_config.py`         → E-1: `Environment` enum, `EnvironmentConfig` frozen dataclass, `get_environment_config()` factory; deterministic catalog/table/volume/MLflow naming per env
   `governance_monitoring.py`      → E-2: `build_governance_report()` aggregates eval/handoff/review artifacts into `GovernanceReport`; bounded flag vocabulary; deterministic health status derivation; JSON + text outputs
+  `databricks_runtime.py`         → Phase 2 slice: Spark-injected `ai_parse_document`, `ai_extract`, `ai_classify` adapters plus Delta table I/O helpers; no PySpark import, credentials, workspace URLs, or agent logic
 
 See [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) for the full roadmap and phase status.
 

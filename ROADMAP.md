@@ -77,14 +77,21 @@ Acceptance criteria:
 
 Goal: move from local-safe and bootstrap SQL to a repeatable Databricks runtime.
 
+Status: started. The first Phase 2 slice adds injectable Spark-backed AI
+Function adapters and a reusable Delta table I/O helper while preserving the
+local deterministic implementations. Databricks Asset Bundles, job wiring,
+runtime resource validation, and live workspace smoke validation remain pending.
+
 1. Implement real Databricks adapters.
    - Replace placeholder-only paths for `ai_parse_document`, `ai_extract`, and `ai_classify` with injectable Spark-backed implementations.
    - Preserve local deterministic implementations for tests and demos.
+   - Current slice: `src/pipelines/databricks_runtime.py` provides Spark-backed adapter implementations; the existing parser/extractor/classifier adapter classes delegate to them only when a Spark session is injected.
 
 2. Add Delta table readers/writers.
    - Bronze writer: raw parse outputs to `caseops.<env>.bronze.parsed_documents`.
    - Silver writer: extracted records to `caseops.<env>.silver.extracted_records`.
    - Gold writer: AI-ready assets to `caseops.<env>.gold.ai_ready_assets`.
+   - Current slice: reusable `DeltaTableIO` and `DeltaTableTargets` helpers exist for injected Spark sessions. Pipeline job wiring is still pending.
 
 3. Add Databricks Asset Bundle support.
    - Define dev/staging/prod resources without secrets.
@@ -99,6 +106,10 @@ Acceptance criteria:
 - A Databricks workspace can run the pipeline without manually copying SQL snippets.
 - Local tests still pass without credentials.
 - Runtime adapters are covered by unit tests using mocks and by a documented Databricks smoke test.
+
+Current gap: local mock coverage exists for the adapter and Delta I/O surface.
+The documented Databricks smoke test and workspace execution evidence are still
+required before Phase 2 is complete.
 
 ## Phase 3 - Complete Runtime Handoff Validation
 

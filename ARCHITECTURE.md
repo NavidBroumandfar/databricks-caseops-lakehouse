@@ -166,6 +166,30 @@ The export quality threshold defined in `docs/data-contracts.md` (requiring `cla
 
 ---
 
+## Databricks Runtime Execution — Phase 2 Slice
+
+Phase 2 starts the move from local-safe execution and bootstrap SQL toward a
+repeatable Databricks runtime. The first implementation slice adds reusable
+runtime adapters without changing the local demo path:
+
+| Component | Runtime Path | Local Behavior |
+|---|---|---|
+| `DatabricksAiParseAdapter` | Delegates to `DatabricksAiParseRuntimeAdapter` when a Spark session is injected | Still raises a clear runtime-required error for PDF/DOCX local calls |
+| `DatabricksAiExtractAdapter` | Delegates to `DatabricksAiExtractRuntimeAdapter` when Spark plus an extraction schema are injected | Deterministic domain extractors remain the default selectors |
+| `DatabricksAiClassifyAdapter` | Delegates to `DatabricksAiClassifyRuntimeAdapter` when Spark is injected | Deterministic domain classifiers remain the default selectors |
+| `DeltaTableIO` | Writes and reads managed Delta tables through injected Spark | Tested locally with fake Spark objects only |
+
+The runtime helpers live in `src/pipelines/databricks_runtime.py` and do not
+import PySpark directly. They are intentionally credential-free and contain no
+workspace URLs. This keeps local tests reproducible while allowing Databricks
+Jobs or notebooks to inject the active Spark session.
+
+This slice does not yet complete Phase 2. Databricks Asset Bundles, workflow
+job wiring, runtime resource validation, and live workspace smoke evidence are
+still required before claiming a repeatable Databricks deployment.
+
+---
+
 ## Evaluation and Observability Layer
 
 ### Design Principle

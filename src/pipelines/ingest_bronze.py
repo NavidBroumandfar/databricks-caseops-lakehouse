@@ -145,29 +145,36 @@ class LocalTextParser(DocumentParser):
 
 class DatabricksAiParseAdapter(DocumentParser):
     """
-    Adapter placeholder for Databricks ai_parse_document.
+    Spark-backed adapter for Databricks ai_parse_document.
 
-    In a live Databricks execution environment this class would call:
-        spark.sql("SELECT ai_parse_document('/Volumes/...')")
-
-    It is intentionally not implemented here because:
-    1. There is no Spark session available in a local run.
-    2. No credentials or workspace URLs should live in this file.
-
-    To enable Databricks execution, subclass this and inject a SparkSession.
+    Local execution still uses LocalTextParser. In Databricks Jobs or notebooks,
+    inject a SparkSession-like object and pass a Unity Catalog Volume path.
+    No credentials, workspace URLs, or Spark imports are stored in this repo.
     """
 
     _MODEL_ID = "ai_parse_document/v1"
+
+    def __init__(self, spark: Optional[object] = None, version: str = "2.0") -> None:
+        self.spark = spark
+        self.version = version
 
     @property
     def model_id(self) -> str:
         return self._MODEL_ID
 
     def parse(self, file_path: Path) -> dict:
+        if self.spark is not None:
+            from src.pipelines.databricks_runtime import DatabricksAiParseRuntimeAdapter
+
+            adapter = DatabricksAiParseRuntimeAdapter(
+                spark=self.spark,
+                version=self.version,
+            )
+            return adapter.parse_volume_file(str(file_path))
+
         raise NotImplementedError(
             "DatabricksAiParseAdapter requires a live Databricks runtime. "
-            "Use LocalTextParser for local execution, or inject a SparkSession "
-            "and override this method for Databricks cluster execution."
+            "Use LocalTextParser for local execution, or inject a SparkSession."
         )
 
 
