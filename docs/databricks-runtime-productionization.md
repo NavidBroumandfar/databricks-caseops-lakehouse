@@ -50,6 +50,11 @@ The boundary remains unchanged:
   - Local-safe validator for a complete sanitized Phase 4 smoke evidence
     package
   - Does not call Databricks APIs; it validates captured artifacts only
+- `src/pipelines/runtime_smoke_plan.py`
+  - Local-safe generator for a run-scoped smoke capture plan before workspace
+    execution
+  - Produces expected artifact paths, commands, and sanitization rules; it is
+    not runtime evidence
 
 ## 3) Runtime path target (environment-aware)
 
@@ -187,6 +192,24 @@ The provisioned personal-workspace validation job also requires:
 
 ## 6) Smoke-test evidence checklist (repeatable)
 
+Before a workspace smoke run, generate a run-specific capture plan:
+
+```bash
+.venv/bin/python src/pipelines/runtime_smoke_plan.py \
+  --pipeline-run-id <pipeline-run-id> \
+  --environment dev \
+  --output-root output \
+  --output-dir output/validation
+```
+
+This writes:
+
+- `output/validation/runtime_smoke_capture_plan_<pipeline_run_id>.json`
+- `output/validation/runtime_smoke_capture_plan_<pipeline_run_id>.txt`
+
+The capture plan is an operator checklist only. It does not prove Databricks
+execution, provisioning, or validation.
+
 For each smoke run, produce the minimum artifacts below and keep sensitive values stripped:
 
 1. Runtime run metadata:
@@ -200,7 +223,7 @@ For each smoke run, produce the minimum artifacts below and keep sensitive value
    - Gold source-table row checks in target catalog schema
    - routing-label visibility check
 4. Evidence artifact:
-   - `output/validation/runtime_evidence/runtime_evidence.json` (sanitized)
+   - `output/validation/runtime_evidence/runtime_evidence_<pipeline_run_id>.json` (sanitized)
 5. C-2 result artifact from runner:
    - `output/validation/delivery_validation_<pipeline_run_id>.json`
 6. Phase 4 smoke package validation result:
@@ -222,7 +245,7 @@ Validate the complete smoke package locally after the workspace run:
   --environment dev \
   --delivery-event-path output/delivery/delivery_event_<pipeline-run-id>.json \
   --share-manifest-path output/delivery/delta_share_preparation_manifest.json \
-  --runtime-evidence-path output/validation/runtime_evidence/runtime_evidence.json \
+  --runtime-evidence-path output/validation/runtime_evidence/runtime_evidence_<pipeline-run-id>.json \
   --delivery-validation-result-path output/validation/delivery_validation_<pipeline-run-id>.json \
   --output-dir output/validation
 ```
@@ -246,6 +269,7 @@ The result reaches `smoke_status = ready_for_phase4_closeout` only when:
 - [x] Deployment scaffold added under `config/databricks-runtime-bundle/`.
 - [x] Runtime validation stage implemented (`delivery_validation`) with local-safe evidence path.
 - [x] Deterministic preflight/check-only path added for workspace runs (`--check-only`).
+- [x] Run-scoped smoke capture plan generator added for repeatable evidence packaging.
 - [x] Local-safe Phase 4 smoke package validator added for captured workspace evidence.
 - [ ] End-to-end workspace repeatable smoke check has been executed against staging/prod (pipeline remains scoped to dev/staging/prod by environment).
 - [x] No secrets or workspace-identifying values committed in scoped files.

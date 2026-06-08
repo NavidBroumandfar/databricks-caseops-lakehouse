@@ -183,6 +183,10 @@ Status: active.
      captured smoke evidence package without Databricks credentials and only
      reports `ready_for_phase4_closeout` when runtime evidence and C-2 delivery
      validation agree on the same provisioned `pipeline_run_id`.
+   - Current support slice: `src/pipelines/runtime_smoke_plan.py` generates a
+     run-scoped capture plan with expected artifact paths, validation commands,
+     and sanitization rules before the workspace smoke run. This plan is not
+     runtime evidence.
 
 4. Add production-grade pre-flight validation.
    - Validate required tables, schemas, and manifest presence before runtime runs.

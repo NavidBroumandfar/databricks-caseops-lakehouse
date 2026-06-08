@@ -188,8 +188,11 @@ Phase 2 implementation is complete for adapter wiring and Delta I/O helpers.
 
 Phase 4 is the path from adapter-ready code to reproducible runtime execution.
 
-- Databricks deployment scaffolding (Jobs/Workflows/Asset Bundle) is still to be added.
-- Runtime entrypoints should inject Spark sessions and environment configuration once and then call the existing adapter surfaces.
+- Databricks deployment scaffolding is present under
+  `config/databricks-runtime-bundle/databricks.yml`.
+- Runtime entrypoints inject Spark sessions and environment configuration once
+  and then call the existing adapter surfaces through
+  `src/pipelines/run_databricks_pipeline.py`.
 - Runtime table targets are environment-derived and currently formalized in:
   - `src/utils/environment_config.py` (`EnvironmentConfig`)
   - `src/pipelines/databricks_runtime.py` (`DeltaTableTargets`)
@@ -198,6 +201,10 @@ Phase 4 is the path from adapter-ready code to reproducible runtime execution.
   - `caseops_<env>.silver.extracted_records`
   - `caseops_<env>.gold.ai_ready_assets`
 - A repeatable workspace smoke-test runbook is required before claiming deployment-level runtime status.
+- `src/pipelines/runtime_smoke_plan.py` generates a run-scoped, local-safe
+  capture plan before workspace execution.
+- `src/pipelines/runtime_smoke_validation.py` validates sanitized captured
+  smoke packages after workspace execution.
 
 This repository intentionally remains without hardcoded URLs, credentials,
 activation links, or workspace identifiers. All runtime execution assumptions are

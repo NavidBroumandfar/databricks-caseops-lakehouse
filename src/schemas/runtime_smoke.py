@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 RUNTIME_SMOKE_SCHEMA_VERSION = "v0.1.0"
+RUNTIME_SMOKE_PLAN_SCHEMA_VERSION = "v0.1.0"
 
 SMOKE_STATUS_READY = "ready_for_phase4_closeout"
 SMOKE_STATUS_INCOMPLETE = "incomplete"
@@ -91,6 +92,74 @@ class RuntimeSmokeValidationResult(BaseModel):
                 f"schema_version must be '{RUNTIME_SMOKE_SCHEMA_VERSION}'"
             )
         return value
+
+    def to_json_dict(self) -> dict:
+        return json.loads(self.model_dump_json())
+
+    def to_json_str(self, indent: int = 2) -> str:
+        return json.dumps(self.to_json_dict(), indent=indent)
+
+
+class RuntimeSmokeExpectedArtifact(BaseModel):
+    """One artifact that must be captured for a Phase 4 smoke package."""
+
+    artifact_name: str = Field(description="Stable artifact identifier.")
+    path: str = Field(description="Expected local-safe artifact path.")
+    required: bool = Field(default=True, description="Whether closeout requires this artifact.")
+    description: str = Field(description="Human-readable artifact purpose.")
+
+
+class RuntimeSmokeCapturePlan(BaseModel):
+    """
+    Run-specific capture plan for a repeatable Phase 4 workspace smoke run.
+
+    The plan is generated before the Databricks run. It records expected output
+    paths and local validation commands, but it is not evidence that a workspace
+    smoke test has completed.
+    """
+
+    capture_plan_id: str = Field(description="UUID v4 identifying this capture plan.")
+    pipeline_run_id: str = Field(description="Pipeline run ID the operator should use.")
+    environment: str = Field(description="Runtime CASEOPS environment.")
+    workspace_mode: str = Field(description="Workspace context expected for closeout evidence.")
+    generated_at: str = Field(description="UTC ISO 8601 timestamp when the plan was generated.")
+    expected_artifacts: List[RuntimeSmokeExpectedArtifact] = Field(default_factory=list)
+    workspace_commands: List[str] = Field(default_factory=list)
+    local_validation_commands: List[str] = Field(default_factory=list)
+    sanitization_rules: List[str] = Field(default_factory=list)
+    observations: List[str] = Field(default_factory=list)
+    schema_version: str = Field(default=RUNTIME_SMOKE_PLAN_SCHEMA_VERSION)
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, value: str) -> str:
+        if value not in SMOKE_ENVIRONMENTS:
+            raise ValueError(f"environment must be one of {sorted(SMOKE_ENVIRONMENTS)}")
+        return value
+
+    @field_validator("workspace_mode")
+    @classmethod
+    def validate_workspace_mode(cls, value: str) -> str:
+        if value not in ALL_SMOKE_WORKSPACE_MODES:
+            raise ValueError(
+                f"workspace_mode must be one of {sorted(ALL_SMOKE_WORKSPACE_MODES)}"
+            )
+        return value
+
+    @field_validator("schema_version")
+    @classmethod
+    def validate_schema_version(cls, value: str) -> str:
+        if value != RUNTIME_SMOKE_PLAN_SCHEMA_VERSION:
+            raise ValueError(
+                f"schema_version must be '{RUNTIME_SMOKE_PLAN_SCHEMA_VERSION}'"
+            )
+        return value
+
+    def artifact_path(self, artifact_name: str) -> Optional[str]:
+        for artifact in self.expected_artifacts:
+            if artifact.artifact_name == artifact_name:
+                return artifact.path
+        return None
 
     def to_json_dict(self) -> dict:
         return json.loads(self.model_dump_json())
