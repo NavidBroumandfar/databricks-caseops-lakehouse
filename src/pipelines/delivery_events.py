@@ -115,7 +115,7 @@ def build_delivery_event(
     share_name
         Name of the Delta Share. Default: 'caseops_handoff'.
     shared_object_name
-        Shared table name within the share. Default: 'gold_ai_ready_assets'.
+        Shared table name within the share. Default: 'gold.gold_ai_ready_assets'.
     notes
         Optional batch-level notes.
 

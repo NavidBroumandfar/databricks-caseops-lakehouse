@@ -170,7 +170,7 @@ def _make_share_manifest_dict(status: str = "designed") -> dict:
         "handoff_surface": {},
         "c2_validation_queries": [
             {"name": "confirm_share_exists", "sql": "SHOW ALL IN SHARE caseops_handoff;"},
-            {"name": "query_export_ready_records", "sql": "SELECT * FROM caseops_handoff.gold_ai_ready_assets LIMIT 1;"},
+            {"name": "query_export_ready_records", "sql": "SELECT * FROM caseops.gold.ai_ready_assets LIMIT 1;"},
         ],
         "notes": [],
     }
@@ -1427,7 +1427,7 @@ class TestFormatValidationResultText:
             validated_at="2026-04-12T00:00:00+00:00",
             delivery_mechanism="delta_sharing",
             share_name="caseops_handoff",
-            shared_object_name="gold_ai_ready_assets",
+            shared_object_name="gold.gold_ai_ready_assets",
             validation_scope=VALIDATION_SCOPE_PRODUCER_SIDE_ONLY,
             validation_status=VALIDATION_STATUS_NOT_PROVISIONED,
             validation_reason="Share not provisioned.",
@@ -1478,6 +1478,20 @@ class TestFormatValidationResultText:
         result = self._make_result()
         text = format_validation_result_text(result)
         assert "C-2" in text or "delivery-runtime-validation" in text
+
+    def test_format_validated_footer_matches_end_to_end_scope(self):
+        result = self._make_result().model_copy(
+            update={
+                "validation_scope": VALIDATION_SCOPE_END_TO_END,
+                "validation_status": VALIDATION_STATUS_VALIDATED,
+                "workspace_mode": WORKSPACE_MODE_PERSONAL_DATABRICKS,
+                "queries_executed": ["confirm_share_exists"],
+            }
+        )
+        text = format_validation_result_text(result)
+        assert "Validation scope: end_to_end (personal_databricks)." in text
+        assert "Runtime end-to-end validation evidence was provided and accepted." in text
+        assert "local_repo_only baseline" not in text
 
     def test_format_with_no_artifacts_checked(self):
         result = self._make_result()

@@ -282,7 +282,7 @@ class TestComputeHandoffSurface:
         cfg = DeltaShareConfig()
         surface = compute_handoff_surface(cfg)
         table_names = [t["shared_as"] for t in surface["shared_tables"]]
-        assert "delivery_events" in table_names
+        assert cfg.shared_delivery_events_as in table_names
 
     def test_v1_file_export_retained_is_true(self):
         cfg = DeltaShareConfig()

@@ -151,6 +151,20 @@ class EnvironmentConfig:
         """FQN for the Gold Delta table in this environment."""
         return f"{self.catalog_name}.{_SCHEMA_GOLD}.{_TABLE_GOLD}"
 
+    def table_for_stage(self, stage: str) -> str:
+        """Return the configured table name for a single pipeline stage."""
+        stage_lookup = {
+            "bronze": self.bronze_table,
+            "silver": self.silver_table,
+            "gold": self.gold_table,
+        }
+        try:
+            return stage_lookup[stage]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown stage {stage!r}; expected one of {sorted(stage_lookup)}."
+            ) from exc
+
     # ------------------------------------------------------------------
     # Unity Catalog Volume paths
     # ------------------------------------------------------------------

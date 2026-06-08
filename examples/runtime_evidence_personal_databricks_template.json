@@ -6,7 +6,7 @@
   "pipeline_run_id": "replace-with-pipeline-run-id",
   "delivery_event_id": "replace-with-delivery-event-id",
   "share_name": "caseops_handoff",
-  "shared_object_name": "gold_ai_ready_assets",
+  "shared_object_name": "gold.gold_ai_ready_assets",
   "manifest_status": "provisioned",
   "queries": [
     {
@@ -18,7 +18,7 @@
         "database",
         "table"
       ],
-      "notes": "Sanitized result shows the shared Gold table and delivery_events object."
+      "notes": "Sanitized result shows the shared Gold table and delivery_events object under schema-qualified share aliases."
     },
     {
       "name": "query_export_ready_records",

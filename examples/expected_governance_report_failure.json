@@ -1,0 +1,114 @@
+{
+  "governance_report_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567892",
+  "generated_at": "2026-04-12T10:10:00+00:00",
+  "environment": "prod",
+  "schema_version": "v1.0.0",
+  "reporting_scope": {
+    "evaluation_report_path": "output/eval/report_abc124.json",
+    "handoff_report_path": "output/reports/handoff_report_run002.json",
+    "handoff_bundle_path": "output/reports/handoff_bundle_run002.json",
+    "review_queue_path": "output/review_queue/review_queue_run002.json",
+    "environment": "prod",
+    "input_pipeline_run_ids": ["run002"]
+  },
+  "quality_summary": {
+    "bronze_parse_success_rate": 0.55,
+    "silver_extraction_validity_rate": 0.45,
+    "gold_export_ready_rate": 0.65,
+    "gold_classification_success_rate": 1.0,
+    "traceability_gold_to_silver_link_rate": 0.60,
+    "traceability_silver_to_bronze_link_rate": 1.0,
+    "traceability_pipeline_run_id_coverage": 0.75,
+    "traceability_orphaned_silver_count": 0,
+    "traceability_orphaned_gold_count": 2,
+    "bootstrap_path_detected": false,
+    "quality_observations": [
+      "Traceability check detected orphaned Gold records and reduced pipeline_run_id coverage."
+    ]
+  },
+  "handoff_health": {
+    "total_records_processed": 6,
+    "total_exported": 3,
+    "total_quarantined": 2,
+    "total_contract_blocked": 1,
+    "total_skipped_not_export_ready": 0,
+    "export_success_rate": 0.50,
+    "quarantine_rate": 0.33,
+    "contract_block_rate": 0.17,
+    "contract_blocked_document_ids": ["doc-uuid-002"],
+    "quarantined_document_ids": ["doc-uuid-001", "doc-uuid-003"],
+    "handoff_observations": [
+      "2 record(s) routed to quarantine. Review the Gold artifacts for classification context.",
+      "1 record(s) blocked by Bedrock contract validation. Review contract_blocked_document_ids for field-level detail."
+    ]
+  },
+  "review_queue_summary": {
+    "total_records_reviewed": 6,
+    "total_queue_entries": 5,
+    "entries_by_reason": {
+      "quarantined": 3,
+      "contract_blocked": 1,
+      "extraction_failed": 1
+    },
+    "review_queue_pressure_pct": 0.83,
+    "review_queue_observations": [
+      "5 record(s) entered the review queue. Review decisions should be recorded using the ReviewDecision schema."
+    ]
+  },
+  "schema_drift": {
+    "schema_versions_detected": ["v0.1.0", "v0.2.0"],
+    "mixed_schema_versions": true,
+    "missing_provenance_fields": [
+      "pipeline_run_id (coverage < 100%)",
+      "pipeline_run_id (placeholder 'bootstrap_sql_v1' values present — not real MLflow run IDs)"
+    ],
+    "unexpected_routing_combinations": [
+      "More than 50% of eligible records quarantined (2/6) — review classification taxonomy and routing logic."
+    ],
+    "environment_names_detected": ["dev", "prod"],
+    "mixed_environments_detected": true,
+    "drift_observations": [
+      "Multiple environment names referenced in this governance pass: ['dev', 'prod']. Governance reports should aggregate artifacts from a single environment.",
+      "Missing or placeholder provenance fields detected: pipeline_run_id (coverage < 100%); pipeline_run_id (placeholder 'bootstrap_sql_v1' values present — not real MLflow run IDs)",
+      "Unexpected document/routing patterns detected: More than 50% of eligible records quarantined (2/6) — review classification taxonomy and routing logic."
+    ]
+  },
+  "governance_flags": [
+    {
+      "flag_id": "7e6cf4a1-1a4e-4d3b-b6ca-2f2ff3dc2b31",
+      "category": "quality_degradation",
+      "severity": "warning",
+      "signal": "silver_extraction_validity_below_threshold",
+      "detail": "Silver extraction validity rate 45.0% is below the 80% threshold. Review extraction prompts and Silver schema alignment."
+    },
+    {
+      "flag_id": "d8f1f2d8-98f8-4c4b-8e5e-2f3f5a1b9d7a",
+      "category": "traceability_defect",
+      "severity": "critical",
+      "signal": "orphaned_gold_records_detected",
+      "detail": "2 orphaned Gold record(s) detected — no matching Silver record found. Full lineage is broken for these records."
+    },
+    {
+      "flag_id": "f5c3e2e1-2a6e-4a7a-8f67-5f6b7f4d2e10",
+      "category": "environment_config_mismatch",
+      "severity": "warning",
+      "signal": "mixed_environments_in_governance_scope",
+      "detail": "Multiple environment names detected in governance scope: ['dev', 'prod']. Governance reports should aggregate artifacts from a single named environment."
+    },
+    {
+      "flag_id": "2fd9fbd9-e2c8-4f7d-8f39-1b2f1a7f8c99",
+      "category": "review_queue_pressure",
+      "severity": "critical",
+      "signal": "review_queue_pressure_critical",
+      "detail": "Review queue pressure 83.0% exceeds critical threshold (50%). Immediate review of queued records is recommended."
+    }
+  ],
+  "governance_notes": [
+    "Governance report generated for environment: 'prod'. Overall health status: CRITICAL.",
+    "Input artifacts consumed: evaluation report (A-4), handoff batch report (B-4), handoff bundle manifest (B-5), review queue artifact (E-0).",
+    "4 governance flag(s) derived: 2 critical, 2 warning, 0 info.",
+    "This governance report is an upstream-only artifact. It summarizes pipeline quality and operational state derived from existing structured outputs. It does not represent a dashboard, cross-case analytics product, or downstream Bedrock runtime monitoring layer.",
+    "Governance signals are derived deterministically from evaluation, handoff, review queue, and environment artifacts. No live Databricks workspace or external credentials are required to produce this report."
+  ],
+  "overall_health_status": "critical"
+}

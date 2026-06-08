@@ -5,7 +5,7 @@
   "validated_at": "2026-04-12T00:00:00+00:00",
   "delivery_mechanism": "delta_sharing",
   "share_name": "caseops_handoff",
-  "shared_object_name": "gold_ai_ready_assets",
+  "shared_object_name": "gold.gold_ai_ready_assets",
   "validation_scope": "producer_side_only",
   "validation_status": "not_provisioned",
   "validation_reason": "Producer-side artifact validation completed with no check failures. Delta Share provisioning status is 'designed': the share has not been created in Unity Catalog. Runtime validation cannot proceed until setup_sql is executed in a Databricks workspace with CREATE SHARE privilege. This is not an error \u2014 it is the honest C-1 baseline state.",
@@ -109,7 +109,7 @@
     "Delivery event 'de000001-0000-0000-0000-000000000001' validated: schema_version=v0.2.0, status='prepared', exported_record_count=3, routing_labels=['regulatory_review'].",
     "Share preparation manifest parsed: status='designed', c2_validation_queries=4.",
     "Share provisioning status is 'designed': the Delta Share has not been executed in Unity Catalog. To proceed, run setup_sql from the manifest in a Databricks SQL notebook with CREATE SHARE privilege.",
-    "Workspace mode is 'local_repo_only': no live Databricks workspace queries were executed. Runtime validation evidence (share queryability, delivery event table row, payload conformance) was not collected.",
+    "Workspace mode is 'local_repo_only': no live Databricks workspace queries were executed. Runtime validation evidence (share exposure, delivery event table row, payload conformance) was not collected.",
     "1 check(s) failed: ['bundle_path_exists'].",
     "Overall validation status: 'not_provisioned'. Checks passed: 14. Checks failed: 1."
   ],

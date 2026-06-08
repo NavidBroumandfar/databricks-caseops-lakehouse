@@ -1,0 +1,162 @@
+# Databricks Asset Bundle scaffold for Phase 4 runtime execution.
+#
+# This file is intentionally environment-agnostic. Set the following environment
+# variables before deploy:
+# - CASEOPS_DATABRICKS_HOST
+# - CASEOPS_CLUSTER_ID
+# - CASEOPS_ENV (dev | staging | prod)
+# - CASEOPS_WORKSPACE_ROOT (workspace root path for bundle target)
+# - CASEOPS_RUNNER_SCRIPT_PATH (workspace path to this repository's
+#   run_databricks_pipeline.py script)
+# - CASEOPS_DELIVERY_PIPELINE_RUN_ID (for provisioned delivery validation)
+# - CASEOPS_DELIVERY_EVENT_PATH (for provisioned delivery validation)
+# - CASEOPS_SHARE_MANIFEST_PATH (for provisioned delivery validation)
+# - CASEOPS_RUNTIME_EVIDENCE_PATH (for provisioned delivery validation)
+#
+# No workspace URLs, tokens, or personal identifiers are committed here.
+
+bundle:
+  name: caseops-lakehouse-runtime
+  description: "Databricks runtime orchestrator for bronze/silver/gold stages"
+
+resources:
+  jobs:
+    caseops-runtime-bronze:
+      name: caseops-runtime-bronze
+      tasks:
+        - task_key: run-bronze-stage
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - bronze
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --output-mode
+              - append
+
+    caseops-runtime-silver:
+      name: caseops-runtime-silver
+      tasks:
+        - task_key: run-silver-stage
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - silver
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --output-mode
+              - append
+
+    caseops-runtime-gold:
+      name: caseops-runtime-gold
+      tasks:
+        - task_key: run-gold-stage
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - gold
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --output-mode
+              - append
+
+    caseops-runtime-all:
+      name: caseops-runtime-all-stages
+      tasks:
+        - task_key: run-all-stages
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - all
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --output-mode
+              - append
+
+    caseops-runtime-check-only:
+      name: caseops-runtime-check-only
+      tasks:
+        - task_key: run-all-stage-check
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - all
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --check-only
+
+    caseops-runtime-check-write-permissions:
+      name: caseops-runtime-check-write-permissions
+      tasks:
+        - task_key: run-all-stage-write-permission-check
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - all
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --check-only
+              - --check-write-permissions
+
+    caseops-runtime-delivery-validation-local:
+      name: caseops-runtime-delivery-validation-local
+      tasks:
+        - task_key: run-delivery-validation-local
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - delivery_validation
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --delivery-pipeline-run-id
+              - ${env:CASEOPS_DELIVERY_PIPELINE_RUN_ID}
+              - --delivery-event-path
+              - ${env:CASEOPS_DELIVERY_EVENT_PATH}
+              - --share-manifest-path
+              - ${env:CASEOPS_SHARE_MANIFEST_PATH}
+              - --workspace-mode
+              - local_repo_only
+
+    caseops-runtime-delivery-validation-provisioned:
+      name: caseops-runtime-delivery-validation-provisioned
+      tasks:
+        - task_key: run-delivery-validation-provisioned
+          existing_cluster_id: ${env:CASEOPS_CLUSTER_ID}
+          spark_python_task:
+            python_file: ${env:CASEOPS_RUNNER_SCRIPT_PATH}
+            parameters:
+              - --stage
+              - delivery_validation
+              - --environment
+              - ${env:CASEOPS_ENV}
+              - --delivery-pipeline-run-id
+              - ${env:CASEOPS_DELIVERY_PIPELINE_RUN_ID}
+              - --delivery-event-path
+              - ${env:CASEOPS_DELIVERY_EVENT_PATH}
+              - --share-manifest-path
+              - ${env:CASEOPS_SHARE_MANIFEST_PATH}
+              - --runtime-evidence-path
+              - ${env:CASEOPS_RUNTIME_EVIDENCE_PATH}
+              - --workspace-mode
+              - personal_databricks
+
+targets:
+  dev:
+    workspace:
+      host: ${env:CASEOPS_DATABRICKS_HOST}
+      root_path: ${env:CASEOPS_WORKSPACE_ROOT}
+      mode: development

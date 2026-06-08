@@ -1,7 +1,7 @@
 # Live Handoff Design — Phase C-0: Integration Delivery Mechanism Design
 
 > **Phase**: C-0 — Integration Delivery Mechanism Design
-> **Status**: C-0 design complete. C-1 producer-side implementation complete. C-2 runtime validation layer complete (producer-side validation implemented; live workspace provisioning pending).
+> **Status**: C-0 design complete. C-1 producer-side implementation complete. C-2 runtime validation layer complete. Phase 3 personal-workspace producer-side validation reached `validated` on 2026-06-07; no Bedrock consumer or recipient activation was implemented here.
 > **Authoritative scope**: [`PROJECT_SPEC.md`](../PROJECT_SPEC.md)
 > **Authoritative technical design**: [`ARCHITECTURE.md`](../ARCHITECTURE.md)
 > **Upstream contract**: [`docs/bedrock-handoff-contract.md`](./bedrock-handoff-contract.md)
@@ -236,7 +236,7 @@ C-1 implements the **upstream producer-side delivery augmentation** on top of th
 | Delivery event tests (88 tests) | `tests/test_delivery_events.py` | ✅ Added |
 | Delta Share handoff tests (67 tests) | `tests/test_delta_share_handoff.py` | ✅ Added |
 
-**C-1 implementation stance**: All delivery events carry `status = 'prepared'`. This means the producer-side layer is complete. No live Unity Catalog provisioning has been executed — that remains a manual step or C-2 automation. The C-1 delivery layer generates SQL DDL templates via `DeltaShareConfig` and `generate_share_setup_sql()` that can be executed in a Databricks SQL notebook.
+**C-1 implementation stance**: All delivery events carry `status = 'prepared'`. This means the producer-side layer is complete. The C-1 delivery layer generates SQL DDL templates via `DeltaShareConfig` and `generate_share_setup_sql()` that can be executed in a Databricks SQL notebook. Local repo execution still does not call Unity Catalog APIs; Phase 3 later validated the generated DDL and share surface manually in a personal Databricks workspace.
 
 **What C-1 does NOT deliver** (deferred to C-2):
 - Live Unity Catalog Delta Share creation
@@ -263,7 +263,7 @@ The handoff boundary is defined by two artifacts that are produced by this repo 
 | Artifact | Path / Location | Role |
 |---|---|---|
 | **Export payload file** | `/Volumes/caseops/gold/exports/<routing_label>/<document_id>.json` | The contractual handoff unit; exact payload for one document; produced by `export_handoff.py` |
-| **Delta Share** (V2) | `caseops_handoff` share → `gold_ai_ready_assets` table | Governed table-level access to Gold metadata; batch discovery; routing-aware filtering |
+| **Delta Share** (V2) | `caseops_handoff` share → `gold.gold_ai_ready_assets` shared table alias | Governed table-level access to Gold metadata; batch discovery; routing-aware filtering |
 | **Delivery event** (V2) | `caseops.gold.delivery_events` Delta table | Per-batch delivery notification log; references B-5 manifest path; Bedrock subscribes or polls |
 | **B-5 Batch manifest** | `output/reports/handoff_bundle_<run_id>.json` (local) or Volume path (Databricks) | Review and navigation index for a pipeline batch run; referenced in delivery event |
 
@@ -283,7 +283,7 @@ The handoff boundary is defined by two artifacts that are produced by this repo 
 
 | Concern | Owner | Notes |
 |---|---|---|
-| Delta Share consumption | Bedrock CaseOps | Queries `gold_ai_ready_assets` via Delta Sharing protocol |
+| Delta Share consumption | Bedrock CaseOps | Queries `gold.gold_ai_ready_assets` via Delta Sharing protocol |
 | Delivery event subscription / polling | Bedrock CaseOps | Reads `delivery_events` table to discover new batches |
 | Export payload file fetch | Bedrock CaseOps | Reads file at `/Volumes/caseops/gold/exports/...` path from manifest |
 | Retrieval index population | Bedrock CaseOps | Embeds and indexes consumed payloads |
@@ -310,7 +310,7 @@ For C-1 to be testable, Bedrock CaseOps must implement or simulate the following
 
 | Consumer Prerequisite | Description | C-2 Validation Approach |
 |---|---|---|
-| Delta Sharing recipient configured | A valid Delta Sharing recipient token for `caseops_handoff` share | Confirm recipient can query `gold_ai_ready_assets` in C-2 |
+| Delta Sharing recipient configured | A valid Delta Sharing recipient token for `caseops_handoff` share | Consumer-side target outside this repo. Phase 3 validated producer-side exposure with `SHOW ALL IN SHARE` and source-table checks, without recipient activation. |
 | Delta Sharing client library installed | `delta-sharing` Python client, or Databricks SQL connector | Consumer-side prerequisite; not in this repo |
 | Delivery events table accessible | Bedrock CaseOps can read `caseops.gold.delivery_events` | Confirm delivery event row is readable in C-2 |
 | Export file paths resolvable | Bedrock CaseOps can resolve `/Volumes/caseops/gold/exports/...` paths from manifest | Confirm file fetch succeeds in C-2 |
@@ -433,9 +433,9 @@ caseops.gold.delivery_events
 
 ### What C-2 Validates
 
-C-2 confirms that the C-1 delivery slice is end-to-end functional. C-2 is complete when:
+C-2 confirms that the C-1 delivery slice is runtime-checkable from the producer side. The original downstream consumer target remains outside this repo. Phase 3 accepted the producer-side slice when:
 
-1. A Delta Sharing recipient can query `caseops_handoff.gold_ai_ready_assets` and observe `export_ready = true` Gold records from a V2 batch
+1. `SHOW ALL IN SHARE caseops_handoff` exposes the schema-qualified shared alias `gold.gold_ai_ready_assets`
 2. The `delivery_events` table shows a row for the V2 batch with correct counts and manifest path
 3. The B-5 manifest referenced in the delivery event is readable and passes B-6 integrity validation
 4. Export payload files referenced in the manifest are fetchable and conform to `schema_version: v0.2.0`
@@ -446,7 +446,7 @@ C-2 confirms that the C-1 delivery slice is end-to-end functional. C-2 is comple
 
 | Validation Target | Check | Evidence |
 |---|---|---|
-| Delta Share accessible | Recipient can query shared table | SQL query result showing Gold records |
+| Delta Share accessible | Share exposes schema-qualified shared table | `SHOW ALL IN SHARE` result showing `gold.gold_ai_ready_assets` |
 | Delivery event written | Event row present in `delivery_events` | Row with matching `batch_id` |
 | Manifest path valid | Manifest file exists and passes B-6 validation | `validate_handoff_bundle` result |
 | Payload files fetchable | Export files at manifest-referenced paths are readable JSON | File open + JSON parse |
@@ -455,7 +455,7 @@ C-2 confirms that the C-1 delivery slice is end-to-end functional. C-2 is comple
 
 ### C-2 Acceptance
 
-C-2 is accepted when all six validation targets pass in a single reproducible run. The validation script or notebook must be committed to the repo. No live Bedrock system is required — a simulated consumer (Python script or Databricks notebook acting as Bedrock CaseOps) is sufficient.
+C-2 is accepted for this upstream repo when the producer-side validation targets pass in a single reproducible run and sanitized runtime evidence is captured. No live Bedrock system is required. A true recipient/consumer query remains downstream Bedrock CaseOps scope, not a repo-local requirement.
 
 ---
 

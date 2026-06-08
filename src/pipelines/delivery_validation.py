@@ -775,7 +775,7 @@ def _derive_validation_status(
             "Producer-side artifact validation completed. "
             "Workspace mode is 'local_repo_only': no live Databricks workspace queries "
             "were executed. "
-            "Runtime validation (Delta Share queryability, delivery event table row, "
+            "Runtime validation (Delta Share exposure, delivery event table row, "
             "payload conformance at v0.2.0) requires Databricks workspace access. "
             "Status: partially_validated — producer-side layer is verified; "
             "runtime end-to-end validation is pending."
@@ -858,7 +858,7 @@ def _build_observations(
     if workspace_mode == WORKSPACE_MODE_LOCAL_REPO_ONLY:
         observations.append(
             "Workspace mode is 'local_repo_only': no live Databricks workspace queries "
-            "were executed. Runtime validation evidence (share queryability, "
+            "were executed. Runtime validation evidence (share exposure, "
             "delivery event table row, payload conformance) was not collected."
         )
     elif runtime_evidence is not None:
@@ -1208,11 +1208,26 @@ def format_validation_result_text(result: DeliveryValidationResult) -> str:
         for q in result.queries_executed:
             lines.append(f"  - {q}")
 
+    if result.validation_status == VALIDATION_STATUS_VALIDATED:
+        footer_lines = [
+            f"Validation scope: {result.validation_scope} ({result.workspace_mode}).",
+            "Runtime end-to-end validation evidence was provided and accepted.",
+        ]
+    elif result.validation_status == VALIDATION_STATUS_PARTIALLY_VALIDATED:
+        footer_lines = [
+            f"Validation scope: {result.validation_scope} ({result.workspace_mode}).",
+            "Runtime end-to-end validation evidence is still required for validated status.",
+        ]
+    else:
+        footer_lines = [
+            f"Validation scope: {result.validation_scope} ({result.workspace_mode}).",
+            "Runtime end-to-end validation requires Databricks workspace access.",
+        ]
+
     lines += [
         "",
         "=" * 70,
-        "Validation scope: producer_side_only (local_repo_only baseline).",
-        "Runtime end-to-end validation requires Databricks workspace access.",
+        *footer_lines,
         "See docs/delivery-runtime-validation.md for the C-2 runbook.",
         "=" * 70,
     ]

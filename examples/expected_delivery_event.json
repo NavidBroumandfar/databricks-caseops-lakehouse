@@ -5,7 +5,7 @@
   "generated_at": "2026-04-12T10:30:00.000000+00:00",
   "delivery_mechanism": "delta_sharing",
   "share_name": "caseops_handoff",
-  "shared_object_name": "gold_ai_ready_assets",
+  "shared_object_name": "gold.gold_ai_ready_assets",
   "eligible_record_count": 4,
   "exported_record_count": 3,
   "quarantined_record_count": 1,

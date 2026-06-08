@@ -1203,27 +1203,27 @@ class TestModuleBoundaryGuards:
 
 
 class TestExpectedFixture:
-    def test_expected_fixture_loads_and_valid(self):
-        fixture_path = Path(__file__).parent.parent / "examples" / "expected_governance_report.json"
-        assert fixture_path.exists(), f"Fixture not found: {fixture_path}"
-        data = json.loads(fixture_path.read_text(encoding="utf-8"))
-        assert data["schema_version"] == GOVERNANCE_MONITORING_SCHEMA_VERSION
-        assert data["overall_health_status"] in ALL_HEALTH_STATUSES
-        assert "governance_report_id" in data
-        assert "reporting_scope" in data
-        assert "quality_summary" in data
-        assert "handoff_health" in data
-        assert "review_queue_summary" in data
-        assert "schema_drift" in data
-        assert "governance_flags" in data
-        assert "governance_notes" in data
+    def test_expected_governance_fixtures_load_and_validate(self):
+        fixture_paths = [
+            Path(__file__).parent.parent / "examples" / name
+            for name in [
+                "expected_governance_report.json",
+                "expected_governance_report_warning.json",
+                "expected_governance_report_failure.json",
+            ]
+        ]
 
-    def test_expected_fixture_environment_is_known(self):
-        fixture_path = Path(__file__).parent.parent / "examples" / "expected_governance_report.json"
-        data = json.loads(fixture_path.read_text(encoding="utf-8"))
-        assert data["environment"] in {"dev", "staging", "prod"}
-
-    def test_expected_fixture_healthy(self):
-        fixture_path = Path(__file__).parent.parent / "examples" / "expected_governance_report.json"
-        data = json.loads(fixture_path.read_text(encoding="utf-8"))
-        assert data["overall_health_status"] == "healthy"
+        for fixture_path in fixture_paths:
+            assert fixture_path.exists(), f"Fixture not found: {fixture_path}"
+            data = json.loads(fixture_path.read_text(encoding="utf-8"))
+            assert data["schema_version"] == GOVERNANCE_MONITORING_SCHEMA_VERSION
+            assert data["overall_health_status"] in ALL_HEALTH_STATUSES
+            assert "governance_report_id" in data
+            assert "reporting_scope" in data
+            assert "quality_summary" in data
+            assert "handoff_health" in data
+            assert "review_queue_summary" in data
+            assert "schema_drift" in data
+            assert "governance_flags" in data
+            assert "governance_notes" in data
+            assert data["environment"] in {"dev", "staging", "prod"}

@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
-[![Tests](https://img.shields.io/badge/Tests-1%2C453%20passing-2EA043?style=flat-square)](./tests/)
+[![Tests](https://img.shields.io/badge/Tests-1%2C454%20passing-2EA043?style=flat-square)](./tests/)
 [![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
 
 </div>
@@ -113,7 +113,13 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase 2 (V2 — Hardening and Expansion)** added producer-side handoff preparation via Delta Sharing manifests and delivery events (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
-**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally and was validated in a personal Databricks workspace. Total test coverage: **1,453 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, and Phase 3 evidence intake.
+**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally, was validated in a personal Databricks workspace, and Phase 3 runtime handoff validation reached `validated` with sanitized personal-workspace evidence on 2026-06-07. Total test coverage: **1,454 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, and Phase 3 evidence validation.
+
+Phase 4 is now active. Runtime adapter wiring for `ai_parse_document`,
+`ai_extract`, and `ai_classify` and Delta table read/write support are implemented
+and locally test-covered. Ongoing Phase 4 work focuses on deployment scaffolding,
+runtime orchestration wiring, and repeatable workspace smoke-test evidence for
+Databricks execution.
 
 For the full delivery history, phase-by-phase detail, and roadmap, see [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) and [`docs/roadmap.md`](./docs/roadmap.md).
 
@@ -127,7 +133,11 @@ The audit found this repo is coherent as an upstream governed preparation layer:
 
 It does not implement Bedrock runtime behavior, retrieval, RAG, agent reasoning, escalation, or case-support workflows. Those belong in the downstream Bedrock CaseOps Control Tower.
 
-The next milestone is runtime Databricks productionization: reproducible Jobs or Asset Bundles, real reusable AI Function adapters, Delta table writers, and manual Delta Share provisioning evidence that can move delivery validation from `not_provisioned` to `validated`.
+The next milestone is broader Databricks productionization: reproducible Jobs or
+Asset Bundles, runtime orchestration wiring, and documented workspace smoke tests
+beyond the one personal Phase 3 validation slice. See
+[`docs/databricks-runtime-productionization.md`](./docs/databricks-runtime-productionization.md)
+for the Phase 4 execution plan.
 
 ---
 
@@ -442,6 +452,9 @@ Integration health states:
 
 See [`docs/delivery-runtime-validation.md`](./docs/delivery-runtime-validation.md) for the full delivery validation design, check catalogue, and personal Databricks runtime validation runbook.
 
+Phase 4 runtime smoke evidence and deployment scaffolding are documented in
+[`docs/databricks-runtime-productionization.md`](./docs/databricks-runtime-productionization.md).
+
 ---
 
 ## Running the Evaluation Layer
@@ -540,7 +553,7 @@ databricks-caseops-lakehouse/
 │       └── environment_config.py         # Environment model and resource naming
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL
-├── tests/                   # 1,453 tests across all pipeline stages and contract layers
+├── tests/                   # 1,454 tests across all pipeline stages and contract layers
 └── examples/
     ├── evaluation/                       # Evaluation usage guide
     ├── expected_delivery_event.json      # Reference delivery event fixture

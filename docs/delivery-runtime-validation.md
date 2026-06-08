@@ -2,8 +2,8 @@
 
 > **Phase**: C-2 — Runtime Integration Validation
 > **Status**: C-2 implemented (producer-side validation layer complete). Phase 3
-> evidence intake has started. Runtime end-to-end validation (live Delta Share
-> query) is still pending manual provisioning and sanitized evidence capture.
+> personal-workspace runtime validation completed on 2026-06-07 with sanitized
+> evidence. This remains non-production and does not include a Bedrock consumer.
 > **Authoritative scope**: [`PROJECT_SPEC.md`](../PROJECT_SPEC.md) § Phase C-2
 > **Technical design**: [`ARCHITECTURE.md`](../ARCHITECTURE.md) § Phase C-1 Delivery Layer
 > **C-0 design record**: [`docs/live-handoff-design.md`](./live-handoff-design.md)
@@ -14,7 +14,7 @@
 
 C-2 is the **runtime integration validation and observability phase** for the delivery layer chosen in C-0 (Delta Sharing) and implemented producer-side in C-1.
 
-C-2 is about:
+ C-2 is about:
 
 - Validating that the **delivery layer is runtime-checkable** from the producer side
 - Confirming the **C-1 artifacts are internally correct and cross-artifact consistent**
@@ -22,10 +22,15 @@ C-2 is about:
 - Recording validation results in a **structured, honest, and reviewable way**
 - Defining the **runbook for live workspace validation** without executing it unconditionally
 
+See [`docs/databricks-runtime-productionization.md`](./databricks-runtime-productionization.md)
+for the broader Phase 4 productionization runbook, including repeatable job
+scaffolding and evidence expectations.
+
 Phase 3 extends this with a sanitized runtime evidence artifact. The repo can
-now validate evidence summaries collected after a Databricks operator provisions
-the share and runs the validation queries. This still does not make live calls
-or store credentials.
+validate evidence summaries collected after a Databricks operator provisions
+the share and runs the validation queries. On 2026-06-07 this path reached
+`validated` in a personal Databricks workspace. This still does not make live
+calls from the local validator or store credentials.
 
 C-2 is **not** about:
 
@@ -48,9 +53,9 @@ C-1 implemented the upstream producer-side delivery augmentation. At the end of 
 | Export payloads (v0.2.0) | `output/gold/exports/regulatory_review/<doc_id>.json` | `schema_version: v0.2.0` |
 | B-5 batch manifest | `output/reports/handoff_bundle_<run_id>.json` | Referenced in delivery event |
 
-**C-1 delivery event status = 'prepared'** means: the producer-side layer is complete. The SQL DDL templates are ready. No live Unity Catalog provisioning has been executed.
+**C-1 delivery event status = 'prepared'** means: the producer-side layer is complete. The SQL DDL templates are ready. Local repo execution has not provisioned Unity Catalog.
 
-**C-1 share manifest status = 'designed'** means: the share configuration is documented in this repo. The share does not yet exist in a Databricks workspace.
+**C-1 share manifest status = 'designed'** means: the share configuration is documented in this repo. A fresh local run has not yet executed that share in a Databricks workspace; Phase 3 later did so manually for the personal-workspace validation record.
 
 ---
 
@@ -191,27 +196,29 @@ This runbook describes the steps to achieve `status = 'validated'` in a personal
   --delivery-dir output/delivery
 ```
 
-**Step 2** — Provision the Delta Share (Databricks SQL):
-
-Copy the `setup_sql` from `output/delivery/delta_share_preparation_manifest.json` and run it in a Databricks SQL notebook. This creates the share, adds the Gold table, and configures the recipient.
-
-**Step 3** — Create the delivery events table (Databricks SQL):
+**Step 2** — Create the delivery events table (Databricks SQL):
 
 Copy the `delivery_events_ddl` from the manifest and run it in the workspace.
+The table must exist before the share can add it.
+
+**Step 3** — Provision the Delta Share (Databricks SQL):
+
+Copy the `setup_sql` from `output/delivery/delta_share_preparation_manifest.json` and run it in a Databricks SQL notebook. This creates the share, adds the Gold and delivery-events tables, and, when configured, creates/grants the recipient object.
 
 **Step 4** — Confirm the share is queryable (Databricks SQL):
 
 Run the `c2_validation_queries` from the manifest in order:
 1. `confirm_share_exists` — verifies `SHOW ALL IN SHARE caseops_handoff` shows the Gold table
-2. `query_export_ready_records` — verifies export-ready records are visible in the shared table
+2. `query_export_ready_records` — verifies export-ready records are present in the Gold source table; `confirm_share_exists` verifies the source table is exposed through the share
 3. `query_delivery_events` — verifies the delivery event row is readable
-4. `verify_routing_label_transparency` — verifies routing labels are visible per-record
+4. `verify_routing_label_transparency` — verifies routing labels are visible per-record in the Gold source table
 
 **Step 5** — Record sanitized runtime evidence:
 
 Use `examples/runtime_evidence_personal_databricks_template.json` as the
 public-safe evidence shape. Save a filled copy under
-`output/validation/runtime_evidence/`.
+`output/validation/runtime_evidence/`. The checklist expected by this phase is
+captured in `docs/databricks-runtime-productionization.md`.
 
 Do not paste raw Databricks exports directly into the repo. The evidence file
 must contain only sanitized summaries: query names, pass/fail status, row
@@ -237,6 +244,26 @@ result = validate_delivery_layer(
 If `workspace_mode="personal_databricks"` is used without `runtime_evidence_path`
 after the manifest is marked `provisioned`, validation returns `failed`. This is
 intentional: Phase 3 requires evidence, not just a workspace-mode assertion.
+
+### 7.1 Personal Workspace Validation Record — 2026-06-07
+
+Observed status: `validated`.
+
+Scope:
+- Personal Databricks workspace only.
+- One public/sample FDA-derived validation record.
+- Delta Share object exposure confirmed with `SHOW ALL IN SHARE`.
+- Row-level checks used provider-side source table queries for `caseops.gold.ai_ready_assets` and `caseops.gold.delivery_events`.
+- Shared table aliases were schema-qualified as `gold.gold_ai_ready_assets` and `gold.delivery_events`, matching current Databricks SQL requirements.
+
+Sanitized local evidence:
+- `output/validation/runtime_evidence/runtime_evidence_personal_databricks.json`
+- `output/validation/delivery_validation_47ff7603-0de8-4657-b6a8-85e4a91baba2.json`
+
+Limitations:
+- No Bedrock consumer was implemented or contacted.
+- No recipient activation material, workspace URL, account identifier, token, or personal identifier is stored.
+- This validates the producer-side Databricks runtime handoff surface, not enterprise deployment or downstream retrieval.
 
 ---
 
@@ -294,5 +321,5 @@ The boundary defined in C-0 and implemented in C-1 is unchanged in C-2.
 | No Bedrock runtime logic enters this repo | ✅ C-2 is producer-side only |
 | Docs clearly distinguish C-1 implemented vs C-2 validated vs pending external proof | ✅ This document + updated core docs |
 | Tests cover the new validation layer | ✅ `tests/test_delivery_validation.py` |
-| No doc falsely claims end-to-end external validation | ✅ Status 'not_provisioned' is the honest default |
-| Phase 3 evidence can be validated without secrets | ✅ `DeliveryRuntimeEvidence` schema + `runtime_evidence_path` support |
+| No doc falsely claims Bedrock consumer validation | ✅ Phase 3 is documented as personal-workspace producer-side validation only |
+| Phase 3 evidence can be validated without secrets | ✅ `DeliveryRuntimeEvidence` schema + `runtime_evidence_path` support; personal-workspace evidence reached `validated` on 2026-06-07 |

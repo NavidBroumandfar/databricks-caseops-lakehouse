@@ -28,7 +28,7 @@
 | B-6 | Handoff Bundle Integrity and Consistency Validation | ✅ Complete | Local-safe validator that proves the B-5 bundle is internally trustworthy and review-safe |
 | C-0 | Live Handoff: Delivery Mechanism Design | ✅ Complete (V2) | Delta Sharing selected as primary; delivery events as secondary; V1 file path retained |
 | C-1 | Live Handoff: Export Delivery Implementation | ✅ Complete (V2) | Producer-side delivery augmentation: DeliveryEvent schema + Delta Share prep layer |
-| C-2 | Live Handoff: Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
+| C-2 | Live Handoff: Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 21-check delivery-layer validation; Phase 3 personal-workspace evidence reached `validated` |
 
 ---
 
@@ -613,7 +613,7 @@ V1 is complete as of April 2026. This means:
 - Gold → Bedrock handoff preparation layer complete: contract, repo-enforced validator, materialization gate, outcome reporting, batch bundle, bundle integrity validation
 - Databricks-safe MLflow experiment path resolution implemented (`src/evaluation/mlflow_experiment_paths.py`)
 - V1 remains single-domain and controlled — no enterprise deployment, no production credentials, no live Bedrock integration
-- Downstream Bedrock live integration: Delta Sharing producer-side delivery layer implemented in V2-C; live consumer-side provisioning remains a manual workspace step
+- Downstream Bedrock live integration: Delta Sharing producer-side delivery layer implemented in V2-C; Phase 3 manually validated the producer-side Databricks handoff surface in a personal workspace on 2026-06-07; live consumer-side Bedrock provisioning remains outside this repo
 
 ---
 
@@ -635,7 +635,7 @@ V1 is complete as of April 2026. This means:
 |---|---|---|---|
 | C-0 | Integration Delivery Mechanism Design | ✅ Design Complete | Delta Sharing selected; file export augmented not replaced; v0.2.0 contract planned |
 | C-1 | Export Delivery Implementation | ✅ Complete | Producer-side delivery layer: `DeliveryEvent` schema, delivery event materialization, Delta Share prep layer, `--delivery-dir` integration; 613 total tests |
-| C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 15-check delivery-layer validation; honest `not_provisioned` baseline; runbook for workspace validation |
+| C-2 | Runtime Integration Validation | ✅ Complete (V2, producer-side) | C-2 closeout: 21-check delivery-layer validation; Phase 3 personal-workspace evidence reached `validated` |
 | D-0 | Multi-Domain Framework | ✅ Complete (V2) | Domain registry, per-domain prompt routing, schema family registry, multi-domain classification/routing framework; FDA active, CISA/incident planned; 123 new tests; 870 total |
 | D-1 | CISA Advisory Domain | ✅ Complete (V2) | CISA advisory schema (`CISAAdvisoryFields`), extraction (`LocalCISAAdvisoryExtractor`), classification (`LocalCISAAdvisoryClassifier`), `security_ops` routing active; Bedrock contract CISA validation; 123 new tests; 978 total |
 | D-2 | Incident Report Domain | ✅ Complete (V2) | Incident report schema (`IncidentReportFields`), extraction (`LocalIncidentReportExtractor`), classification (`LocalIncidentReportClassifier`), `incident_management` routing active; Bedrock contract incident validation; 125 new tests; 1104 total |
@@ -705,10 +705,9 @@ V1 is complete as of April 2026. This means:
 
 **C-1 implementation stance**:
 - All C-1 delivery events carry `status = 'prepared'` — producer-side preparation is complete
-- No live Unity Catalog provisioning has been executed — that is manual or C-2 automation
-- No Delta Sharing SDK calls, no credentials, no real share created
+- Local repo code performs no Unity Catalog API calls, Delta Sharing SDK calls, credentials handling, or provisioning-client work
 - SQL DDL templates and share configuration are documented in `DeltaShareConfig` and `SharePreparationManifest`
-- Runtime end-to-end validation (share query, consumer receipt, payload conformance) is Phase C-2
+- Phase 3 later manually validated the generated delivery-events DDL, share setup SQL, and producer-side validation queries in a personal Databricks workspace
 
 **What C-1 does NOT deliver** (deferred to C-2 or later):
 - Live Unity Catalog Delta Share provisioning
@@ -720,29 +719,30 @@ V1 is complete as of April 2026. This means:
 
 ### Phase C-2 — Runtime Integration Validation
 
-**Status**: Complete (producer-side validation layer). Live workspace validation pending manual share provisioning.
+**Status**: Complete (producer-side validation layer). Phase 3 personal-workspace producer-side validation reached `validated` on 2026-06-07.
 
 **Goal**: Implement a bounded delivery-layer validation and observability layer for the C-1 delivery artifacts. Provide explicit, honest integration health signals. Define the runbook for live workspace validation.
 
 **What C-2 delivered**:
-- `src/schemas/delivery_validation.py` — `DeliveryValidationResult` schema with 4-state status vocabulary (`validated`, `partially_validated`, `not_provisioned`, `failed`), scope vocabulary, workspace mode vocabulary, and 15 C-2 check name constants at C-2 closeout
-- `src/pipelines/delivery_validation.py` — 15 C-2 named check functions + `validate_delivery_layer()` main entry point at C-2 closeout. Locally executable, credential-free, no Databricks workspace required
+- `src/schemas/delivery_validation.py` — `DeliveryValidationResult` schema with 4-state status vocabulary (`validated`, `partially_validated`, `not_provisioned`, `failed`), scope vocabulary, workspace mode vocabulary, and 21 C-2 check name constants at C-2 closeout
+- `src/pipelines/delivery_validation.py` — 21 C-2 named check functions + `validate_delivery_layer()` main entry point at C-2 closeout. Locally executable, credential-free, no Databricks workspace required
 - `examples/expected_delivery_validation_result.json` — Reference C-2 validation result fixture
 - `docs/delivery-runtime-validation.md` — C-2 design record, check catalogue, and personal Databricks runtime validation runbook
 - `tests/test_delivery_validation.py` — 134 focused tests. 747 total tests pass
-- Honest default: `status = 'not_provisioned'` for local runs (share designed, not yet provisioned in Unity Catalog)
+- Honest default: `status = 'not_provisioned'` for local runs (share designed, not provisioned by repo-local execution)
+- Phase 3 runtime evidence path: `validated` after manual Databricks SQL execution and sanitized evidence in a personal workspace
 
 **What C-2 does NOT deliver** (honest scope boundary):
-- Live Delta Share provisioning (requires Databricks workspace with CREATE SHARE privilege)
+- Programmatic Delta Share provisioning from repo code
 - `validated` status without actual workspace evidence (evidence_sufficiency check enforces this)
 - Bedrock CaseOps consumer simulation
 - Any live API calls, SDK calls, or credentials
 
-**Remaining for runtime `validated` status**:
-- Execute `setup_sql` from the share manifest in a Databricks SQL notebook
-- Create the `delivery_events` table using the `delivery_events_ddl` from the manifest
-- Run the C-2 validation queries from `c2_validation_queries` in the manifest
-- Re-run `validate_delivery_layer(..., workspace_mode='personal_databricks')` to capture `validated` status
+**Phase 3 runtime `validated` status completed on 2026-06-07**:
+- Executed `delivery_events_ddl` and `setup_sql` in a Databricks SQL notebook
+- Confirmed schema-qualified shared aliases with `SHOW ALL IN SHARE`
+- Ran provider-side C-2 validation queries against source Delta tables
+- Re-ran `validate_delivery_layer(..., workspace_mode='personal_databricks', runtime_evidence_path=...)` and reached `validated`
 
 See `docs/delivery-runtime-validation.md` § 7 for the step-by-step runbook.
 
@@ -1002,7 +1002,7 @@ export CASEOPS_MLFLOW_EXPERIMENT_ROOT=/Users/you@example.com/caseops
 
 **V2 is complete.** All of the following are true:
 
-- ✅ A producer-side delivery mechanism exists and is validation-ready: Gold export payloads can be exposed through Delta Sharing once the generated setup SQL is provisioned in Databricks; local validation honestly reports `not_provisioned` until runtime evidence exists (Phase C — complete)
+- ✅ A producer-side delivery mechanism exists and is validation-ready: Gold export payloads can be exposed through Delta Sharing once the generated setup SQL is provisioned in Databricks; local validation honestly reports `not_provisioned` until runtime evidence exists; Phase 3 personal-workspace evidence reached `validated` on 2026-06-07 (Phase C — complete)
 - ✅ CISA advisories and incident reports processable end-to-end through the pipeline alongside FDA warning letters (Phase D — complete)
 - ✅ Quarantined and low-confidence records have a defined human review path and reprocessing mechanism (Phase E-0 — complete)
 - ✅ Pipeline deployable in at least two distinct Databricks environments without configuration collision (Phase E-1 — complete)

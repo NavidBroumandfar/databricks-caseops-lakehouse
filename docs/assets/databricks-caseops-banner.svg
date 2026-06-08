@@ -45,7 +45,7 @@
   <text x="412" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#56D364" text-anchor="middle">Non-Production</text>
 
   <rect x="476" y="138" width="90" height="20" rx="10" fill="#8B949E12" stroke="#8B949E35"/>
-  <text x="521" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#9BA8B3" text-anchor="middle">1,425 Tests</text>
+  <text x="521" y="152.5" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#9BA8B3" text-anchor="middle">1,454 Tests</text>
 
   <!-- Vertical divider -->
   <line x1="622" y1="22" x2="622" y2="178" stroke="#21262D" stroke-width="1"/>

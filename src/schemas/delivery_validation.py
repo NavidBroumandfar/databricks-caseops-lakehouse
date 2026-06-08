@@ -38,7 +38,7 @@ producer_side_only
 
 end_to_end
     Full validation including runtime workspace evidence (SQL query results,
-    share queryability, delivery event table row presence, payload conformance).
+    shared-object exposure, delivery event table row presence, payload conformance).
     Requires workspace_mode = 'personal_databricks'.
 
 Workspace mode vocabulary

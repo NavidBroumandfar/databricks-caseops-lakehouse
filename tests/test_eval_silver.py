@@ -37,6 +37,7 @@ def make_silver(
     validation_status: str = "valid",
     field_coverage_pct: float = 1.0,
     validation_errors: list[str] | None = None,
+    document_class_hint: str | None = None,
     extracted_fields: dict | None = None,
 ) -> dict:
     return {
@@ -45,6 +46,7 @@ def make_silver(
         "bronze_record_id": bronze_record_id,
         "pipeline_run_id": "local-run-001",
         "extracted_at": "2025-01-01T00:00:00+00:00",
+        "document_class_hint": document_class_hint,
         "validation_status": validation_status,
         "field_coverage_pct": field_coverage_pct,
         "validation_errors": validation_errors or [],
@@ -152,6 +154,98 @@ class TestRequiredNullRate:
         rate = _compute_required_null_rate(records)
         # All required fields absent → all null
         assert rate == 1.0
+
+    def test_cisa_required_fields_applied_by_domain_hint(self):
+        records = [
+            make_silver(
+                "ex-1",
+                "doc-1",
+                document_class_hint="cisa_advisory",
+                extracted_fields={
+                    "advisory_id": "CISA-0001",
+                    "title": "Sample advisory",
+                    "published_date": "2025-01-01",
+                    "severity_level": "High",
+                    "remediation_available": True,
+                },
+            ),
+            make_silver(
+                "ex-2",
+                "doc-2",
+                document_class_hint="cisa_advisory",
+                validation_status="invalid",
+                extracted_fields={
+                    "advisory_id": "CISA-0002",
+                    "title": "Missing severity level",
+                    "published_date": "2025-01-02",
+                    # severity_level intentionally missing
+                    "remediation_available": True,
+                },
+            ),
+        ]
+        rate = _compute_required_null_rate(records)
+        # 1 null required field out of 10 required slots (2 records × 5 required fields)
+        assert rate == pytest.approx(0.1, abs=0.001)
+
+    def test_incident_required_fields_applied_by_domain_hint(self):
+        records = [
+            make_silver(
+                "ex-1",
+                "doc-1",
+                document_class_hint="incident_report",
+                extracted_fields={
+                    "incident_date": "2025-01-01",
+                    "incident_type": "Outage",
+                    "severity": "High",
+                    "status": "resolved",
+                },
+            ),
+            make_silver(
+                "ex-2",
+                "doc-2",
+                document_class_hint="incident_report",
+                validation_status="invalid",
+                extracted_fields={
+                    "incident_date": "2025-01-02",
+                    "incident_type": "Compromise",
+                    # severity intentionally missing
+                    "status": "investigating",
+                },
+            ),
+        ]
+        rate = _compute_required_null_rate(records)
+        # 1 null required field out of 8 required slots (2 records × 4 required fields)
+        assert rate == pytest.approx(0.125, abs=0.001)
+
+    def test_unknown_or_missing_domain_hint_falls_back_to_fda_fields(self):
+        records = [
+            make_silver(
+                "ex-1",
+                "doc-1",
+                document_class_hint="experimental",
+                extracted_fields={
+                    "issuing_office": "FDA Office",
+                    "recipient_company": "Acme",
+                    "issue_date": "2025-01-01",
+                    "violation_type": ["21 CFR"],
+                    "corrective_action_requested": True,
+                },
+            ),
+            make_silver(
+                "ex-2",
+                "doc-2",
+                extracted_fields={
+                    # no hint provided -> fallback to FDA
+                    "issuing_office": "FDA Office",
+                    "recipient_company": "Acme",
+                    "issue_date": "2025-01-02",
+                    "violation_type": ["21 CFR"],
+                    "corrective_action_requested": True,
+                },
+            ),
+        ]
+        rate = _compute_required_null_rate(records)
+        assert rate == 0.0
 
     def test_empty_records(self):
         assert _compute_required_null_rate([]) == 0.0

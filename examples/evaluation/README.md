@@ -115,6 +115,22 @@ Metrics produced:
 
 **Note on null confidence (A-3B bootstrap path):** When records originate from the A-3B Databricks bootstrap SQL path, `classification_confidence` is `NULL`. The evaluator surfaces this explicitly via `confidence_null_rate` and `observations` rather than hiding it or failing. See [ARCHITECTURE.md](../../ARCHITECTURE.md) § Gold Bootstrap Implementation Notes for context.
 
+## Phase 5 confidence fallback behavior
+
+For this repository boundary, `ai_classify` confidence is treated as:
+
+1. A primary path: available and numeric.
+2. A known fallback path: one or more `NULL` values (A-3B-like/legacy runtime variants).
+
+Fallback behavior is explicit and bounded:
+
+- Missing or `NULL` confidence values are counted via `confidence_null_rate` and do not fail evaluation.
+- `mean_classification_confidence` and `low_confidence_rate` are computed only over non-null values.
+- Confidence thresholds are not applied when the denominator for confidence is zero.
+- Observations always call out confidence-null patterns so downstream operators can track them.
+
+Governance and handoff code does not assume a confidence value for control-flow decisions.
+
 ### Cross-layer traceability
 
 ```bash
@@ -231,6 +247,10 @@ Tests cover:
 - Traceability join logic and orphan detection
 - Placeholder run ID detection
 - End-to-end report assembly and writer output
+
+Phase 5 regression fixtures and checks:
+- `examples/evaluation/phase5_regression_fixtures.json` for richer multi-domain quality baselines
+- `tests/test_phase5_evaluation_regression_baselines.py` for per-domain range checks and regression failure assertions
 
 ---
 

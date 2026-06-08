@@ -66,7 +66,7 @@ B-0 was the baseline **contract-hardening phase**. V2-C extended the contract wi
 /Volumes/caseops/gold/exports/<routing_label>/<document_id>.json
 ```
 
-This repo writes it. Bedrock CaseOps reads it. In V2-C, the repo also prepares a producer-side Delta Share surface and delivery event artifacts. Local repo validation remains `not_provisioned` until the generated setup SQL is executed and queried in a Databricks workspace.
+This repo writes it. Bedrock CaseOps reads it. In V2-C, the repo also prepares a producer-side Delta Share surface and delivery event artifacts. Local repo validation remains `not_provisioned` until the generated SQL is executed and queried in a Databricks workspace; Phase 3 confirmed a personal-workspace `validated` result with sanitized evidence on 2026-06-07.
 
 ---
 
@@ -336,6 +336,38 @@ Gold export-ready records are delivered as individual JSON files written to a Un
 - Handling unexpected payload shapes or missing optional fields gracefully
 - Managing its own retry and backfill logic
 
+### 7.1 Downstream Consumer Compatibility Contract (No-Runtime Simulation)
+
+In addition to this interface definition, this repo ships a local-only
+compatibility scaffold at `src/schemas/downstream_consumer_contract.py`.
+
+It enforces deterministic downstream ingestion rules without introducing Bedrock
+SDK/runtime dependencies:
+
+- Contract gate first: downstream simulation must only proceed after local
+  `validate_export_payload` succeeds.
+- Quarantine handling: `routing_label='quarantine'` is always routed to a
+  governance queue and must not be indexed.
+- Routing contract enforcement: `routing_label` must match the documented consumer
+  mapping and expected `document_type`.
+- Active route requirement: only active routes are ingestable at this boundary.
+- Forward compatibility: unknown optional top-level or provenance fields are treated
+  as warnings, not hard failures, when required fields are present.
+
+**Failure semantics for simulation tests / downstream implementation notes**
+
+| Failure mode | Simulation status | Recommended consumer behavior |
+|---|---|---|
+| Contract validation failure | `contract_validation_failed` | Reject payload; no index write; forward payload + errors to dead-letter/triage |
+| Routing mismatch (`routing_label` ↔ `document_type`) | `routing_document_type_mismatch` | Route to governance/review; fix upstream routing contract or consumer mapping |
+| Planned routing label | `routing_planned_not_active` | Keep payload out of active indexing; treat as not-yet-supported path |
+| Unknown routing label | `routing_unknown_or_unsupported` | Treat as configuration problem; block indexing until mapping is registered |
+| `quarantine` routing | `governance_signal` | Do not index; forward to human-review/triage path |
+
+This simulation contract is intentionally narrow and scoped: it defines a
+deterministic consumption boundary for the existing Gold export payload while
+keeping all runtime behavior in the downstream repository.
+
 **What Bedrock CaseOps must not assume:**
 
 - That the pipeline will notify it of new files in real time
@@ -350,9 +382,9 @@ V2-C adds a producer-side Delta Sharing delivery surface. It augments the file e
 |---|---|---|
 | `DeliveryEvent` JSON/text artifacts | Implemented locally by `src/pipelines/delivery_events.py` | Written as local artifacts when `--delivery-dir` is provided |
 | `delta_share_preparation_manifest.json` | Implemented locally by `src/pipelines/delta_share_handoff.py` | Contains Unity Catalog SQL to create the share and delivery table |
-| `caseops_handoff` Delta Share | Designed and generated as setup SQL | Not provisioned by local repo execution |
-| `caseops.gold.delivery_events` Delta table | DDL generated in the manifest | Exists only after the setup SQL is run in Databricks |
-| C-2 validation result | Implemented by `src/pipelines/delivery_validation.py` | Local default is `not_provisioned`; `validated` requires Databricks workspace evidence |
+| `caseops_handoff` Delta Share | Designed and generated as setup SQL | Not provisioned by local repo execution; personally validated on 2026-06-07 after manual workspace execution |
+| `caseops.gold.delivery_events` Delta table | DDL generated in the manifest | Exists only after the delivery-events DDL is run in Databricks |
+| C-2 validation result | Implemented by `src/pipelines/delivery_validation.py` | Local default is `not_provisioned`; personal-workspace evidence reached `validated` on 2026-06-07 |
 
 When `--delivery-dir` is active, payloads are written at `schema_version: v0.2.0` and may include `delivery_mechanism`, `delta_share_name`, and `delivery_event_id` in `provenance`. Without `--delivery-dir`, the V1-compatible v0.1.0 file export path remains valid.
 
@@ -400,7 +432,7 @@ These limitations are explicitly acknowledged. They must not be treated as resol
 |---|---|---|
 | `classification_confidence` is null in bootstrap-origin records | The A-3B bootstrap SQL path does not expose scalar confidence from `ai_classify`. Provenance `classification_confidence` is `null` for these records. | Known gap in bootstrap SQL path; target-state will populate this field |
 | `pipeline_run_id = 'bootstrap_sql_v1'` in bootstrap-origin records | A-3B records use a static placeholder, not a real MLflow run ID. `document_id`-based lineage is intact regardless. | Known; target-state MLflow pipeline will produce real run IDs |
-| Delta Share is producer-side prepared, not locally provisioned | The repo writes delivery event artifacts and a share preparation manifest. A Databricks operator must run the setup SQL and collect evidence before C-2 can return `validated`. | Honest local default is `not_provisioned` |
+| Delta Share is producer-side prepared, not locally provisioned | The repo writes delivery event artifacts and a share preparation manifest. A Databricks operator must run the delivery-events DDL, setup SQL, and evidence queries before C-2 can return `validated`. | Honest local default is `not_provisioned`; personal workspace validation reached `validated` on 2026-06-07 |
 | No Bedrock CaseOps runtime exists in this repo | This repo prepares payloads and producer-side delivery artifacts. It does not consume the Delta Share, build retrieval indexes, run RAG, or orchestrate agents. | By design; owned downstream |
 | File export remains the baseline delivery path | File export continues to work with or without V2-C delivery augmentation. | By design; v0.1.0 and v0.2.0 payloads are both valid |
 | Export confidence threshold not applied in bootstrap path | Bootstrap-origin records are marked `export_ready` based on label routing alone, not the full confidence-inclusive threshold | Explicitly documented in `docs/data-contracts.md` § 7 |

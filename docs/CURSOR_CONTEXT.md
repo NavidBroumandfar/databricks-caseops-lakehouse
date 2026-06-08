@@ -68,27 +68,36 @@ When starting any task in this repository, always read files in this exact order
 - A D-0 multi-domain framework layer: domain registry, domain schema registry, domain-aware prompt routing, taxonomy D-0 extensions, and domain-registry routing in `select_extractor()` / `select_classifier()`
 - A D-1 CISA advisory domain: `CISAAdvisoryFields`, `LocalCISAAdvisoryExtractor`, `LocalCISAAdvisoryClassifier`, `security_ops` routing active
 - A D-2 incident report domain: `IncidentReportFields`, `LocalIncidentReportExtractor`, `LocalIncidentReportClassifier`, `incident_management` routing active
-- 1453 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue, E-1 environment separation, E-2 governance monitoring, Phase 2 runtime adapters, and Phase 3 evidence intake
+- 1454 tests passing across all pipeline stages, contract enforcement layers, delivery event materialization, Delta Share preparation, delivery-layer runtime validation, D-0 multi-domain framework, D-1 CISA advisory domain, D-2 incident report domain, E-0 human review queue, E-1 environment separation, E-2 governance monitoring, Phase 2 runtime adapters, and Phase 3 evidence validation
 
-**V2 is complete. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 is complete. Phase E-2 is complete. Phase E is complete.** Live Delta Share provisioning in a personal Databricks workspace is the path to the runtime `validated` status — see `docs/delivery-runtime-validation.md`.
+**V2 is complete. Phase C is complete (C-0: design, C-1: implementation, C-2: producer-side validation layer). Phases D-0, D-1, and D-2 are complete. Phase E-0 is complete. Phase E-1 is complete. Phase E-2 is complete. Phase E is complete.** Phase 3 personal-workspace Delta Share validation reached runtime `validated` status on 2026-06-07 with sanitized evidence — see `docs/delivery-runtime-validation.md`.
 
-Forward `ROADMAP.md` Phase 2 has started after the June 2026 audit cleanup.
-The first slice adds injectable Spark-backed AI Function adapters and Delta
-table I/O helpers in `src/pipelines/databricks_runtime.py`. This is not a full
-Databricks deployment yet: Asset Bundles, Jobs/Workflows wiring, runtime
-resource validation, and live workspace smoke evidence remain pending.
+Forward `ROADMAP.md` Phase 2 is complete after the June 2026 audit cleanup.
+Phase 2 is complete and included in `src/pipelines/databricks_runtime.py` as
+injectable AI Function adapters and Delta table I/O helpers. Forward `ROADMAP.md`
+Phase 4 is now active for productionization: Jobs/Workflows or Asset Bundle
+scaffolding, runtime resource validation, and repeatable workspace smoke
+evidence.
 
-Forward `ROADMAP.md` Phase 3 has also started. The first slice adds a sanitized
-runtime evidence schema (`src/schemas/runtime_evidence.py`), a public-safe
-template (`examples/runtime_evidence_personal_databricks_template.json`), and
-`runtime_evidence_path` support in `validate_delivery_layer()`. This is evidence
-intake only; live Databricks workspace evidence is still required before the
-delivery layer can honestly report `validated`.
+Phase 5 has started with explicit evaluation/governance hardening for
+multi-domain quality regression control: richer per-domain fixtures, baseline
+expectations, and confidence fallback documentation/guards.
+
+Forward `ROADMAP.md` Phase 3 is complete for personal-workspace producer-side
+runtime validation. The repo has a sanitized runtime evidence schema
+(`src/schemas/runtime_evidence.py`), a public-safe template
+(`examples/runtime_evidence_personal_databricks_template.json`), and
+`runtime_evidence_path` support in `validate_delivery_layer()`. A personal
+Databricks workspace run reached `validated` on 2026-06-07. Phase 4 execution
+builds on that base with deployment scaffolding and repeatable production-style
+smoke evidence requirements. This still does not add Bedrock consumer,
+retrieval, RAG, or agent runtime logic.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+
 - No enterprise deployment or production credentials
-- Single domain only: FDA warning letters
+- All three reference domains are active: `fda_warning_letter`, `cisa_advisory`,
+  `incident_report`
 - Personal Databricks workspace was used for bootstrap (A-3B) and MLflow closeout — not an enterprise or production environment
 
 **A-0 through A-3** (local-safe implementation) are complete:
@@ -192,7 +201,8 @@ templates for Unity Catalog, C-2 validation query set);
 `examples/expected_delivery_event.json`; `tests/test_delivery_events.py` (88 tests);
 `tests/test_delta_share_handoff.py` (67 tests). 613 tests at C-1 closeout.
 All C-1 delivery events carry `status = 'prepared'` — producer-side is complete; runtime validation
-is C-2. No live Unity Catalog provisioning, no Bedrock SDK, no real Delta Share created.
+is C-2/Phase 3. Local repo code still does not call Unity Catalog APIs, Bedrock SDKs, or provisioning clients.
+Phase 3 later manually validated the producer-side Delta Share surface in a personal Databricks workspace.
 
 **Phase C-2 — Runtime Integration Validation** is complete (producer-side validation layer).
 C-2 adds a bounded, credential-free, locally executable delivery-layer validation layer. Key deliverables:
@@ -204,9 +214,10 @@ point + `format_validation_result_text()` + `write_validation_result()` + `load_
 `docs/delivery-runtime-validation.md` (C-2 design record, check catalogue, and runtime validation runbook);
 `tests/test_delivery_validation.py` (134 tests). **747 tests pass total.**
 Default local run produces `status = 'not_provisioned'` (honest baseline). `validated` requires
-`workspace_mode='personal_databricks'` and execution of share setup SQL in a Databricks workspace.
+`workspace_mode='personal_databricks'`, execution of the delivery-events DDL and share setup SQL in
+a Databricks workspace, and sanitized runtime evidence. This path was demonstrated on 2026-06-07.
 
-The module boundary (through the first Phase 2 slice) is:
+The module boundary (through Phase 2 slice and toward Phase 4 productionization) is:
   `classify_gold.py`              → assembles GoldRecord → calls `execute_export` → derives outcome → writes Gold artifact → builds B-5 bundle → writes C-1 delivery event
   `export_handoff.py`             → validates contract → writes export artifact → returns `ExportResult`
   `handoff_report.py`             → derives outcome categories → aggregates batch report → writes report artifacts

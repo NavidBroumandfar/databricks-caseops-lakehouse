@@ -166,11 +166,9 @@ The export quality threshold defined in `docs/data-contracts.md` (requiring `cla
 
 ---
 
-## Databricks Runtime Execution — Phase 2 Slice
+## Databricks Runtime Execution — Phase 2 Slice (Complete)
 
-Phase 2 starts the move from local-safe execution and bootstrap SQL toward a
-repeatable Databricks runtime. The first implementation slice adds reusable
-runtime adapters without changing the local demo path:
+Phase 2 is complete for the local-safe-to-runtime boundary:
 
 | Component | Runtime Path | Local Behavior |
 |---|---|---|
@@ -184,18 +182,35 @@ import PySpark directly. They are intentionally credential-free and contain no
 workspace URLs. This keeps local tests reproducible while allowing Databricks
 Jobs or notebooks to inject the active Spark session.
 
-This slice does not yet complete Phase 2. Databricks Asset Bundles, workflow
-job wiring, runtime resource validation, and live workspace smoke evidence are
-still required before claiming a repeatable Databricks deployment.
+Phase 2 implementation is complete for adapter wiring and Delta I/O helpers.
+
+## Databricks Runtime Productionization — Phase 4 (In Progress)
+
+Phase 4 is the path from adapter-ready code to reproducible runtime execution.
+
+- Databricks deployment scaffolding (Jobs/Workflows/Asset Bundle) is still to be added.
+- Runtime entrypoints should inject Spark sessions and environment configuration once and then call the existing adapter surfaces.
+- Runtime table targets are environment-derived and currently formalized in:
+  - `src/utils/environment_config.py` (`EnvironmentConfig`)
+  - `src/pipelines/databricks_runtime.py` (`DeltaTableTargets`)
+- Target table names are currently:
+  - `caseops_<env>.bronze.parsed_documents`
+  - `caseops_<env>.silver.extracted_records`
+  - `caseops_<env>.gold.ai_ready_assets`
+- A repeatable workspace smoke-test runbook is required before claiming deployment-level runtime status.
+
+This repository intentionally remains without hardcoded URLs, credentials,
+activation links, or workspace identifiers. All runtime execution assumptions are
+captured as templates and runbooks outside runtime secrets.
 
 ---
 
 ## Runtime Handoff Validation — Phase 3 Slice
 
 Phase 3 targets the transition from producer-side Delta Share preparation to
-runtime-confirmed delivery validation. A true `validated` status still requires
-a Databricks operator to run the generated share setup SQL and validation
-queries in a personal workspace.
+runtime-confirmed delivery validation. A personal-workspace validation run
+reached `validated` on 2026-06-07 after the generated delivery-events DDL,
+share setup SQL, and validation queries were executed in Databricks SQL.
 
 The first Phase 3 implementation slice adds sanitized evidence intake:
 
@@ -207,7 +222,8 @@ The first Phase 3 implementation slice adds sanitized evidence intake:
 
 Local-only validation remains `not_provisioned` or `partially_validated`. The
 repo still does not execute Unity Catalog APIs, call Delta Sharing SDKs, or
-include Bedrock runtime logic.
+include Bedrock runtime logic. Runtime evidence is captured as sanitized local
+artifacts only after a Databricks operator runs the workspace steps.
 
 ---
 
@@ -304,7 +320,7 @@ B-0 does **not** deliver:
 - Vector index configuration or retrieval logic
 - Event-driven delivery mechanisms
 
-The V1 delivery mechanism remains file-based (structured JSON export to a Unity Catalog Volume path). The V2-C delivery layer is producer-side prepared; runtime Delta Share validation requires executing the generated setup SQL in a Databricks workspace.
+The V1 delivery mechanism remains file-based (structured JSON export to a Unity Catalog Volume path). The V2-C delivery layer is producer-side prepared; Phase 3 confirmed the producer-side runtime handoff surface in a personal Databricks workspace on 2026-06-07.
 
 ### Contract
 
@@ -409,9 +425,9 @@ delivery_events.py            → builds DeliveryEvent from summaries → writes
 delta_share_handoff.py        → defines DeltaShareConfig → generates SQL templates → writes share prep manifest
 ```
 
-**C-1 implementation status**: Producer-side delivery layer is complete. Runtime provisioning (Unity Catalog share creation and recipient configuration) and end-to-end validation are Phase C-2 concerns. All C-1 delivery events carry `status = 'prepared'`.
+**C-1 implementation status**: Producer-side delivery layer is complete. Runtime provisioning evidence was collected in the Phase 3 personal-workspace validation slice; local runs still only generate artifacts. All C-1 delivery events carry `status = 'prepared'`.
 
-**What C-1 does not include:** No live Unity Catalog API calls, no Delta Sharing SDK, no real share provisioning, no Bedrock consumer simulation. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
+**What C-1 does not include:** No live Unity Catalog API calls from repo code, no Delta Sharing SDK, no provisioning client, no Bedrock consumer simulation. The Phase 3 personal-workspace validation manually executed the generated SQL in Databricks SQL; the repo remains the upstream-only governed document intelligence and handoff preparation layer.
 
 ### Phase C-2 Delivery Validation Layer — Implementation Status
 
@@ -435,7 +451,7 @@ Phase C-2 implements a bounded, producer-side delivery-layer validation and obse
 
 **Honesty invariant:** The `evidence_sufficiency` check prevents `validated` from ever being assigned for `local_repo_only` runs. A locally-correct producer-side artifact set always produces `not_provisioned` (share not yet executed in Unity Catalog) or `partially_validated` — never `validated`.
 
-**C-2 runtime validation target:** `validated` is achievable only after the share setup SQL is executed in a Databricks workspace and `workspace_mode = 'personal_databricks'` is passed explicitly. The runbook is in `docs/delivery-runtime-validation.md`.
+**C-2 runtime validation target:** `validated` is achievable only after the delivery-events DDL and share setup SQL are executed in a Databricks workspace, sanitized runtime evidence is captured, and `workspace_mode = 'personal_databricks'` is passed explicitly. This was demonstrated on 2026-06-07. The runbook is in `docs/delivery-runtime-validation.md`.
 
 **What C-2 does not include:** No live Unity Catalog API calls, no Delta Sharing SDK, no Bedrock consumer simulation, no retrieval/RAG/agent logic. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
 
@@ -451,7 +467,7 @@ delivery_events.py            → builds DeliveryEvent from summaries → writes
 delta_share_handoff.py        → defines share config → generates SQL templates → writes share prep manifest
 ```
 
-**What this layer does not include:** No live Bedrock/AWS integration, no Bedrock SDK, no S3 wiring, no vector index, no agent workflows, no real Delta Share provisioning. The repo remains the upstream-only governed document intelligence and handoff preparation layer.
+**What this layer does not include:** No live Bedrock/AWS integration, no Bedrock SDK, no S3 wiring, no vector index, no agent workflows, and no programmatic Delta Share provisioning client. The Phase 3 validation used manual Databricks SQL execution and sanitized evidence; the repo remains the upstream-only governed document intelligence and handoff preparation layer.
 
 ---
 

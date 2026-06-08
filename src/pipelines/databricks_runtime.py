@@ -34,8 +34,10 @@ DEFAULT_CLASSIFICATION_LABELS = {
     "unknown": "Document does not clearly match an active domain",
 }
 
+_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SAFE_TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){0,2}$")
-_ALLOWED_WRITE_MODES = {"append", "overwrite", "error", "errorifexists", "ignore"}
+# Public runtime write modes: CLI + runtime write path.
+ALLOWED_WRITE_MODES = frozenset({"append", "overwrite", "error", "errorifexists", "ignore"})
 
 
 class DatabricksRuntimeError(RuntimeError):
@@ -61,6 +63,16 @@ def validate_table_name(table_name: str) -> str:
             "containing only letters, numbers, and underscores"
         )
     return table_name
+
+
+def validate_identifier(identifier: str) -> str:
+    """Reject unsafe column identifiers before interpolating them into filters."""
+    if not _SAFE_IDENTIFIER_RE.match(identifier):
+        raise ValueError(
+            "identifier must contain only letters, numbers, and underscores, "
+            "and must not be quoted or qualified"
+        )
+    return identifier
 
 
 def _json_dumps(value: Any) -> str:
@@ -355,7 +367,7 @@ class DeltaTableIO:
         """
         validated_table = validate_table_name(table_name)
         normalized_mode = mode.lower()
-        if normalized_mode not in _ALLOWED_WRITE_MODES:
+        if normalized_mode not in ALLOWED_WRITE_MODES:
             raise ValueError(f"Unsupported Delta write mode: {mode!r}")
 
         rows = [_as_jsonable_dict(record) for record in records]
@@ -371,10 +383,21 @@ class DeltaTableIO:
         )
         return len(rows)
 
-    def read_table(self, table_name: str, limit: Optional[int] = None) -> list[dict]:
+    def read_table(
+        self,
+        table_name: str,
+        limit: Optional[int] = None,
+        where_equals: Optional[Mapping[str, Any]] = None,
+    ) -> list[dict]:
         """Read a Delta table into a list of JSON-like row dictionaries."""
         validated_table = validate_table_name(table_name)
         dataframe = self.spark.table(validated_table)
+        if where_equals:
+            for column_name, value in sorted(where_equals.items()):
+                validated_column = validate_identifier(column_name)
+                dataframe = dataframe.where(
+                    f"{validated_column} = {sql_string_literal(value)}"
+                )
         if limit is not None:
             if limit < 0:
                 raise ValueError("limit must be non-negative when provided")

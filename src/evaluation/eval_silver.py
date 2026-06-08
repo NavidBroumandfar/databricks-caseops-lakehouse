@@ -46,6 +46,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.schemas.silver_schema import FDA_REQUIRED_FIELDS, FDA_ALL_FIELDS
+from src.schemas.domain_schema_registry import get_schema_info
 
 
 # ---------------------------------------------------------------------------
@@ -177,24 +178,49 @@ def _percentile(values: list[float], pct: int) -> float:
     return sorted_vals[idx]
 
 
+def _get_required_fields_for_record(record: dict) -> list[str]:
+    """
+    Return required field names for the record's domain hint.
+
+    If the document_class_hint is missing, unknown, or invalid,
+    fall back to FDA required fields to preserve local-safe behavior.
+    """
+    domain_hint = record.get("document_class_hint")
+    if not domain_hint:
+        return FDA_REQUIRED_FIELDS
+
+    try:
+        return get_schema_info(domain_hint).required_fields
+    except Exception:
+        # Domain lookup must not fail metric computation; keep FDA as a
+        # conservative fallback for backward compatibility and local fixtures
+        # with partial metadata.
+        return FDA_REQUIRED_FIELDS
+
+
 def _compute_required_null_rate(records: list[dict]) -> float:
     """
     Compute the fraction of required fields that are null across all records.
 
-    Denominator = total_records * len(FDA_REQUIRED_FIELDS).
+    Denominator is the per-record sum of active required field count:
+    total_records * len(required_fields_for_domain).
     Null is defined as: field absent, null, empty string, or empty list.
     """
     if not records:
         return 0.0
 
-    total_required_slots = len(records) * len(FDA_REQUIRED_FIELDS)
+    total_required_slots = 0
+    for record in records:
+        total_required_slots += len(_get_required_fields_for_record(record))
+
     if total_required_slots == 0:
         return 0.0
 
     null_count = 0
     for record in records:
         fields_dict = (record.get("extracted_fields") or {})
-        for field_name in FDA_REQUIRED_FIELDS:
+        required_fields = _get_required_fields_for_record(record)
+        for field_name in required_fields:
             value = fields_dict.get(field_name)
             if value is None or value == [] or value == "":
                 null_count += 1

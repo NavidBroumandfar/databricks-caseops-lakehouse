@@ -1,0 +1,729 @@
+{
+  "phase": 5,
+  "goal": "Regression-ready baseline for extraction and traceability quality metrics.",
+  "note": "Fixture values are synthetic and intentionally include valid, partial, and malformed records.",
+  "baseline_ranges": {
+    "fda_warning_letter": {
+      "min_schema_validity_rate": 0.80,
+      "min_partial_validity_rate": 0.10,
+      "max_invalid_rate": 0.10,
+      "min_mean_field_coverage_pct": 0.85,
+      "min_p25_field_coverage_pct": 0.55,
+      "max_required_field_null_rate": 0.05
+    },
+    "cisa_advisory": {
+      "min_schema_validity_rate": 0.80,
+      "min_partial_validity_rate": 0.10,
+      "max_invalid_rate": 0.10,
+      "min_mean_field_coverage_pct": 0.85,
+      "min_p25_field_coverage_pct": 0.55,
+      "max_required_field_null_rate": 0.05
+    },
+    "incident_report": {
+      "min_schema_validity_rate": 0.80,
+      "min_partial_validity_rate": 0.10,
+      "max_invalid_rate": 0.10,
+      "min_mean_field_coverage_pct": 0.85,
+      "min_p25_field_coverage_pct": 0.55,
+      "max_required_field_null_rate": 0.05
+    }
+  },
+  "silver_records": {
+    "fda_warning_letter": [
+      {
+        "document_id": "phase5-fda-doc-001",
+        "bronze_record_id": "phase5-fda-br-001",
+        "extraction_id": "phase5-fda-ex-001",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:00:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Chicago",
+          "recipient_company": "Acme Pharma",
+          "issue_date": "2025-06-01",
+          "violation_type": ["21 CFR 211.160"],
+          "corrective_action_requested": true,
+          "recipient_name": "Quality Engineering",
+          "summary": "Routine inspection found process control deviations."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-002",
+        "bronze_record_id": "phase5-fda-br-002",
+        "extraction_id": "phase5-fda-ex-002",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:01:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Sacramento",
+          "recipient_company": "Beta Biologics",
+          "issue_date": "2025-05-15",
+          "violation_type": ["21 CFR 210"],
+          "corrective_action_requested": false,
+          "product_involved": "Compound 17",
+          "summary": "Corrective actions accepted as temporary mitigation."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-003",
+        "bronze_record_id": "phase5-fda-br-003",
+        "extraction_id": "phase5-fda-ex-003",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:02:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Boston",
+          "recipient_company": "Northstar Life",
+          "issue_date": "2025-04-11",
+          "violation_type": ["21 CFR 211.188", "21 CFR 211.42"],
+          "corrective_action_requested": true,
+          "summary": "Records review identified repeated deviations with weak CAPA response."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-004",
+        "bronze_record_id": "phase5-fda-br-004",
+        "extraction_id": "phase5-fda-ex-004",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:03:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Phoenix",
+          "recipient_company": "Cloud Pharma",
+          "issue_date": "2025-03-22",
+          "violation_type": ["21 CFR 211.160"],
+          "corrective_action_requested": true,
+          "summary": "Partial extraction; citation fields incomplete in source format."
+        },
+        "field_coverage_pct": 0.60,
+        "validation_status": "partial",
+        "validation_errors": ["summary truncated by source extractor"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-005",
+        "bronze_record_id": "phase5-fda-br-005",
+        "extraction_id": "phase5-fda-ex-005",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:04:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Denver",
+          "recipient_company": "Atlas Health",
+          "issue_date": "2025-02-03",
+          "violation_type": ["21 CFR 211.22"],
+          "corrective_action_requested": false,
+          "summary": "Malformed citation field shape and inconsistent numbering."
+        },
+        "field_coverage_pct": 0.55,
+        "validation_status": "invalid",
+        "validation_errors": ["issued_date format mismatch", "violation_type not parseable"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-006",
+        "bronze_record_id": "phase5-fda-br-006",
+        "extraction_id": "phase5-fda-ex-006",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:05:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Seattle",
+          "recipient_company": "Harbor Devices",
+          "issue_date": "2025-01-18",
+          "violation_type": ["21 CFR 820.100"],
+          "corrective_action_requested": true,
+          "summary": "CAPA procedure gaps identified during device quality inspection."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-007",
+        "bronze_record_id": "phase5-fda-br-007",
+        "extraction_id": "phase5-fda-ex-007",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:06:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Atlanta",
+          "recipient_company": "Summit Nutrition",
+          "issue_date": "2025-01-20",
+          "violation_type": ["21 CFR 111.75"],
+          "corrective_action_requested": true,
+          "summary": "Dietary supplement testing records lacked required verification."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-008",
+        "bronze_record_id": "phase5-fda-br-008",
+        "extraction_id": "phase5-fda-ex-008",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:07:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA New York",
+          "recipient_company": "Metro Biotech",
+          "issue_date": "2025-01-25",
+          "violation_type": ["21 CFR 211.67"],
+          "corrective_action_requested": true,
+          "summary": "Equipment cleaning records were incomplete for inspected lots."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-009",
+        "bronze_record_id": "phase5-fda-br-009",
+        "extraction_id": "phase5-fda-ex-009",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:08:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Dallas",
+          "recipient_company": "Prairie Labs",
+          "issue_date": "2025-01-28",
+          "violation_type": ["21 CFR 211.192"],
+          "corrective_action_requested": true,
+          "summary": "Batch failure investigations did not include documented root cause."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-fda-doc-010",
+        "bronze_record_id": "phase5-fda-br-010",
+        "extraction_id": "phase5-fda-ex-010",
+        "pipeline_run_id": "local-run-phase5-fda",
+        "extracted_at": "2026-06-01T10:09:00+00:00",
+        "document_class_hint": "fda_warning_letter",
+        "extraction_prompt_id": "fda_warning_letter_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "issuing_office": "FDA Los Angeles",
+          "recipient_company": "Pacific Therapeutics",
+          "issue_date": "2025-01-30",
+          "violation_type": ["21 CFR 211.113"],
+          "corrective_action_requested": true,
+          "summary": "Sterility controls were not adequately documented for aseptic operations."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      }
+    ],
+    "cisa_advisory": [
+      {
+        "document_id": "phase5-cisa-doc-001",
+        "bronze_record_id": "phase5-cisa-br-001",
+        "extraction_id": "phase5-cisa-ex-001",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:00:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0001",
+          "title": "SSH Hardening Guidance",
+          "published_date": "2025-05-01",
+          "severity_level": "High",
+          "remediation_available": true,
+          "summary": "Remote administration service exposed with weak key rotation.",
+          "affected_products": ["Router OS v1.0", "Proxy Gateway v3.4"]
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-002",
+        "bronze_record_id": "phase5-cisa-br-002",
+        "extraction_id": "phase5-cisa-ex-002",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:01:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0002",
+          "title": "Cloud Gateway Advisory",
+          "published_date": "2025-05-03",
+          "severity_level": "Critical",
+          "remediation_available": true,
+          "summary": "Cloud gateway endpoints missing token constraints."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-003",
+        "bronze_record_id": "phase5-cisa-br-003",
+        "extraction_id": "phase5-cisa-ex-003",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:02:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0003",
+          "title": "Industrial Controller Update",
+          "published_date": "2025-05-07",
+          "severity_level": "Moderate",
+          "remediation_available": true,
+          "cve_ids": ["CVE-0001", "CVE-0002"],
+          "summary": "Firmware update required on multiple edge controllers."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-004",
+        "bronze_record_id": "phase5-cisa-br-004",
+        "extraction_id": "phase5-cisa-ex-004",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:03:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0004",
+          "title": "Network Appliance Advisory",
+          "published_date": "2025-05-09",
+          "severity_level": "Critical",
+          "remediation_available": false,
+          "summary": "Vendor guidance missing temporary mitigation guidance."
+        },
+        "field_coverage_pct": 0.60,
+        "validation_status": "partial",
+        "validation_errors": ["remediation_summary missing from source text"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-005",
+        "bronze_record_id": "phase5-cisa-br-005",
+        "extraction_id": "phase5-cisa-ex-005",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:04:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0005",
+          "title": "Firmware Corruption Pattern",
+          "published_date": "2025-05-10",
+          "severity_level": "Low",
+          "remediation_available": true,
+          "summary": "Field ordering issue in upstream advisory table."
+        },
+        "field_coverage_pct": 0.55,
+        "validation_status": "invalid",
+        "validation_errors": ["advisory_id format inconsistent", "title malformed"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-006",
+        "bronze_record_id": "phase5-cisa-br-006",
+        "extraction_id": "phase5-cisa-ex-006",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:05:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0006",
+          "title": "Identity Provider Session Advisory",
+          "published_date": "2025-05-12",
+          "severity_level": "High",
+          "remediation_available": true,
+          "summary": "Identity provider sessions require updated token lifetime controls."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-007",
+        "bronze_record_id": "phase5-cisa-br-007",
+        "extraction_id": "phase5-cisa-ex-007",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:06:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0007",
+          "title": "Remote Management Interface Advisory",
+          "published_date": "2025-05-14",
+          "severity_level": "Critical",
+          "remediation_available": true,
+          "summary": "Remote management interfaces should be restricted and patched."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-008",
+        "bronze_record_id": "phase5-cisa-br-008",
+        "extraction_id": "phase5-cisa-ex-008",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:07:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0008",
+          "title": "Backup Appliance Firmware Advisory",
+          "published_date": "2025-05-16",
+          "severity_level": "Medium",
+          "remediation_available": true,
+          "summary": "Backup appliance firmware should be upgraded to address privilege issues."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-009",
+        "bronze_record_id": "phase5-cisa-br-009",
+        "extraction_id": "phase5-cisa-ex-009",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:08:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0009",
+          "title": "Endpoint Protection Bypass Advisory",
+          "published_date": "2025-05-18",
+          "severity_level": "High",
+          "remediation_available": true,
+          "summary": "Endpoint protection policies require vendor rule updates."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-cisa-doc-010",
+        "bronze_record_id": "phase5-cisa-br-010",
+        "extraction_id": "phase5-cisa-ex-010",
+        "pipeline_run_id": "local-run-phase5-cisa",
+        "extracted_at": "2026-06-01T11:09:00+00:00",
+        "document_class_hint": "cisa_advisory",
+        "extraction_prompt_id": "cisa_advisory_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "advisory_id": "ICS-24-0010",
+          "title": "Database Gateway Advisory",
+          "published_date": "2025-05-20",
+          "severity_level": "Medium",
+          "remediation_available": true,
+          "summary": "Database gateway access controls require configuration hardening."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      }
+    ],
+    "incident_report": [
+      {
+        "document_id": "phase5-inc-doc-001",
+        "bronze_record_id": "phase5-inc-br-001",
+        "extraction_id": "phase5-inc-ex-001",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:00:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-01",
+          "incident_type": "Data Exposure",
+          "severity": "Critical",
+          "status": "resolved",
+          "reported_by": "SOC Team",
+          "affected_systems": ["Auth Gateway", "Identity DB"],
+          "root_cause": "Unencrypted secrets in logs"
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-002",
+        "bronze_record_id": "phase5-inc-br-002",
+        "extraction_id": "phase5-inc-ex-002",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:01:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-02",
+          "incident_type": "Ransomware Drill",
+          "severity": "High",
+          "status": "mitigated",
+          "reported_by": "IRT Team",
+          "affected_systems": ["File Servers"]
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-003",
+        "bronze_record_id": "phase5-inc-br-003",
+        "extraction_id": "phase5-inc-ex-003",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:02:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-03",
+          "incident_type": "Cloud Misconfig",
+          "severity": "Medium",
+          "status": "open",
+          "affected_systems": ["S3 Bucket", "IAM Group"],
+          "summary": "Public-read exposure from policy drift"
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-004",
+        "bronze_record_id": "phase5-inc-br-004",
+        "extraction_id": "phase5-inc-ex-004",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:03:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-04",
+          "incident_type": "Service Outage",
+          "severity": "Low",
+          "status": "resolved",
+          "reported_by": "NOC Team"
+        },
+        "field_coverage_pct": 0.60,
+        "validation_status": "partial",
+        "validation_errors": ["root_cause truncated"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-005",
+        "bronze_record_id": "phase5-inc-br-005",
+        "extraction_id": "phase5-inc-ex-005",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:04:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-05",
+          "incident_type": "Phishing",
+          "severity": "High",
+          "status": "open",
+          "reported_by": "SOC Watch",
+          "root_cause": "Compromised credential reset flow"
+        },
+        "field_coverage_pct": 0.55,
+        "validation_status": "invalid",
+        "validation_errors": ["incident_type ambiguous", "status not in enum"],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-006",
+        "bronze_record_id": "phase5-inc-br-006",
+        "extraction_id": "phase5-inc-ex-006",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:05:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-06",
+          "incident_type": "Access Control",
+          "severity": "Medium",
+          "status": "resolved",
+          "reported_by": "Security Engineering",
+          "summary": "Access policy drift was corrected after review."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-007",
+        "bronze_record_id": "phase5-inc-br-007",
+        "extraction_id": "phase5-inc-ex-007",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:06:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-07",
+          "incident_type": "Data Pipeline Delay",
+          "severity": "Low",
+          "status": "resolved",
+          "reported_by": "Data Platform",
+          "summary": "Late-arriving upstream feed delayed downstream processing."
+        },
+        "field_coverage_pct": 1.0,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-008",
+        "bronze_record_id": "phase5-inc-br-008",
+        "extraction_id": "phase5-inc-ex-008",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:07:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-08",
+          "incident_type": "Credential Rotation",
+          "severity": "Medium",
+          "status": "under_review",
+          "reported_by": "IAM Team",
+          "summary": "Credential rotation workflow required manual approval review."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-009",
+        "bronze_record_id": "phase5-inc-br-009",
+        "extraction_id": "phase5-inc-ex-009",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:08:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-09",
+          "incident_type": "Monitoring Gap",
+          "severity": "Low",
+          "status": "resolved",
+          "reported_by": "SRE",
+          "summary": "Monitoring alert coverage was restored for the affected service."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      },
+      {
+        "document_id": "phase5-inc-doc-010",
+        "bronze_record_id": "phase5-inc-br-010",
+        "extraction_id": "phase5-inc-ex-010",
+        "pipeline_run_id": "local-run-phase5-incident",
+        "extracted_at": "2026-06-01T12:09:00+00:00",
+        "document_class_hint": "incident_report",
+        "extraction_prompt_id": "incident_report_extract_v1",
+        "extraction_model": "local_rule_extractor/v1",
+        "extracted_fields": {
+          "incident_date": "2025-04-10",
+          "incident_type": "Change Failure",
+          "severity": "Medium",
+          "status": "resolved",
+          "reported_by": "Release Engineering",
+          "summary": "A failed change was rolled back and documented for review."
+        },
+        "field_coverage_pct": 0.95,
+        "validation_status": "valid",
+        "validation_errors": [],
+        "schema_version": "v0.1.0"
+      }
+    ]
+  },
+  "traceability_records": {
+    "bronze": [
+      {"bronze_record_id": "phase5-fda-br-001", "document_id": "phase5-fda-doc-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"},
+      {"bronze_record_id": "phase5-fda-br-002", "document_id": "phase5-fda-doc-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"},
+      {"bronze_record_id": "phase5-cisa-br-001", "document_id": "phase5-cisa-doc-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"},
+      {"bronze_record_id": "phase5-cisa-br-002", "document_id": "phase5-cisa-doc-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"},
+      {"bronze_record_id": "phase5-inc-br-001", "document_id": "phase5-inc-doc-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"},
+      {"bronze_record_id": "phase5-inc-br-002", "document_id": "phase5-inc-doc-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "parse_status": "success"}
+    ],
+    "silver": [
+      {"extraction_id": "phase5-fda-ex-001", "document_id": "phase5-fda-doc-001", "bronze_record_id": "phase5-fda-br-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0},
+      {"extraction_id": "phase5-fda-ex-002", "document_id": "phase5-fda-doc-002", "bronze_record_id": "phase5-fda-br-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0},
+      {"extraction_id": "phase5-cisa-ex-001", "document_id": "phase5-cisa-doc-001", "bronze_record_id": "phase5-cisa-br-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0},
+      {"extraction_id": "phase5-cisa-ex-002", "document_id": "phase5-cisa-doc-002", "bronze_record_id": "phase5-cisa-br-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0},
+      {"extraction_id": "phase5-inc-ex-001", "document_id": "phase5-inc-doc-001", "bronze_record_id": "phase5-inc-br-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0},
+      {"extraction_id": "phase5-inc-ex-002", "document_id": "phase5-inc-doc-002", "bronze_record_id": "phase5-inc-br-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "validation_status": "valid", "field_coverage_pct": 1.0}
+    ],
+    "gold": [
+      {"gold_record_id": "phase5-fda-gr-001", "document_id": "phase5-fda-doc-001", "extraction_id": "phase5-fda-ex-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true},
+      {"gold_record_id": "phase5-fda-gr-002", "document_id": "phase5-fda-doc-002", "extraction_id": "phase5-fda-ex-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true},
+      {"gold_record_id": "phase5-cisa-gr-001", "document_id": "phase5-cisa-doc-001", "extraction_id": "phase5-cisa-ex-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true},
+      {"gold_record_id": "phase5-cisa-gr-002", "document_id": "phase5-cisa-doc-002", "extraction_id": "phase5-cisa-ex-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true},
+      {"gold_record_id": "phase5-inc-gr-001", "document_id": "phase5-inc-doc-001", "extraction_id": "phase5-inc-ex-001", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true},
+      {"gold_record_id": "phase5-inc-gr-002", "document_id": "phase5-inc-doc-002", "extraction_id": "phase5-inc-ex-002", "pipeline_run_id": "local-run-phase5", "schema_version": "v0.1.0", "export_ready": true}
+    ]
+  }
+}

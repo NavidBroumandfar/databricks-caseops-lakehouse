@@ -48,7 +48,7 @@ DELIVERY_SCHEMA_VERSION = "v0.2.0"
 DELIVERY_MECHANISM_DELTA_SHARING = "delta_sharing"
 
 DEFAULT_SHARE_NAME = "caseops_handoff"
-DEFAULT_SHARED_OBJECT_NAME = "gold_ai_ready_assets"
+DEFAULT_SHARED_OBJECT_NAME = "gold.gold_ai_ready_assets"
 
 # Producer-side status vocabulary.
 # These reflect what THIS REPO has done — not whether Bedrock has consumed.
@@ -106,7 +106,7 @@ class DeliveryEvent(BaseModel):
     share_name
         Delta Share name. Default: 'caseops_handoff'.
     shared_object_name
-        Name of the shared table within the share. Default: 'gold_ai_ready_assets'.
+        Name of the shared table within the share. Default: 'gold.gold_ai_ready_assets'.
     eligible_record_count
         Total eligible records that entered the classification loop.
     exported_record_count
