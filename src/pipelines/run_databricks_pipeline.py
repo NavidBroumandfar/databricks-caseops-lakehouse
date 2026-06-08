@@ -39,10 +39,12 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from src.pipelines.databricks_runtime import (
+    AI_EXTRACT_VERSION,
     ALLOWED_WRITE_MODES,
     DeltaTableIO,
     DeltaTableTargets,
     DatabricksRuntimeError,
+    databricks_ai_extract_schema,
 )
 from src.pipelines.databricks_runtime import validate_table_name
 from src.utils.environment_config import get_environment_config
@@ -283,7 +285,7 @@ def _build_extract_adapter(spark, domain_key: str, version: str) -> DatabricksAi
     require_active_domain(domain_key, operation="runtime extraction")
     prompt = get_prompt_for_domain(domain_key)
     fields_model = build_fields_for_domain(domain_key, {})
-    extraction_schema = fields_model.model_json_schema()
+    extraction_schema = databricks_ai_extract_schema(fields_model.model_json_schema())
     return DatabricksAiExtractAdapter(
         spark=spark,
         extraction_schema=extraction_schema,
@@ -651,7 +653,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--extract-version",
-        default="2.0",
+        default=AI_EXTRACT_VERSION,
         help="ai_extract version parameter for runtime adapter.",
     )
     parser.add_argument(

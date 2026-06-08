@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 
 AI_FUNCTION_VERSION = "2.0"
+AI_EXTRACT_VERSION = "2.1"
 
 DEFAULT_EXTRACTION_INSTRUCTIONS = (
     "Extract the requested structured fields from the parsed document content. "
@@ -78,6 +79,65 @@ def validate_identifier(identifier: str) -> str:
 
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, default=str, sort_keys=True)
+
+
+def databricks_ai_extract_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
+    """
+    Convert a Pydantic JSON Schema object into Databricks ai_extract field-map shape.
+
+    Databricks ai_extract expects an object whose top-level keys are field names,
+    not a full JSON Schema document with a top-level ``properties`` wrapper.
+    """
+    raw_properties = schema.get("properties") if isinstance(schema, Mapping) else None
+    properties = raw_properties if isinstance(raw_properties, Mapping) else schema
+    return {
+        str(field_name): _databricks_ai_extract_field(field_schema)
+        for field_name, field_schema in properties.items()
+        if isinstance(field_schema, Mapping)
+    }
+
+
+def _non_null_schema(field_schema: Mapping[str, Any]) -> Mapping[str, Any]:
+    variants = field_schema.get("anyOf") or field_schema.get("oneOf")
+    if isinstance(variants, Sequence) and not isinstance(variants, (str, bytes)):
+        for variant in variants:
+            if isinstance(variant, Mapping) and variant.get("type") != "null":
+                merged = dict(variant)
+                if field_schema.get("description") and not merged.get("description"):
+                    merged["description"] = field_schema["description"]
+                return merged
+    return field_schema
+
+
+def _databricks_ai_extract_field(field_schema: Mapping[str, Any]) -> dict[str, Any]:
+    schema = _non_null_schema(field_schema)
+    result: dict[str, Any] = {}
+    if "enum" in schema and isinstance(schema["enum"], Sequence):
+        result["type"] = "enum"
+        result["labels"] = [str(label) for label in schema["enum"] if label is not None]
+    else:
+        field_type = schema.get("type")
+        if field_type in {"string", "integer", "number", "boolean"}:
+            result["type"] = field_type
+        elif field_type == "array":
+            result["type"] = "array"
+            items = schema.get("items")
+            if isinstance(items, Mapping):
+                item_schema = _databricks_ai_extract_field(items)
+                item_schema.pop("description", None)
+                result["items"] = item_schema or {"type": "string"}
+            else:
+                result["items"] = {"type": "string"}
+        elif field_type == "object":
+            result["type"] = "object"
+            properties = schema.get("properties")
+            if isinstance(properties, Mapping):
+                result["properties"] = databricks_ai_extract_schema(properties)
+        else:
+            result["type"] = "string"
+    if schema.get("description"):
+        result["description"] = str(schema["description"])
+    return result
 
 
 def _as_jsonable_dict(record: Any) -> dict:

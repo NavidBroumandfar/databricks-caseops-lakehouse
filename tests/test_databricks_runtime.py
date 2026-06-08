@@ -16,11 +16,13 @@ import pytest
 from src.pipelines import databricks_runtime as runtime_module
 from src.pipelines.classify_gold import DatabricksAiClassifyAdapter
 from src.pipelines.databricks_runtime import (
+    AI_EXTRACT_VERSION,
     DatabricksAiClassifyRuntimeAdapter,
     DatabricksAiExtractRuntimeAdapter,
     DatabricksAiParseRuntimeAdapter,
     DeltaTableIO,
     DeltaTableTargets,
+    databricks_ai_extract_schema,
     sql_string_literal,
 )
 from src.pipelines.extract_silver import DatabricksAiExtractAdapter
@@ -287,6 +289,47 @@ def test_extract_runtime_adapter_unwraps_v2_field_value_response() -> None:
         "violation_type": ["CGMP"],
         "corrective_action_requested": True,
     }
+
+
+def test_databricks_ai_extract_schema_converts_pydantic_properties() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "recipient_company": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "description": "Company named in the letter.",
+            },
+            "violation_type": {
+                "anyOf": [
+                    {"type": "array", "items": {"type": "string"}},
+                    {"type": "null"},
+                ],
+                "description": "Violation labels.",
+            },
+            "corrective_action_requested": {
+                "anyOf": [{"type": "boolean"}, {"type": "null"}],
+            },
+        },
+    }
+
+    result = databricks_ai_extract_schema(schema)
+
+    assert result == {
+        "recipient_company": {
+            "type": "string",
+            "description": "Company named in the letter.",
+        },
+        "violation_type": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Violation labels.",
+        },
+        "corrective_action_requested": {"type": "boolean"},
+    }
+
+
+def test_ai_extract_runtime_default_uses_recommended_version() -> None:
+    assert AI_EXTRACT_VERSION == "2.1"
 
 
 def test_existing_extract_adapter_requires_schema_when_spark_is_injected() -> None:
