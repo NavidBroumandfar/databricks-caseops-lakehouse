@@ -72,8 +72,8 @@ _SENSITIVE_TEXT_PATTERNS = (
     re.compile(r"https?://", re.IGNORECASE),
     re.compile(r"dbc-[a-z0-9-]+\.cloud\.databricks\.com", re.IGNORECASE),
     re.compile(r"dapi[a-f0-9]{32}", re.IGNORECASE),
-    re.compile(r"activation\s+link", re.IGNORECASE),
-    re.compile(r"workspace\s+url", re.IGNORECASE),
+    re.compile(r"activation\s+link\s*[:=]", re.IGNORECASE),
+    re.compile(r"workspace\s+url\s*[:=]", re.IGNORECASE),
     re.compile(r"(token|secret|password)\s*[:=]", re.IGNORECASE),
 )
 

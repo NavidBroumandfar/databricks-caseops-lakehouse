@@ -307,7 +307,7 @@ def test_runtime_smoke_package_incomplete_when_delivery_result_is_local_only(tmp
 def test_runtime_smoke_package_fails_when_artifact_contains_sensitive_text(tmp_path: Path) -> None:
     paths = _write_ready_package(tmp_path)
     raw = json.loads(paths["share_manifest"].read_text(encoding="utf-8"))
-    raw["operator_note"] = "workspace url was not removed"
+    raw["operator_note"] = "workspace url: https://dbc-example.cloud.databricks.com"
     _write_json(paths["share_manifest"], raw)
 
     result = validate_runtime_smoke_package(
