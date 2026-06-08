@@ -237,6 +237,8 @@ def _validate_plan_context_consistency(
         part
         for part in (
             "--stage all",
+            "--check-only",
+            "--check-write-permissions",
             "--stage delivery_validation",
             "--capture-plan-path",
             f"--pipeline-run-id {pipeline_run_id}",

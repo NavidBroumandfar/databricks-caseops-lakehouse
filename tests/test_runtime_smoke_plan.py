@@ -67,6 +67,8 @@ def test_build_runtime_smoke_capture_plan_includes_validation_commands() -> None
     )
 
     assert any("--pipeline-run-id runtime-smoke-run-002" in c for c in plan.workspace_commands)
+    assert any("--check-only" in c for c in plan.workspace_commands)
+    assert any("--check-write-permissions" in c for c in plan.workspace_commands)
     assert any("--delivery-pipeline-run-id runtime-smoke-run-002" in c for c in plan.workspace_commands)
     assert any("--environment staging" in c for c in plan.local_validation_commands)
     assert any("--capture-plan-path" in c for c in plan.local_validation_commands)

@@ -98,6 +98,33 @@ def build_runtime_smoke_capture_plan(
         f"--output-dir {_path_text(output_root / 'validation')}"
     )
 
+    workspace_check_command = (
+        ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
+        f"--stage all --environment {environment} "
+        f"--pipeline-run-id {pipeline_run_id} --output-mode append --check-only"
+    )
+    workspace_write_check_command = (
+        ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
+        f"--stage all --environment {environment} "
+        f"--pipeline-run-id {pipeline_run_id} --output-mode append "
+        "--check-only --check-write-permissions"
+    )
+    workspace_run_command = (
+        ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
+        f"--stage all --environment {environment} "
+        f"--pipeline-run-id {pipeline_run_id} --output-mode append"
+    )
+    workspace_delivery_validation_command = (
+        ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
+        f"--stage delivery_validation --environment {environment} "
+        f"--delivery-pipeline-run-id {pipeline_run_id} "
+        f"--delivery-event-path {_path_text(delivery_event_path)} "
+        f"--share-manifest-path {_path_text(share_manifest_path)} "
+        f"--runtime-evidence-path {_path_text(runtime_evidence_path)} "
+        "--workspace-mode personal_databricks "
+        f"--validation-output-dir {_path_text(output_root / 'validation')}"
+    )
+
     return RuntimeSmokeCapturePlan(
         capture_plan_id=str(uuid.uuid4()),
         pipeline_run_id=pipeline_run_id,
@@ -137,21 +164,10 @@ def build_runtime_smoke_capture_plan(
             ),
         ],
         workspace_commands=[
-            (
-                ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
-                f"--stage all --environment {environment} "
-                f"--pipeline-run-id {pipeline_run_id} --output-mode append"
-            ),
-            (
-                ".venv/bin/python src/pipelines/run_databricks_pipeline.py "
-                f"--stage delivery_validation --environment {environment} "
-                f"--delivery-pipeline-run-id {pipeline_run_id} "
-                f"--delivery-event-path {_path_text(delivery_event_path)} "
-                f"--share-manifest-path {_path_text(share_manifest_path)} "
-                f"--runtime-evidence-path {_path_text(runtime_evidence_path)} "
-                "--workspace-mode personal_databricks "
-                f"--validation-output-dir {_path_text(output_root / 'validation')}"
-            ),
+            workspace_check_command,
+            workspace_write_check_command,
+            workspace_run_command,
+            workspace_delivery_validation_command,
         ],
         local_validation_commands=[local_preflight_command, local_package_validation_command],
         sanitization_rules=[

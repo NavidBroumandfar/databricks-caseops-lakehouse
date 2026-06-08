@@ -248,6 +248,18 @@ The generated `.env` file contains only non-secret run-scoped values such as
 `CASEOPS_DATABRICKS_HOST`, `CASEOPS_CLUSTER_ID`, `CASEOPS_WORKSPACE_ROOT`, and
 `CASEOPS_RUNNER_SCRIPT_PATH` separately in the operator environment.
 
+The capture plan's workspace command list intentionally starts with the
+non-mutating runtime checks before the write-producing run:
+
+- `--stage all --check-only`
+- `--stage all --check-only --check-write-permissions`
+- `--stage all`
+- `--stage delivery_validation`
+
+The local smoke preflight blocks plans that omit the workspace check-only and
+write-permission checks. These checks still do not prove runtime execution; they
+only catch missing resources and permissions before the mutating smoke run.
+
 For each smoke run, produce the minimum artifacts below and keep sensitive values stripped:
 
 1. Runtime run metadata:
@@ -293,7 +305,7 @@ The result reaches `smoke_status = ready_for_phase4_closeout` only when:
 
 - delivery event, share manifest, runtime evidence, and C-2 validation result
   all parse successfully
-- when a capture plan is provided, the plan agrees with the package run ID,
+- a run-scoped capture plan is provided and agrees with the package run ID,
   environment, workspace mode, and expected artifact paths
 - all artifacts agree on the same `pipeline_run_id`
 - share manifest status is `provisioned`
@@ -302,6 +314,11 @@ The result reaches `smoke_status = ready_for_phase4_closeout` only when:
   `personal_databricks` mode
 - checked artifacts do not contain URL, token, activation-link, or credential
   patterns
+
+`src/pipelines/run_databricks_pipeline.py --stage delivery_validation` writes
+the normal validation-run-scoped result and also writes a
+pipeline-run-scoped alias at `delivery_validation_<pipeline_run_id>.json` so the
+artifact path matches the generated capture plan.
 
 ## 7) Acceptance criteria (Phase 4)
 

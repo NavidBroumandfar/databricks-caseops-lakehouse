@@ -250,6 +250,9 @@ def test_direct_script_invocation_works_outside_repo_root(tmp_path: Path) -> Non
 
     assert result.returncode == 0, result.stderr
     assert "Delivery validation status:" in result.stdout
+    pipeline_scoped_result = tmp_path / "validation" / "delivery_validation_direct-cli-run.json"
+    assert pipeline_scoped_result.exists()
+    assert "Pipeline-run delivery validation artifact:" in result.stdout
 
 
 def test_runtime_bronze_file_hash_uses_raw_file_bytes() -> None:

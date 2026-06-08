@@ -517,7 +517,18 @@ def _run_delivery_validation_stage(args: argparse.Namespace) -> None:
         workspace_mode=args.workspace_mode,
     )
     if args.validation_output_dir:
-        write_validation_result(result, Path(args.validation_output_dir))
+        output_dir = Path(args.validation_output_dir)
+        validation_json_path, validation_text_path = write_validation_result(result, output_dir)
+        print(f"Delivery validation artifact: {validation_json_path}")
+        print(f"Delivery validation text artifact: {validation_text_path}")
+        if result.validation_run_id != result.pipeline_run_id:
+            pipeline_json_path, pipeline_text_path = write_validation_result(
+                result,
+                output_dir,
+                artifact_id=result.pipeline_run_id,
+            )
+            print(f"Pipeline-run delivery validation artifact: {pipeline_json_path}")
+            print(f"Pipeline-run delivery validation text artifact: {pipeline_text_path}")
     print(f"Delivery validation status: {result.validation_status}")
     print(f"Validation reason: {result.validation_reason}")
 

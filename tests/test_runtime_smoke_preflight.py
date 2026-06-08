@@ -13,6 +13,7 @@ from src.pipelines.runtime_smoke_preflight import (
     CHECK_CONTEXT_ARTIFACT_PATHS_MATCH_PLAN,
     CHECK_CONTEXT_REQUIRED_ENV_VARS,
     CHECK_PREFLIGHT_ARTIFACTS_SANITIZED,
+    CHECK_PLAN_COMMANDS_COVER_WORKFLOW,
     CHECK_RUN_ID_MATCHES,
     validate_runtime_smoke_preflight,
     write_runtime_smoke_preflight_result,
@@ -113,6 +114,27 @@ def test_runtime_smoke_preflight_blocked_when_required_context_var_missing(
 
     assert result.preflight_status == SMOKE_PREFLIGHT_STATUS_BLOCKED
     assert CHECK_CONTEXT_REQUIRED_ENV_VARS in result.checks_failed
+
+
+def test_runtime_smoke_preflight_blocked_when_workspace_check_commands_missing(
+    tmp_path: Path,
+) -> None:
+    paths = _write_ready_preflight_inputs(tmp_path)
+    raw_plan = json.loads(paths["capture_plan"].read_text(encoding="utf-8"))
+    raw_plan["workspace_commands"] = [
+        command for command in raw_plan["workspace_commands"] if "--check-only" not in command
+    ]
+    paths["capture_plan"].write_text(json.dumps(raw_plan, indent=2), encoding="utf-8")
+
+    result = validate_runtime_smoke_preflight(
+        pipeline_run_id=PIPELINE_RUN_ID,
+        environment="dev",
+        capture_plan_path=paths["capture_plan"],
+        run_context_path=paths["run_context"],
+    )
+
+    assert result.preflight_status == SMOKE_PREFLIGHT_STATUS_BLOCKED
+    assert CHECK_PLAN_COMMANDS_COVER_WORKFLOW in result.checks_failed
 
 
 def test_runtime_smoke_preflight_blocked_when_preflight_artifact_has_sensitive_text(

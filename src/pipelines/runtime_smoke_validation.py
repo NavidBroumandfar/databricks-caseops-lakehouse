@@ -59,6 +59,7 @@ CHECK_DELIVERY_VALIDATION_EXISTS = "delivery_validation_result_exists"
 CHECK_DELIVERY_VALIDATION_PARSEABLE = "delivery_validation_result_parseable"
 CHECK_DELIVERY_VALIDATION_RUN_MATCHES = "delivery_validation_pipeline_run_matches"
 CHECK_DELIVERY_VALIDATION_VALIDATED = "delivery_validation_result_validated"
+CHECK_CAPTURE_PLAN_PROVIDED = "capture_plan_provided"
 CHECK_CAPTURE_PLAN_EXISTS = "capture_plan_exists"
 CHECK_CAPTURE_PLAN_PARSEABLE = "capture_plan_parseable"
 CHECK_CAPTURE_PLAN_RUN_MATCHES = "capture_plan_pipeline_run_matches"
@@ -195,7 +196,13 @@ def _parse_capture_plan(
 ) -> Tuple[list[RuntimeSmokeCheck], Optional[RuntimeSmokeCapturePlan]]:
     checks: list[RuntimeSmokeCheck] = []
     if path is None:
-        return [], None
+        return [
+            _fail(
+                CHECK_CAPTURE_PLAN_PROVIDED,
+                "No capture plan path provided. Phase 4 closeout requires a run-scoped capture plan.",
+            )
+        ], None
+    checks.append(_pass(CHECK_CAPTURE_PLAN_PROVIDED, f"Provided: {path}"))
     if not path.exists():
         return [_fail(CHECK_CAPTURE_PLAN_EXISTS, f"Not found: {path}")], None
 
@@ -607,7 +614,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--capture-plan-path",
         default=None,
-        help="Optional runtime smoke capture plan JSON used for plan-vs-package consistency checks.",
+        help=(
+            "Runtime smoke capture plan JSON. Required for ready_for_phase4_closeout; "
+            "omitting it leaves the package incomplete."
+        ),
     )
     parser.add_argument("--output-dir", default="output/validation")
     return parser.parse_args()

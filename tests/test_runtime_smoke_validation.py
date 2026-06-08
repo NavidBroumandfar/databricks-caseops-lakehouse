@@ -7,6 +7,7 @@ from pathlib import Path
 from src.pipelines.runtime_smoke_validation import (
     CHECK_ARTIFACTS_SANITIZED,
     CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH,
+    CHECK_CAPTURE_PLAN_PROVIDED,
     CHECK_CAPTURE_PLAN_RUN_MATCHES,
     CHECK_DELIVERY_VALIDATION_VALIDATED,
     CHECK_SHARE_MANIFEST_PROVISIONED,
@@ -209,7 +210,7 @@ def _write_ready_planned_package(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-def test_runtime_smoke_package_ready_when_all_artifacts_are_valid(tmp_path: Path) -> None:
+def test_runtime_smoke_package_incomplete_without_capture_plan(tmp_path: Path) -> None:
     paths = _write_ready_package(tmp_path)
 
     result = validate_runtime_smoke_package(
@@ -221,8 +222,8 @@ def test_runtime_smoke_package_ready_when_all_artifacts_are_valid(tmp_path: Path
         delivery_validation_result_path=paths["delivery_validation"],
     )
 
-    assert result.smoke_status == SMOKE_STATUS_READY
-    assert result.checks_failed == []
+    assert result.smoke_status == SMOKE_STATUS_INCOMPLETE
+    assert CHECK_CAPTURE_PLAN_PROVIDED in result.checks_failed
     assert CHECK_DELIVERY_VALIDATION_VALIDATED in result.checks_passed
 
 
@@ -323,7 +324,7 @@ def test_runtime_smoke_package_fails_when_artifact_contains_sensitive_text(tmp_p
 
 
 def test_write_runtime_smoke_result_writes_json_and_text(tmp_path: Path) -> None:
-    paths = _write_ready_package(tmp_path)
+    paths = _write_ready_planned_package(tmp_path)
     result = validate_runtime_smoke_package(
         pipeline_run_id=PIPELINE_RUN_ID,
         environment="dev",
@@ -331,6 +332,7 @@ def test_write_runtime_smoke_result_writes_json_and_text(tmp_path: Path) -> None
         share_manifest_path=paths["share_manifest"],
         runtime_evidence_path=paths["runtime_evidence"],
         delivery_validation_result_path=paths["delivery_validation"],
+        capture_plan_path=paths["capture_plan"],
     )
 
     json_path, text_path = write_runtime_smoke_result(result, tmp_path / "out")

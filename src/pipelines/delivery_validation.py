@@ -1242,11 +1242,14 @@ def format_validation_result_text(result: DeliveryValidationResult) -> str:
 def write_validation_result(
     result: DeliveryValidationResult,
     output_dir: Path,
+    artifact_id: Optional[str] = None,
 ) -> tuple[Path, Path]:
     """
     Write validation result artifacts (JSON + text) to output_dir.
 
     Creates the directory if it does not exist.
+    Uses result.validation_run_id by default. Pass artifact_id when a caller
+    needs a stable run-scoped alias, such as Phase 4 smoke package capture.
 
     Returns
     -------
@@ -1255,8 +1258,9 @@ def write_validation_result(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    json_path = compute_validation_result_path(output_dir, result.validation_run_id)
-    text_path = compute_validation_result_text_path(output_dir, result.validation_run_id)
+    output_id = artifact_id or result.validation_run_id
+    json_path = compute_validation_result_path(output_dir, output_id)
+    text_path = compute_validation_result_text_path(output_dir, output_id)
 
     json_path.write_text(result.to_json_str(), encoding="utf-8")
     text_path.write_text(format_validation_result_text(result), encoding="utf-8")
