@@ -25,9 +25,16 @@ from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
-# Support direct execution as documented:
-# .venv/bin/python src/pipelines/run_databricks_pipeline.py ...
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+# Support direct execution as documented and Databricks Git-source Python tasks,
+# where __file__ may be unavailable.
+def _resolve_repo_root() -> Path:
+    try:
+        return Path(__file__).resolve().parents[2]
+    except NameError:
+        return Path.cwd()
+
+
+_REPO_ROOT = _resolve_repo_root()
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 

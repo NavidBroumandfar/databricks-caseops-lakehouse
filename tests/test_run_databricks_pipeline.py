@@ -12,6 +12,7 @@ from src.pipelines.run_databricks_pipeline import (
     DatabricksRuntimeError,
     RuntimeFileMetadata,
     _build_bronze_record,
+    _resolve_repo_root,
     _resolve_runtime_paths,
     _run_gold_stage,
     _run_silver_stage,
@@ -151,6 +152,21 @@ def _targets() -> DeltaTableTargets:
 
 def _input_rows() -> list[dict]:
     return [{"path": "/Volumes/caseops_dev/raw/documents/doc1.pdf", "length": 128}]
+
+
+def test_resolve_repo_root_falls_back_to_cwd_without_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.pipelines.run_databricks_pipeline as runner
+
+    repo_root = Path(__file__).resolve().parents[1]
+    original_file = runner.__dict__.pop("__file__", None)
+    monkeypatch.chdir(repo_root)
+    try:
+        assert _resolve_repo_root() == repo_root
+    finally:
+        if original_file is not None:
+            runner.__dict__["__file__"] = original_file
 
 
 def test_validate_preflight_all_stage_checks_raw_inputs_without_write_checks() -> None:
