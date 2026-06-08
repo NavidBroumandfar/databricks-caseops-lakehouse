@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -21,7 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from src.schemas.runtime_smoke import (
     SMOKE_WORKSPACE_PERSONAL,
     RuntimeSmokeCapturePlan,
+    RuntimeSmokeEnvironmentVariable,
     RuntimeSmokeExpectedArtifact,
+    RuntimeSmokeRunContext,
 )
 
 
@@ -38,6 +41,13 @@ def _safe_pipeline_run_id(pipeline_run_id: str) -> str:
 
 def _path_text(path: Path) -> str:
     return path.as_posix()
+
+
+def _required_artifact_path(plan: RuntimeSmokeCapturePlan, artifact_name: str) -> str:
+    path = plan.artifact_path(artifact_name)
+    if path is None:
+        raise ValueError(f"Capture plan is missing expected artifact: {artifact_name}")
+    return path
 
 
 def build_runtime_smoke_capture_plan(
@@ -180,12 +190,87 @@ def format_runtime_smoke_capture_plan_text(plan: RuntimeSmokeCapturePlan) -> str
     return "\n".join(lines) + "\n"
 
 
+def build_runtime_smoke_run_context(
+    *,
+    plan: RuntimeSmokeCapturePlan,
+    capture_plan_json_path: Path,
+    capture_plan_text_path: Path,
+    generated_at: Optional[str] = None,
+) -> RuntimeSmokeRunContext:
+    """Build a non-secret run context from a generated capture plan."""
+    return RuntimeSmokeRunContext(
+        context_id=str(uuid.uuid4()),
+        pipeline_run_id=plan.pipeline_run_id,
+        environment=plan.environment,
+        workspace_mode=plan.workspace_mode,
+        generated_at=generated_at or datetime.now(tz=timezone.utc).isoformat(),
+        capture_plan_path=_path_text(capture_plan_json_path),
+        capture_plan_text_path=_path_text(capture_plan_text_path),
+        environment_variables=[
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_ENV",
+                value=plan.environment,
+                description="Bounded Databricks CaseOps runtime environment.",
+            ),
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_DELIVERY_PIPELINE_RUN_ID",
+                value=plan.pipeline_run_id,
+                description="Run-scoped ID shared by runtime, delivery validation, and smoke validation.",
+            ),
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_DELIVERY_EVENT_PATH",
+                value=_required_artifact_path(plan, ARTIFACT_DELIVERY_EVENT),
+                description="Expected delivery event artifact path for the smoke run.",
+            ),
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_SHARE_MANIFEST_PATH",
+                value=_required_artifact_path(plan, ARTIFACT_SHARE_MANIFEST),
+                description="Expected Delta Share preparation manifest path for the smoke run.",
+            ),
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_RUNTIME_EVIDENCE_PATH",
+                value=_required_artifact_path(plan, ARTIFACT_RUNTIME_EVIDENCE),
+                description="Expected sanitized runtime evidence artifact path for the smoke run.",
+            ),
+            RuntimeSmokeEnvironmentVariable(
+                name="CASEOPS_SMOKE_CAPTURE_PLAN_PATH",
+                value=_path_text(capture_plan_json_path),
+                description="Expected capture plan path used by local smoke package validation.",
+            ),
+        ],
+        observations=[
+            "These values are run-scoped coordination inputs, not runtime evidence.",
+            "This context intentionally excludes Databricks host, cluster ID, workspace root, tokens, and personal identifiers.",
+            "Set deployment-specific bundle variables separately in the operator environment.",
+        ],
+    )
+
+
+def format_runtime_smoke_run_context_env(context: RuntimeSmokeRunContext) -> str:
+    """Format non-secret run context variables as shell exports."""
+    lines = [
+        "# Databricks CaseOps Phase 4 runtime smoke context",
+        "# Non-secret run-scoped values only; deployment-specific Databricks variables are not included.",
+    ]
+    for variable in context.environment_variables:
+        lines.append(f"export {variable.name}={shlex.quote(variable.value)}")
+    return "\n".join(lines) + "\n"
+
+
 def _plan_json_path(output_dir: Path, pipeline_run_id: str) -> Path:
     return output_dir / f"runtime_smoke_capture_plan_{_safe_pipeline_run_id(pipeline_run_id)}.json"
 
 
 def _plan_text_path(output_dir: Path, pipeline_run_id: str) -> Path:
     return output_dir / f"runtime_smoke_capture_plan_{_safe_pipeline_run_id(pipeline_run_id)}.txt"
+
+
+def _context_json_path(output_dir: Path, pipeline_run_id: str) -> Path:
+    return output_dir / f"runtime_smoke_run_context_{_safe_pipeline_run_id(pipeline_run_id)}.json"
+
+
+def _context_env_path(output_dir: Path, pipeline_run_id: str) -> Path:
+    return output_dir / f"runtime_smoke_run_context_{_safe_pipeline_run_id(pipeline_run_id)}.env"
 
 
 def write_runtime_smoke_capture_plan(
@@ -199,6 +284,19 @@ def write_runtime_smoke_capture_plan(
     json_path.write_text(plan.to_json_str(indent=2) + "\n", encoding="utf-8")
     text_path.write_text(format_runtime_smoke_capture_plan_text(plan), encoding="utf-8")
     return json_path, text_path
+
+
+def write_runtime_smoke_run_context(
+    context: RuntimeSmokeRunContext,
+    output_dir: Path,
+) -> tuple[Path, Path]:
+    """Write JSON and shell-export run context artifacts."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = _context_json_path(output_dir, context.pipeline_run_id)
+    env_path = _context_env_path(output_dir, context.pipeline_run_id)
+    json_path.write_text(context.to_json_str(indent=2) + "\n", encoding="utf-8")
+    env_path.write_text(format_runtime_smoke_run_context_env(context), encoding="utf-8")
+    return json_path, env_path
 
 
 def _parse_args() -> argparse.Namespace:
@@ -220,8 +318,19 @@ def main() -> None:
         output_root=Path(args.output_root),
     )
     json_path, text_path = write_runtime_smoke_capture_plan(plan, Path(args.output_dir))
+    context = build_runtime_smoke_run_context(
+        plan=plan,
+        capture_plan_json_path=json_path,
+        capture_plan_text_path=text_path,
+    )
+    context_json_path, context_env_path = write_runtime_smoke_run_context(
+        context,
+        Path(args.output_dir),
+    )
     print(f"Wrote: {json_path}")
     print(f"Wrote: {text_path}")
+    print(f"Wrote: {context_json_path}")
+    print(f"Wrote: {context_env_path}")
     print("Capture plan generated. This is not runtime smoke evidence.")
 
 

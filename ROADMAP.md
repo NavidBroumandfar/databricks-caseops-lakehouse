@@ -191,6 +191,10 @@ Status: active.
      and fail the package when the supplied artifact paths drift from the
      planned run-scoped paths. This is a repeatability check, not workspace
      smoke evidence.
+   - Current support slice: the capture-plan generator also writes a non-secret
+     run context artifact and shell-export file so `pipeline_run_id`,
+     environment, delivery artifact paths, and runtime evidence paths can be
+     propagated deterministically without committing workspace identifiers.
 
 4. Add production-grade pre-flight validation.
    - Validate required tables, schemas, and manifest presence before runtime runs.

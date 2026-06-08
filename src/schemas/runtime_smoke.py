@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 
 RUNTIME_SMOKE_SCHEMA_VERSION = "v0.1.0"
 RUNTIME_SMOKE_PLAN_SCHEMA_VERSION = "v0.1.0"
+RUNTIME_SMOKE_RUN_CONTEXT_SCHEMA_VERSION = "v0.1.0"
 
 SMOKE_STATUS_READY = "ready_for_phase4_closeout"
 SMOKE_STATUS_INCOMPLETE = "incomplete"
@@ -107,6 +108,73 @@ class RuntimeSmokeExpectedArtifact(BaseModel):
     path: str = Field(description="Expected local-safe artifact path.")
     required: bool = Field(default=True, description="Whether closeout requires this artifact.")
     description: str = Field(description="Human-readable artifact purpose.")
+
+
+class RuntimeSmokeEnvironmentVariable(BaseModel):
+    """One non-secret environment variable for repeatable smoke execution."""
+
+    name: str = Field(description="Environment variable name.")
+    value: str = Field(description="Non-secret value to export for the smoke run.")
+    required: bool = Field(default=True, description="Whether the smoke run expects this value.")
+    description: str = Field(description="Human-readable variable purpose.")
+
+
+class RuntimeSmokeRunContext(BaseModel):
+    """
+    Non-secret run context for a repeatable Phase 4 workspace smoke run.
+
+    The context centralizes run-scoped IDs, expected artifact paths, and
+    non-secret environment variables that an operator must keep consistent
+    across the Databricks bundle run and local evidence validation.
+    """
+
+    context_id: str = Field(description="UUID v4 identifying this run context.")
+    pipeline_run_id: str = Field(description="Pipeline run ID for this smoke run.")
+    environment: str = Field(description="Runtime CASEOPS environment.")
+    workspace_mode: str = Field(description="Workspace context expected for closeout evidence.")
+    generated_at: str = Field(description="UTC ISO 8601 timestamp when the context was generated.")
+    capture_plan_path: str = Field(description="JSON capture plan path for this run.")
+    capture_plan_text_path: str = Field(description="Text capture plan path for this run.")
+    environment_variables: List[RuntimeSmokeEnvironmentVariable] = Field(default_factory=list)
+    observations: List[str] = Field(default_factory=list)
+    schema_version: str = Field(default=RUNTIME_SMOKE_RUN_CONTEXT_SCHEMA_VERSION)
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, value: str) -> str:
+        if value not in SMOKE_ENVIRONMENTS:
+            raise ValueError(f"environment must be one of {sorted(SMOKE_ENVIRONMENTS)}")
+        return value
+
+    @field_validator("workspace_mode")
+    @classmethod
+    def validate_workspace_mode(cls, value: str) -> str:
+        if value not in ALL_SMOKE_WORKSPACE_MODES:
+            raise ValueError(
+                f"workspace_mode must be one of {sorted(ALL_SMOKE_WORKSPACE_MODES)}"
+            )
+        return value
+
+    @field_validator("schema_version")
+    @classmethod
+    def validate_schema_version(cls, value: str) -> str:
+        if value != RUNTIME_SMOKE_RUN_CONTEXT_SCHEMA_VERSION:
+            raise ValueError(
+                f"schema_version must be '{RUNTIME_SMOKE_RUN_CONTEXT_SCHEMA_VERSION}'"
+            )
+        return value
+
+    def environment_variable(self, name: str) -> Optional[str]:
+        for variable in self.environment_variables:
+            if variable.name == name:
+                return variable.value
+        return None
+
+    def to_json_dict(self) -> dict:
+        return json.loads(self.model_dump_json())
+
+    def to_json_str(self, indent: int = 2) -> str:
+        return json.dumps(self.to_json_dict(), indent=indent)
 
 
 class RuntimeSmokeCapturePlan(BaseModel):
