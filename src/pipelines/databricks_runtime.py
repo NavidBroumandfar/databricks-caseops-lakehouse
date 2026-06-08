@@ -13,6 +13,7 @@ import json
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Optional
 
 
@@ -102,6 +103,50 @@ def _spark_scalar(value: Any) -> Any:
 
 def _spark_row(record: Mapping[str, Any]) -> dict:
     return {key: _spark_scalar(value) for key, value in record.items()}
+
+
+def _spark_schema_for_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
+    """
+    Build a nullable Spark schema so all-null optional columns do not break inference.
+
+    PySpark is imported lazily to keep local execution and tests workspace-free.
+    """
+    try:
+        from pyspark.sql.types import (  # type: ignore[import-not-found]
+            BooleanType,
+            DoubleType,
+            LongType,
+            StringType,
+            StructField,
+            StructType,
+            TimestampType,
+        )
+    except Exception:
+        return None
+
+    ordered_keys: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+
+    fields = []
+    for key in ordered_keys:
+        values = [row.get(key) for row in rows if row.get(key) is not None]
+        if not values:
+            data_type = StringType()
+        elif all(isinstance(value, bool) for value in values):
+            data_type = BooleanType()
+        elif all(isinstance(value, int) and not isinstance(value, bool) for value in values):
+            data_type = LongType()
+        elif all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in values):
+            data_type = DoubleType()
+        elif all(isinstance(value, (datetime, date)) for value in values):
+            data_type = TimestampType()
+        else:
+            data_type = StringType()
+        fields.append(StructField(key, data_type, nullable=True))
+    return StructType(fields)
 
 
 def _decode_json_cell(value: Any) -> Any:
@@ -403,7 +448,11 @@ class DeltaTableIO:
         if not rows:
             return 0
 
-        dataframe = self.spark.createDataFrame(rows)
+        schema = _spark_schema_for_rows(rows)
+        if schema is None:
+            dataframe = self.spark.createDataFrame(rows)
+        else:
+            dataframe = self.spark.createDataFrame(rows, schema=schema)
         (
             dataframe.write
             .format("delta")

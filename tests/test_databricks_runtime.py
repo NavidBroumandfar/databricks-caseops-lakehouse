@@ -13,6 +13,7 @@ from typing import Optional
 
 import pytest
 
+from src.pipelines import databricks_runtime as runtime_module
 from src.pipelines.classify_gold import DatabricksAiClassifyAdapter
 from src.pipelines.databricks_runtime import (
     DatabricksAiClassifyRuntimeAdapter,
@@ -90,6 +91,7 @@ class FakeSpark:
         self.sql_queries = []
         self.table_names = []
         self.created_rows = None
+        self.created_schema = None
         self.saved_table = None
         self.saved_format = None
         self.saved_mode = None
@@ -103,8 +105,9 @@ class FakeSpark:
         self.table_names.append(table_name)
         return FakeTableDataFrame(self.table_rows)
 
-    def createDataFrame(self, rows: list[dict]) -> FakeWriteDataFrame:
+    def createDataFrame(self, rows: list[dict], schema=None) -> FakeWriteDataFrame:
         self.created_rows = rows
+        self.created_schema = schema
         return FakeWriteDataFrame(self, rows)
 
 
@@ -297,6 +300,23 @@ def test_delta_table_io_serializes_complex_fields_for_spark_inference() -> None:
             "validation_errors": '["issuing_office: null"]',
         }
     ]
+
+
+def test_delta_table_io_uses_explicit_schema_when_available(monkeypatch) -> None:
+    spark = FakeSpark()
+    io = DeltaTableIO(spark)
+    sentinel_schema = object()
+    monkeypatch.setattr(runtime_module, "_spark_schema_for_rows", lambda rows: sentinel_schema)
+
+    count = io.write_records(
+        records=[{"document_id": "doc-1", "document_class_hint": None}],
+        table_name="caseops_dev.bronze.parsed_documents",
+        mode="overwrite",
+    )
+
+    assert count == 1
+    assert spark.created_schema is sentinel_schema
+    assert spark.created_rows == [{"document_id": "doc-1", "document_class_hint": None}]
 
 
 def test_delta_table_io_empty_write_is_noop() -> None:
