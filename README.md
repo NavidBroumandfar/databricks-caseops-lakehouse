@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
-[![Tests](https://img.shields.io/badge/Tests-1%2C501%20passing-2EA043?style=flat-square)](./tests/)
+[![Tests](https://img.shields.io/badge/Tests-1%2C510%20passing-2EA043?style=flat-square)](./tests/)
 [![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
 
 </div>
