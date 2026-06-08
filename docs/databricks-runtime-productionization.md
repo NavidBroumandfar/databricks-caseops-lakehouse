@@ -46,6 +46,10 @@ The boundary remains unchanged:
 - `config/databricks-runtime-bundle/databricks.yml`
   - Job scaffold for stage-level Databricks execution using the same runner
   - No secrets or workspace URLs committed
+- `src/pipelines/runtime_smoke_validation.py`
+  - Local-safe validator for a complete sanitized Phase 4 smoke evidence
+    package
+  - Does not call Databricks APIs; it validates captured artifacts only
 
 ## 3) Runtime path target (environment-aware)
 
@@ -199,6 +203,8 @@ For each smoke run, produce the minimum artifacts below and keep sensitive value
    - `output/validation/runtime_evidence/runtime_evidence.json` (sanitized)
 5. C-2 result artifact from runner:
    - `output/validation/delivery_validation_<pipeline_run_id>.json`
+6. Phase 4 smoke package validation result:
+   - `output/validation/runtime_smoke_validation_<pipeline_run_id>.json`
 
 Sanitize all evidence:
 
@@ -208,6 +214,31 @@ Sanitize all evidence:
 - no tokens
 - no personal identifiers
 
+Validate the complete smoke package locally after the workspace run:
+
+```bash
+.venv/bin/python src/pipelines/runtime_smoke_validation.py \
+  --pipeline-run-id <pipeline-run-id> \
+  --environment dev \
+  --delivery-event-path output/delivery/delivery_event_<pipeline-run-id>.json \
+  --share-manifest-path output/delivery/delta_share_preparation_manifest.json \
+  --runtime-evidence-path output/validation/runtime_evidence/runtime_evidence.json \
+  --delivery-validation-result-path output/validation/delivery_validation_<pipeline-run-id>.json \
+  --output-dir output/validation
+```
+
+The result reaches `smoke_status = ready_for_phase4_closeout` only when:
+
+- delivery event, share manifest, runtime evidence, and C-2 validation result
+  all parse successfully
+- all artifacts agree on the same `pipeline_run_id`
+- share manifest status is `provisioned`
+- runtime evidence contains all required query and assertion checks
+- C-2 delivery validation status is `validated` with `end_to_end` scope in
+  `personal_databricks` mode
+- checked artifacts do not contain URL, token, activation-link, or credential
+  patterns
+
 ## 7) Acceptance criteria (Phase 4)
 
 - [x] Runtime adapters (`ai_parse_document`, `ai_extract`, `ai_classify`) wired through a single Databricks entrypoint.
@@ -215,6 +246,7 @@ Sanitize all evidence:
 - [x] Deployment scaffold added under `config/databricks-runtime-bundle/`.
 - [x] Runtime validation stage implemented (`delivery_validation`) with local-safe evidence path.
 - [x] Deterministic preflight/check-only path added for workspace runs (`--check-only`).
+- [x] Local-safe Phase 4 smoke package validator added for captured workspace evidence.
 - [ ] End-to-end workspace repeatable smoke check has been executed against staging/prod (pipeline remains scoped to dev/staging/prod by environment).
 - [x] No secrets or workspace-identifying values committed in scoped files.
 

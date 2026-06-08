@@ -179,6 +179,10 @@ Status: active.
    - Capture sanitized evidence for each run using
      `examples/runtime_evidence_personal_databricks_template.json`.
    - Keep evidence artifacts out of committed outputs.
+   - Current slice: `src/pipelines/runtime_smoke_validation.py` validates a
+     captured smoke evidence package without Databricks credentials and only
+     reports `ready_for_phase4_closeout` when runtime evidence and C-2 delivery
+     validation agree on the same provisioned `pipeline_run_id`.
 
 4. Add production-grade pre-flight validation.
    - Validate required tables, schemas, and manifest presence before runtime runs.
@@ -187,7 +191,8 @@ Status: active.
 Acceptance criteria:
 
 - Runtime pipeline execution path is documented in repo with concrete entrypoints.
-- Workspace runtime smoke test is repeatable and evidence-based.
+- Workspace runtime smoke test is repeatable and evidence-based; captured
+  evidence can be checked locally with `runtime_smoke_validation.py`.
 - No secret or workspace-identifying value is added to tracked files.
 - `docs/databricks-runtime-productionization.md` serves as the single source of truth for Phase 4 execution details.
 
