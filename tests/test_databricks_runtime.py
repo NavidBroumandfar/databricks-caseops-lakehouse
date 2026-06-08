@@ -291,6 +291,33 @@ def test_extract_runtime_adapter_unwraps_v2_field_value_response() -> None:
     }
 
 
+def test_extract_runtime_adapter_decodes_json_rendered_variant() -> None:
+    spark = FakeSpark(
+        sql_results=[
+            [
+                {
+                    "extraction_result": JsonRenderedVariant(
+                        '{"error_message":null,"metadata":{},"response":'
+                        '{"recipient_company":{"value":"Acme Pharma"},'
+                        '"violation_type":[{"value":"CGMP"}],'
+                        '"corrective_action_requested":{"value":true}}}'
+                    )
+                }
+            ]
+        ]
+    )
+
+    result = DatabricksAiExtractRuntimeAdapter(spark=spark, extraction_schema={}).extract(
+        "Warning letter text"
+    )
+
+    assert result == {
+        "recipient_company": "Acme Pharma",
+        "violation_type": ["CGMP"],
+        "corrective_action_requested": True,
+    }
+
+
 def test_databricks_ai_extract_schema_converts_pydantic_properties() -> None:
     schema = {
         "type": "object",

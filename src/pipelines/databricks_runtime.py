@@ -249,6 +249,13 @@ def _decode_variant(value: Any) -> Any:
             return json.loads(value)
         except json.JSONDecodeError:
             return value
+    if not isinstance(value, (Mapping, Sequence, bytes, bytearray)):
+        text = str(value).strip()
+        if text and text[0] in "{[":
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                return value
     return value
 
 
