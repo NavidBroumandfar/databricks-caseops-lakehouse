@@ -91,13 +91,42 @@ def _as_jsonable_dict(record: Any) -> dict:
     raise TypeError(f"Unsupported record type for Delta write: {type(record)!r}")
 
 
+def _spark_scalar(value: Any) -> Any:
+    """Coerce complex JSON values to deterministic strings before Spark infers schema."""
+    if isinstance(value, Mapping):
+        return _json_dumps(value)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return _json_dumps(list(value))
+    return value
+
+
+def _spark_row(record: Mapping[str, Any]) -> dict:
+    return {key: _spark_scalar(value) for key, value in record.items()}
+
+
+def _decode_json_cell(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text or text[0] not in "{[":
+        return value
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return value
+
+
+def _decode_json_cells(row: Mapping[str, Any]) -> dict:
+    return {key: _decode_json_cell(value) for key, value in row.items()}
+
+
 def _row_to_mapping(row: Any) -> dict:
     if hasattr(row, "asDict"):
-        return row.asDict(recursive=True)
+        return _decode_json_cells(row.asDict(recursive=True))
     if isinstance(row, Mapping):
-        return dict(row)
+        return _decode_json_cells(row)
     try:
-        return dict(row)
+        return _decode_json_cells(dict(row))
     except (TypeError, ValueError) as exc:
         raise DatabricksRuntimeError(f"Unable to convert Spark row to dict: {row!r}") from exc
 
@@ -370,7 +399,7 @@ class DeltaTableIO:
         if normalized_mode not in ALLOWED_WRITE_MODES:
             raise ValueError(f"Unsupported Delta write mode: {mode!r}")
 
-        rows = [_as_jsonable_dict(record) for record in records]
+        rows = [_spark_row(_as_jsonable_dict(record)) for record in records]
         if not rows:
             return 0
 

@@ -271,6 +271,34 @@ def test_delta_table_io_writes_records_with_delta_format() -> None:
     assert spark.saved_table == "caseops_dev.bronze.parsed_documents"
 
 
+def test_delta_table_io_serializes_complex_fields_for_spark_inference() -> None:
+    spark = FakeSpark()
+    io = DeltaTableIO(spark)
+
+    count = io.write_records(
+        records=[
+            {
+                "document_id": "doc-1",
+                "extracted_fields": {
+                    "issuing_office": None,
+                    "violation_type": [],
+                },
+                "validation_errors": ["issuing_office: null"],
+            }
+        ],
+        table_name="caseops_dev.silver.extracted_records",
+    )
+
+    assert count == 1
+    assert spark.created_rows == [
+        {
+            "document_id": "doc-1",
+            "extracted_fields": '{"issuing_office": null, "violation_type": []}',
+            "validation_errors": '["issuing_office: null"]',
+        }
+    ]
+
+
 def test_delta_table_io_empty_write_is_noop() -> None:
     spark = FakeSpark()
 
@@ -293,6 +321,31 @@ def test_delta_table_io_reads_table_with_limit() -> None:
 
     assert rows == [{"document_id": "doc-1"}]
     assert spark.table_names == ["caseops_dev.silver.extracted_records"]
+
+
+def test_delta_table_io_decodes_json_cells_after_read() -> None:
+    spark = FakeSpark(
+        table_rows=[
+            {
+                "document_id": "doc-1",
+                "extracted_fields": '{"issuing_office": "FDA", "violation_type": []}',
+                "validation_errors": '["issue_date: null"]',
+            }
+        ]
+    )
+
+    rows = DeltaTableIO(spark).read_table("caseops_dev.silver.extracted_records")
+
+    assert rows == [
+        {
+            "document_id": "doc-1",
+            "extracted_fields": {
+                "issuing_office": "FDA",
+                "violation_type": [],
+            },
+            "validation_errors": ["issue_date: null"],
+        }
+    ]
 
 
 def test_delta_table_io_rejects_unsafe_table_names() -> None:
