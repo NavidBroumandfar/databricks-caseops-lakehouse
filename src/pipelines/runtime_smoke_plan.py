@@ -63,6 +63,7 @@ def build_runtime_smoke_capture_plan(
     )
     delivery_validation_path = output_root / "validation" / f"delivery_validation_{safe_id}.json"
     smoke_validation_path = output_root / "validation" / f"runtime_smoke_validation_{safe_id}.json"
+    capture_plan_path = output_root / "validation" / f"runtime_smoke_capture_plan_{safe_id}.json"
 
     local_validation_command = (
         ".venv/bin/python src/pipelines/runtime_smoke_validation.py "
@@ -72,6 +73,7 @@ def build_runtime_smoke_capture_plan(
         f"--share-manifest-path {_path_text(share_manifest_path)} "
         f"--runtime-evidence-path {_path_text(runtime_evidence_path)} "
         f"--delivery-validation-result-path {_path_text(delivery_validation_path)} "
+        f"--capture-plan-path {_path_text(capture_plan_path)} "
         f"--output-dir {_path_text(output_root / 'validation')}"
     )
 

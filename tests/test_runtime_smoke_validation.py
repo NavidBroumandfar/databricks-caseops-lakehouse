@@ -6,10 +6,20 @@ from pathlib import Path
 
 from src.pipelines.runtime_smoke_validation import (
     CHECK_ARTIFACTS_SANITIZED,
+    CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH,
+    CHECK_CAPTURE_PLAN_RUN_MATCHES,
     CHECK_DELIVERY_VALIDATION_VALIDATED,
     CHECK_SHARE_MANIFEST_PROVISIONED,
     validate_runtime_smoke_package,
     write_runtime_smoke_result,
+)
+from src.pipelines.runtime_smoke_plan import (
+    ARTIFACT_DELIVERY_EVENT,
+    ARTIFACT_DELIVERY_VALIDATION,
+    ARTIFACT_RUNTIME_EVIDENCE,
+    ARTIFACT_SHARE_MANIFEST,
+    build_runtime_smoke_capture_plan,
+    write_runtime_smoke_capture_plan,
 )
 from src.schemas.delivery_event import DeliveryEvent
 from src.schemas.delivery_validation import (
@@ -170,6 +180,35 @@ def _write_ready_package(tmp_path: Path) -> dict[str, Path]:
     }
 
 
+def _write_ready_planned_package(tmp_path: Path) -> dict[str, Path]:
+    plan = build_runtime_smoke_capture_plan(
+        pipeline_run_id=PIPELINE_RUN_ID,
+        environment="dev",
+        output_root=tmp_path / "output",
+        generated_at="2026-06-08T00:00:00+00:00",
+    )
+    capture_plan_path, _ = write_runtime_smoke_capture_plan(plan, tmp_path / "output" / "validation")
+    return {
+        "capture_plan": capture_plan_path,
+        "delivery_event": _write_json(
+            Path(plan.artifact_path(ARTIFACT_DELIVERY_EVENT) or ""),
+            _delivery_event_dict(),
+        ),
+        "share_manifest": _write_json(
+            Path(plan.artifact_path(ARTIFACT_SHARE_MANIFEST) or ""),
+            _share_manifest(),
+        ),
+        "runtime_evidence": _write_json(
+            Path(plan.artifact_path(ARTIFACT_RUNTIME_EVIDENCE) or ""),
+            _runtime_evidence(),
+        ),
+        "delivery_validation": _write_json(
+            Path(plan.artifact_path(ARTIFACT_DELIVERY_VALIDATION) or ""),
+            _delivery_validation_result(),
+        ),
+    }
+
+
 def test_runtime_smoke_package_ready_when_all_artifacts_are_valid(tmp_path: Path) -> None:
     paths = _write_ready_package(tmp_path)
 
@@ -185,6 +224,42 @@ def test_runtime_smoke_package_ready_when_all_artifacts_are_valid(tmp_path: Path
     assert result.smoke_status == SMOKE_STATUS_READY
     assert result.checks_failed == []
     assert CHECK_DELIVERY_VALIDATION_VALIDATED in result.checks_passed
+
+
+def test_runtime_smoke_package_ready_when_capture_plan_matches_package(tmp_path: Path) -> None:
+    paths = _write_ready_planned_package(tmp_path)
+
+    result = validate_runtime_smoke_package(
+        pipeline_run_id=PIPELINE_RUN_ID,
+        environment="dev",
+        delivery_event_path=paths["delivery_event"],
+        share_manifest_path=paths["share_manifest"],
+        runtime_evidence_path=paths["runtime_evidence"],
+        delivery_validation_result_path=paths["delivery_validation"],
+        capture_plan_path=paths["capture_plan"],
+    )
+
+    assert result.smoke_status == SMOKE_STATUS_READY
+    assert CHECK_CAPTURE_PLAN_RUN_MATCHES in result.checks_passed
+    assert CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH in result.checks_passed
+
+
+def test_runtime_smoke_package_incomplete_when_capture_plan_paths_drift(tmp_path: Path) -> None:
+    paths = _write_ready_planned_package(tmp_path)
+    drifted_delivery_event = _write_json(tmp_path / "drifted" / "delivery_event.json", _delivery_event_dict())
+
+    result = validate_runtime_smoke_package(
+        pipeline_run_id=PIPELINE_RUN_ID,
+        environment="dev",
+        delivery_event_path=drifted_delivery_event,
+        share_manifest_path=paths["share_manifest"],
+        runtime_evidence_path=paths["runtime_evidence"],
+        delivery_validation_result_path=paths["delivery_validation"],
+        capture_plan_path=paths["capture_plan"],
+    )
+
+    assert result.smoke_status == SMOKE_STATUS_INCOMPLETE
+    assert CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH in result.checks_failed
 
 
 def test_runtime_smoke_package_incomplete_when_manifest_is_not_provisioned(tmp_path: Path) -> None:

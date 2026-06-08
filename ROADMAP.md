@@ -187,6 +187,10 @@ Status: active.
      run-scoped capture plan with expected artifact paths, validation commands,
      and sanitization rules before the workspace smoke run. This plan is not
      runtime evidence.
+   - Current support slice: the smoke validator can consume that capture plan
+     and fail the package when the supplied artifact paths drift from the
+     planned run-scoped paths. This is a repeatability check, not workspace
+     smoke evidence.
 
 4. Add production-grade pre-flight validation.
    - Validate required tables, schemas, and manifest presence before runtime runs.

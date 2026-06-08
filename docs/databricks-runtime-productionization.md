@@ -49,6 +49,8 @@ The boundary remains unchanged:
 - `src/pipelines/runtime_smoke_validation.py`
   - Local-safe validator for a complete sanitized Phase 4 smoke evidence
     package
+  - Optionally checks the package against the run-scoped capture plan so the
+    validated artifact paths match what was planned before workspace execution
   - Does not call Databricks APIs; it validates captured artifacts only
 - `src/pipelines/runtime_smoke_plan.py`
   - Local-safe generator for a run-scoped smoke capture plan before workspace
@@ -247,6 +249,7 @@ Validate the complete smoke package locally after the workspace run:
   --share-manifest-path output/delivery/delta_share_preparation_manifest.json \
   --runtime-evidence-path output/validation/runtime_evidence/runtime_evidence_<pipeline-run-id>.json \
   --delivery-validation-result-path output/validation/delivery_validation_<pipeline-run-id>.json \
+  --capture-plan-path output/validation/runtime_smoke_capture_plan_<pipeline-run-id>.json \
   --output-dir output/validation
 ```
 
@@ -254,6 +257,8 @@ The result reaches `smoke_status = ready_for_phase4_closeout` only when:
 
 - delivery event, share manifest, runtime evidence, and C-2 validation result
   all parse successfully
+- when a capture plan is provided, the plan agrees with the package run ID,
+  environment, workspace mode, and expected artifact paths
 - all artifacts agree on the same `pipeline_run_id`
 - share manifest status is `provisioned`
 - runtime evidence contains all required query and assertion checks

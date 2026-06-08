@@ -32,8 +32,15 @@ from src.schemas.runtime_smoke import (
     SMOKE_STATUS_INCOMPLETE,
     SMOKE_STATUS_READY,
     SMOKE_WORKSPACE_PERSONAL,
+    RuntimeSmokeCapturePlan,
     RuntimeSmokeCheck,
     RuntimeSmokeValidationResult,
+)
+from src.pipelines.runtime_smoke_plan import (
+    ARTIFACT_DELIVERY_EVENT,
+    ARTIFACT_DELIVERY_VALIDATION,
+    ARTIFACT_RUNTIME_EVIDENCE,
+    ARTIFACT_SHARE_MANIFEST,
 )
 
 
@@ -52,6 +59,12 @@ CHECK_DELIVERY_VALIDATION_EXISTS = "delivery_validation_result_exists"
 CHECK_DELIVERY_VALIDATION_PARSEABLE = "delivery_validation_result_parseable"
 CHECK_DELIVERY_VALIDATION_RUN_MATCHES = "delivery_validation_pipeline_run_matches"
 CHECK_DELIVERY_VALIDATION_VALIDATED = "delivery_validation_result_validated"
+CHECK_CAPTURE_PLAN_EXISTS = "capture_plan_exists"
+CHECK_CAPTURE_PLAN_PARSEABLE = "capture_plan_parseable"
+CHECK_CAPTURE_PLAN_RUN_MATCHES = "capture_plan_pipeline_run_matches"
+CHECK_CAPTURE_PLAN_ENVIRONMENT_MATCHES = "capture_plan_environment_matches"
+CHECK_CAPTURE_PLAN_WORKSPACE_MODE_MATCHES = "capture_plan_workspace_mode_matches"
+CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH = "capture_plan_artifact_paths_match"
 CHECK_ARTIFACTS_SANITIZED = "artifacts_sanitized"
 
 _SENSITIVE_TEXT_PATTERNS = (
@@ -177,6 +190,127 @@ def _parse_delivery_validation_result(
     return checks, result
 
 
+def _parse_capture_plan(
+    path: Optional[Path],
+) -> Tuple[list[RuntimeSmokeCheck], Optional[RuntimeSmokeCapturePlan]]:
+    checks: list[RuntimeSmokeCheck] = []
+    if path is None:
+        return [], None
+    if not path.exists():
+        return [_fail(CHECK_CAPTURE_PLAN_EXISTS, f"Not found: {path}")], None
+
+    checks.append(_pass(CHECK_CAPTURE_PLAN_EXISTS, f"Found: {path}"))
+    try:
+        plan = RuntimeSmokeCapturePlan.model_validate(_load_json(path))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_fail(CHECK_CAPTURE_PLAN_PARSEABLE, f"Failed to parse: {exc}"))
+        return checks, None
+    checks.append(
+        _pass(
+            CHECK_CAPTURE_PLAN_PARSEABLE,
+            f"Parsed capture_plan_id={plan.capture_plan_id}.",
+        )
+    )
+    return checks, plan
+
+
+def _planned_artifact_path_matches(
+    plan: RuntimeSmokeCapturePlan,
+    artifact_name: str,
+    actual_path: Optional[Path],
+) -> Optional[str]:
+    expected = plan.artifact_path(artifact_name)
+    if expected is None:
+        return f"Capture plan is missing expected artifact {artifact_name!r}."
+    if actual_path is None:
+        return f"Capture plan expected {expected!r}, but no path was provided."
+    observed = actual_path.as_posix()
+    if observed != expected:
+        return (
+            f"Capture plan expected {artifact_name} at {expected!r}, "
+            f"but validator received {observed!r}."
+        )
+    return None
+
+
+def _validate_capture_plan_consistency(
+    *,
+    plan: Optional[RuntimeSmokeCapturePlan],
+    pipeline_run_id: str,
+    environment: str,
+    workspace_mode: str,
+    delivery_event_path: Optional[Path],
+    share_manifest_path: Optional[Path],
+    runtime_evidence_path: Optional[Path],
+    delivery_validation_result_path: Optional[Path],
+) -> list[RuntimeSmokeCheck]:
+    if plan is None:
+        return []
+
+    checks: list[RuntimeSmokeCheck] = []
+    if plan.pipeline_run_id == pipeline_run_id:
+        checks.append(_pass(CHECK_CAPTURE_PLAN_RUN_MATCHES, "Capture plan run ID matches."))
+    else:
+        checks.append(
+            _fail(
+                CHECK_CAPTURE_PLAN_RUN_MATCHES,
+                f"Expected {pipeline_run_id!r}, observed {plan.pipeline_run_id!r}.",
+            )
+        )
+
+    if plan.environment == environment:
+        checks.append(_pass(CHECK_CAPTURE_PLAN_ENVIRONMENT_MATCHES, "Capture plan environment matches."))
+    else:
+        checks.append(
+            _fail(
+                CHECK_CAPTURE_PLAN_ENVIRONMENT_MATCHES,
+                f"Expected {environment!r}, observed {plan.environment!r}.",
+            )
+        )
+
+    if plan.workspace_mode == workspace_mode:
+        checks.append(
+            _pass(CHECK_CAPTURE_PLAN_WORKSPACE_MODE_MATCHES, "Capture plan workspace mode matches.")
+        )
+    else:
+        checks.append(
+            _fail(
+                CHECK_CAPTURE_PLAN_WORKSPACE_MODE_MATCHES,
+                f"Expected {workspace_mode!r}, observed {plan.workspace_mode!r}.",
+            )
+        )
+
+    mismatches = [
+        mismatch
+        for mismatch in (
+            _planned_artifact_path_matches(plan, ARTIFACT_DELIVERY_EVENT, delivery_event_path),
+            _planned_artifact_path_matches(plan, ARTIFACT_SHARE_MANIFEST, share_manifest_path),
+            _planned_artifact_path_matches(plan, ARTIFACT_RUNTIME_EVIDENCE, runtime_evidence_path),
+            _planned_artifact_path_matches(
+                plan,
+                ARTIFACT_DELIVERY_VALIDATION,
+                delivery_validation_result_path,
+            ),
+        )
+        if mismatch is not None
+    ]
+    if mismatches:
+        checks.append(
+            _fail(
+                CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH,
+                " ".join(mismatches),
+            )
+        )
+    else:
+        checks.append(
+            _pass(
+                CHECK_CAPTURE_PLAN_ARTIFACT_PATHS_MATCH,
+                "Validator artifact paths match the capture plan.",
+            )
+        )
+    return checks
+
+
 def _scan_artifacts_for_sensitive_text(paths: list[Path]) -> RuntimeSmokeCheck:
     for path in paths:
         text = _read_text_if_exists(path)
@@ -225,6 +359,7 @@ def validate_runtime_smoke_package(
     share_manifest_path: Optional[Path],
     runtime_evidence_path: Optional[Path],
     delivery_validation_result_path: Optional[Path],
+    capture_plan_path: Optional[Path] = None,
     workspace_mode: str = SMOKE_WORKSPACE_PERSONAL,
 ) -> RuntimeSmokeValidationResult:
     """Validate a Phase 4 runtime smoke evidence package."""
@@ -236,6 +371,7 @@ def validate_runtime_smoke_package(
             share_manifest_path,
             runtime_evidence_path,
             delivery_validation_result_path,
+            capture_plan_path,
         )
         if path is not None
     ]
@@ -255,6 +391,8 @@ def validate_runtime_smoke_package(
         delivery_validation_result_path
     )
     checks.extend(validation_checks)
+    capture_plan_checks, capture_plan = _parse_capture_plan(capture_plan_path)
+    checks.extend(capture_plan_checks)
 
     if event is not None and event.pipeline_run_id == pipeline_run_id:
         checks.append(_pass(CHECK_DELIVERY_EVENT_RUN_MATCHES, "Delivery event run ID matches."))
@@ -350,6 +488,19 @@ def validate_runtime_smoke_package(
                 f"observed {observed!r}.",
             )
         )
+
+    checks.extend(
+        _validate_capture_plan_consistency(
+            plan=capture_plan,
+            pipeline_run_id=pipeline_run_id,
+            environment=environment,
+            workspace_mode=workspace_mode,
+            delivery_event_path=delivery_event_path,
+            share_manifest_path=share_manifest_path,
+            runtime_evidence_path=runtime_evidence_path,
+            delivery_validation_result_path=delivery_validation_result_path,
+        )
+    )
 
     checks.append(
         _scan_artifacts_for_sensitive_text(
@@ -453,6 +604,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--share-manifest-path", required=True)
     parser.add_argument("--runtime-evidence-path", required=True)
     parser.add_argument("--delivery-validation-result-path", required=True)
+    parser.add_argument(
+        "--capture-plan-path",
+        default=None,
+        help="Optional runtime smoke capture plan JSON used for plan-vs-package consistency checks.",
+    )
     parser.add_argument("--output-dir", default="output/validation")
     return parser.parse_args()
 
@@ -466,6 +622,7 @@ def main() -> None:
         share_manifest_path=Path(args.share_manifest_path),
         runtime_evidence_path=Path(args.runtime_evidence_path),
         delivery_validation_result_path=Path(args.delivery_validation_result_path),
+        capture_plan_path=Path(args.capture_plan_path) if args.capture_plan_path else None,
     )
     json_path, text_path = write_runtime_smoke_result(result, Path(args.output_dir))
     print(f"Runtime smoke status: {result.smoke_status}")

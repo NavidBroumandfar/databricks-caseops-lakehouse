@@ -204,7 +204,8 @@ Phase 4 is the path from adapter-ready code to reproducible runtime execution.
 - `src/pipelines/runtime_smoke_plan.py` generates a run-scoped, local-safe
   capture plan before workspace execution.
 - `src/pipelines/runtime_smoke_validation.py` validates sanitized captured
-  smoke packages after workspace execution.
+  smoke packages after workspace execution, and can optionally check those
+  packages against the capture plan's run-scoped artifact paths.
 
 This repository intentionally remains without hardcoded URLs, credentials,
 activation links, or workspace identifiers. All runtime execution assumptions are
