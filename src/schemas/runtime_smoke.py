@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 RUNTIME_SMOKE_SCHEMA_VERSION = "v0.1.0"
 RUNTIME_SMOKE_PLAN_SCHEMA_VERSION = "v0.1.0"
 RUNTIME_SMOKE_RUN_CONTEXT_SCHEMA_VERSION = "v0.1.0"
+RUNTIME_SMOKE_PREFLIGHT_SCHEMA_VERSION = "v0.1.0"
 
 SMOKE_STATUS_READY = "ready_for_phase4_closeout"
 SMOKE_STATUS_INCOMPLETE = "incomplete"
@@ -25,6 +26,13 @@ ALL_SMOKE_STATUSES = {
     SMOKE_STATUS_READY,
     SMOKE_STATUS_INCOMPLETE,
     SMOKE_STATUS_FAILED,
+}
+
+SMOKE_PREFLIGHT_STATUS_READY = "ready_for_workspace_smoke"
+SMOKE_PREFLIGHT_STATUS_BLOCKED = "blocked"
+ALL_SMOKE_PREFLIGHT_STATUSES = {
+    SMOKE_PREFLIGHT_STATUS_READY,
+    SMOKE_PREFLIGHT_STATUS_BLOCKED,
 }
 
 SMOKE_WORKSPACE_PERSONAL = "personal_databricks"
@@ -91,6 +99,70 @@ class RuntimeSmokeValidationResult(BaseModel):
         if value != RUNTIME_SMOKE_SCHEMA_VERSION:
             raise ValueError(
                 f"schema_version must be '{RUNTIME_SMOKE_SCHEMA_VERSION}'"
+            )
+        return value
+
+    def to_json_dict(self) -> dict:
+        return json.loads(self.model_dump_json())
+
+    def to_json_str(self, indent: int = 2) -> str:
+        return json.dumps(self.to_json_dict(), indent=indent)
+
+
+class RuntimeSmokePreflightResult(BaseModel):
+    """
+    Structured validation result for pre-workspace smoke coordination artifacts.
+
+    This result validates whether a capture plan and run context are internally
+    consistent before an operator runs Databricks. It is not runtime smoke
+    evidence and cannot be used for Phase 4 closeout.
+    """
+
+    preflight_run_id: str = Field(description="UUID v4 identifying this preflight run.")
+    pipeline_run_id: str = Field(description="Pipeline run ID being prepared.")
+    environment: str = Field(description="Runtime CASEOPS environment prepared.")
+    workspace_mode: str = Field(description="Workspace context expected for the smoke run.")
+    checked_at: str = Field(description="UTC ISO 8601 preflight timestamp.")
+    preflight_status: str = Field(description="Overall preflight status.")
+    preflight_reason: str = Field(description="Human-readable explanation of preflight_status.")
+    checks_passed: List[str] = Field(default_factory=list)
+    checks_failed: List[str] = Field(default_factory=list)
+    check_details: List[RuntimeSmokeCheck] = Field(default_factory=list)
+    artifacts_checked: List[str] = Field(default_factory=list)
+    observations: List[str] = Field(default_factory=list)
+    schema_version: str = Field(default=RUNTIME_SMOKE_PREFLIGHT_SCHEMA_VERSION)
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, value: str) -> str:
+        if value not in SMOKE_ENVIRONMENTS:
+            raise ValueError(f"environment must be one of {sorted(SMOKE_ENVIRONMENTS)}")
+        return value
+
+    @field_validator("workspace_mode")
+    @classmethod
+    def validate_workspace_mode(cls, value: str) -> str:
+        if value not in ALL_SMOKE_WORKSPACE_MODES:
+            raise ValueError(
+                f"workspace_mode must be one of {sorted(ALL_SMOKE_WORKSPACE_MODES)}"
+            )
+        return value
+
+    @field_validator("preflight_status")
+    @classmethod
+    def validate_preflight_status(cls, value: str) -> str:
+        if value not in ALL_SMOKE_PREFLIGHT_STATUSES:
+            raise ValueError(
+                f"preflight_status must be one of {sorted(ALL_SMOKE_PREFLIGHT_STATUSES)}"
+            )
+        return value
+
+    @field_validator("schema_version")
+    @classmethod
+    def validate_schema_version(cls, value: str) -> str:
+        if value != RUNTIME_SMOKE_PREFLIGHT_SCHEMA_VERSION:
+            raise ValueError(
+                f"schema_version must be '{RUNTIME_SMOKE_PREFLIGHT_SCHEMA_VERSION}'"
             )
         return value
 

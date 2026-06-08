@@ -195,6 +195,11 @@ Status: active.
      run context artifact and shell-export file so `pipeline_run_id`,
      environment, delivery artifact paths, and runtime evidence paths can be
      propagated deterministically without committing workspace identifiers.
+   - Current support slice: `src/pipelines/runtime_smoke_preflight.py` validates
+     the generated capture plan and run context before workspace execution so
+     drift in run ID, environment, workspace mode, expected artifact paths,
+     required non-secret variables, command coverage, or sensitive-text patterns
+     can be caught locally. This preflight result is not runtime smoke evidence.
 
 4. Add production-grade pre-flight validation.
    - Validate required tables, schemas, and manifest presence before runtime runs.

@@ -9,6 +9,7 @@ from src.pipelines.runtime_smoke_plan import (
     ARTIFACT_DELIVERY_EVENT,
     ARTIFACT_DELIVERY_VALIDATION,
     ARTIFACT_RUNTIME_EVIDENCE,
+    ARTIFACT_RUNTIME_SMOKE_PREFLIGHT,
     ARTIFACT_RUNTIME_SMOKE_VALIDATION,
     ARTIFACT_SHARE_MANIFEST,
     build_runtime_smoke_run_context,
@@ -47,6 +48,9 @@ def test_build_runtime_smoke_capture_plan_uses_run_scoped_paths() -> None:
     assert plan.artifact_path(ARTIFACT_DELIVERY_VALIDATION) == (
         "output/validation/delivery_validation_runtime-smoke_run_001.json"
     )
+    assert plan.artifact_path(ARTIFACT_RUNTIME_SMOKE_PREFLIGHT) == (
+        "output/validation/runtime_smoke_preflight_runtime-smoke_run_001.json"
+    )
     assert plan.artifact_path(ARTIFACT_RUNTIME_SMOKE_VALIDATION) == (
         "output/validation/runtime_smoke_validation_runtime-smoke_run_001.json"
     )
@@ -66,6 +70,8 @@ def test_build_runtime_smoke_capture_plan_includes_validation_commands() -> None
     assert any("--delivery-pipeline-run-id runtime-smoke-run-002" in c for c in plan.workspace_commands)
     assert any("--environment staging" in c for c in plan.local_validation_commands)
     assert any("--capture-plan-path" in c for c in plan.local_validation_commands)
+    assert any("runtime_smoke_preflight.py" in c for c in plan.local_validation_commands)
+    assert any("--run-context-path" in c for c in plan.local_validation_commands)
     assert any("--workspace-mode personal_databricks" in c for c in plan.workspace_commands)
 
 

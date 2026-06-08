@@ -58,6 +58,12 @@ The boundary remains unchanged:
   - Produces expected artifact paths, commands, sanitization rules, and a
     non-secret run context for the bundle variables that must stay consistent
   - The plan and run context are not runtime evidence
+- `src/pipelines/runtime_smoke_preflight.py`
+  - Local-safe validator for generated smoke capture plan and run context
+    artifacts before workspace execution
+  - Blocks drift in run ID, environment, workspace mode, run context variables,
+    artifact paths, command coverage, or sensitive-text patterns
+  - The preflight result is not runtime evidence
 
 ## 3) Runtime path target (environment-aware)
 
@@ -215,6 +221,26 @@ This writes:
 The capture plan and run context are operator coordination artifacts only. They
 do not prove Databricks execution, provisioning, or validation.
 
+Before running Databricks, validate the generated coordination artifacts:
+
+```bash
+.venv/bin/python src/pipelines/runtime_smoke_preflight.py \
+  --pipeline-run-id <pipeline-run-id> \
+  --environment dev \
+  --capture-plan-path output/validation/runtime_smoke_capture_plan_<pipeline-run-id>.json \
+  --run-context-path output/validation/runtime_smoke_run_context_<pipeline-run-id>.json \
+  --output-dir output/validation
+```
+
+This writes:
+
+- `output/validation/runtime_smoke_preflight_<pipeline_run_id>.json`
+- `output/validation/runtime_smoke_preflight_<pipeline_run_id>.txt`
+
+The preflight can confirm that the plan and context are internally consistent
+before workspace execution. It does not prove that the Databricks run, Delta
+Share provisioning, or C-2 validation has happened.
+
 The generated `.env` file contains only non-secret run-scoped values such as
 `CASEOPS_ENV`, `CASEOPS_DELIVERY_PIPELINE_RUN_ID`,
 `CASEOPS_DELIVERY_EVENT_PATH`, `CASEOPS_SHARE_MANIFEST_PATH`, and
@@ -286,6 +312,7 @@ The result reaches `smoke_status = ready_for_phase4_closeout` only when:
 - [x] Deterministic preflight/check-only path added for workspace runs (`--check-only`).
 - [x] Run-scoped smoke capture plan generator added for repeatable evidence packaging.
 - [x] Non-secret smoke run context added for deterministic run ID and artifact-path propagation.
+- [x] Local-safe smoke preflight validator added for plan/context consistency before workspace execution.
 - [x] Local-safe Phase 4 smoke package validator added for captured workspace evidence.
 - [ ] End-to-end workspace repeatable smoke check has been executed against staging/prod (pipeline remains scoped to dev/staging/prod by environment).
 - [x] No secrets or workspace-identifying values committed in scoped files.

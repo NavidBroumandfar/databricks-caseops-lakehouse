@@ -32,6 +32,7 @@ ARTIFACT_DELIVERY_EVENT = "delivery_event"
 ARTIFACT_SHARE_MANIFEST = "share_manifest"
 ARTIFACT_RUNTIME_EVIDENCE = "runtime_evidence"
 ARTIFACT_DELIVERY_VALIDATION = "delivery_validation_result"
+ARTIFACT_RUNTIME_SMOKE_PREFLIGHT = "runtime_smoke_preflight_result"
 ARTIFACT_RUNTIME_SMOKE_VALIDATION = "runtime_smoke_validation_result"
 
 
@@ -72,10 +73,20 @@ def build_runtime_smoke_capture_plan(
         output_root / "validation" / "runtime_evidence" / f"runtime_evidence_{safe_id}.json"
     )
     delivery_validation_path = output_root / "validation" / f"delivery_validation_{safe_id}.json"
+    smoke_preflight_path = output_root / "validation" / f"runtime_smoke_preflight_{safe_id}.json"
     smoke_validation_path = output_root / "validation" / f"runtime_smoke_validation_{safe_id}.json"
     capture_plan_path = output_root / "validation" / f"runtime_smoke_capture_plan_{safe_id}.json"
+    run_context_path = output_root / "validation" / f"runtime_smoke_run_context_{safe_id}.json"
 
-    local_validation_command = (
+    local_preflight_command = (
+        ".venv/bin/python src/pipelines/runtime_smoke_preflight.py "
+        f"--pipeline-run-id {pipeline_run_id} "
+        f"--environment {environment} "
+        f"--capture-plan-path {_path_text(capture_plan_path)} "
+        f"--run-context-path {_path_text(run_context_path)} "
+        f"--output-dir {_path_text(output_root / 'validation')}"
+    )
+    local_package_validation_command = (
         ".venv/bin/python src/pipelines/runtime_smoke_validation.py "
         f"--pipeline-run-id {pipeline_run_id} "
         f"--environment {environment} "
@@ -115,6 +126,11 @@ def build_runtime_smoke_capture_plan(
                 description="C-2 delivery validation result in validated personal_databricks mode.",
             ),
             RuntimeSmokeExpectedArtifact(
+                artifact_name=ARTIFACT_RUNTIME_SMOKE_PREFLIGHT,
+                path=_path_text(smoke_preflight_path),
+                description="Local preflight result for the generated plan and run context.",
+            ),
+            RuntimeSmokeExpectedArtifact(
                 artifact_name=ARTIFACT_RUNTIME_SMOKE_VALIDATION,
                 path=_path_text(smoke_validation_path),
                 description="Local Phase 4 smoke package validation result.",
@@ -137,7 +153,7 @@ def build_runtime_smoke_capture_plan(
                 f"--validation-output-dir {_path_text(output_root / 'validation')}"
             ),
         ],
-        local_validation_commands=[local_validation_command],
+        local_validation_commands=[local_preflight_command, local_package_validation_command],
         sanitization_rules=[
             "Remove Databricks workspace URLs before saving artifacts.",
             "Remove Delta Sharing activation links before saving artifacts.",
