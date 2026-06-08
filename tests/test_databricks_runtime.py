@@ -146,6 +146,33 @@ def test_parse_runtime_adapter_uses_read_files_and_returns_local_parser_shape() 
     assert "MAP('version', '2.0')" in query
 
 
+def test_parse_runtime_adapter_extracts_v2_document_elements() -> None:
+    spark = FakeSpark(
+        sql_results=[
+            [
+                {
+                    "parsed_content": {
+                        "document": {
+                            "elements": [
+                                {"content": "FDA Warning Letter"},
+                                {"text": "Corrective action requested within 15 days."},
+                            ]
+                        }
+                    }
+                }
+            ]
+        ]
+    )
+
+    result = DatabricksAiParseRuntimeAdapter(spark).parse_volume_file(
+        "/Volumes/caseops_dev/raw/documents/fda/file.pdf"
+    )
+
+    assert result["parsed_text"] == (
+        "FDA Warning Letter\n\nCorrective action requested within 15 days."
+    )
+
+
 def test_existing_parse_adapter_delegates_when_spark_is_injected() -> None:
     spark = FakeSpark(sql_results=[[{"parsed_content": {"text": "parsed"}}]])
 
@@ -193,6 +220,44 @@ def test_extract_runtime_adapter_calls_ai_extract_and_decodes_json_result() -> N
     assert "'Warning letter text'" in query
     assert '"recipient_company"' in query
     assert "'Extract FDA fields only.'" in query
+
+
+def test_extract_runtime_adapter_unwraps_v2_field_value_response() -> None:
+    spark = FakeSpark(
+        sql_results=[
+            [
+                {
+                    "extraction_result": {
+                        "response": {
+                            "recipient_company": {
+                                "value": "Acme Pharma",
+                                "citation_ids": [],
+                            },
+                            "violation_type": {
+                                "value": ["CGMP"],
+                                "citation_ids": [],
+                            },
+                            "corrective_action_requested": {
+                                "value": True,
+                                "citation_ids": [],
+                            },
+                        },
+                        "error_message": None,
+                    }
+                }
+            ]
+        ]
+    )
+
+    result = DatabricksAiExtractRuntimeAdapter(spark=spark, extraction_schema={}).extract(
+        "Warning letter text"
+    )
+
+    assert result == {
+        "recipient_company": "Acme Pharma",
+        "violation_type": ["CGMP"],
+        "corrective_action_requested": True,
+    }
 
 
 def test_existing_extract_adapter_requires_schema_when_spark_is_injected() -> None:

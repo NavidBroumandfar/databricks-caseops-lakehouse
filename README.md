@@ -113,7 +113,7 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase 2 (V2 — Hardening and Expansion)** added producer-side handoff preparation via Delta Sharing manifests and delivery events (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
-**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally, was validated in a personal Databricks workspace, and Phase 3 runtime handoff validation reached `validated` with sanitized personal-workspace evidence on 2026-06-07. Total test coverage: **1,504 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, Phase 3 evidence validation, and Phase 4 runtime smoke support.
+**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally, was validated in a personal Databricks workspace, and Phase 3 runtime handoff validation reached `validated` with sanitized personal-workspace evidence on 2026-06-07. Total test coverage: **1,506 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, Phase 3 evidence validation, and Phase 4 runtime smoke support.
 
 Phase 4 is now active. Runtime adapter wiring for `ai_parse_document`,
 `ai_extract`, and `ai_classify` and Delta table read/write support are implemented
@@ -553,7 +553,7 @@ databricks-caseops-lakehouse/
 │       └── environment_config.py         # Environment model and resource naming
 ├── notebooks/
 │   └── bootstrap/           # Validated Databricks bootstrap SQL
-├── tests/                   # 1,504 tests across all pipeline stages and contract layers
+├── tests/                   # 1,506 tests across all pipeline stages and contract layers
 └── examples/
     ├── evaluation/                       # Evaluation usage guide
     ├── expected_delivery_event.json      # Reference delivery event fixture

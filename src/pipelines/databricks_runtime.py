@@ -207,19 +207,34 @@ def _extract_parse_text(payload: Any) -> str:
     if isinstance(payload, str):
         return payload
     if isinstance(payload, Mapping):
+        document = payload.get("document")
+        if isinstance(document, Mapping):
+            document_text = _extract_parse_text(document)
+            if document_text:
+                return document_text
+
         text = _extract_first(payload, ("parsed_text", "text", "content", "markdown", "value"))
         if text is not None:
+            if isinstance(text, Mapping):
+                nested_text = _extract_parse_text(text)
+                if nested_text:
+                    return nested_text
             return str(text)
-        pages = payload.get("pages")
-        if isinstance(pages, Sequence) and not isinstance(pages, (str, bytes)):
-            page_text = []
-            for page in pages:
-                if isinstance(page, Mapping):
-                    candidate = _extract_first(page, ("text", "content", "markdown"))
+
+        text_blocks = []
+        for collection_name in ("pages", "elements"):
+            collection = payload.get(collection_name)
+            if not isinstance(collection, Sequence) or isinstance(collection, (str, bytes)):
+                continue
+            for item in collection:
+                if isinstance(item, Mapping):
+                    candidate = _extract_first(item, ("text", "content", "markdown", "value"))
+                    if isinstance(candidate, Mapping):
+                        candidate = _extract_parse_text(candidate)
                     if candidate:
-                        page_text.append(str(candidate))
-            if page_text:
-                return "\n\n".join(page_text)
+                        text_blocks.append(str(candidate))
+        if text_blocks:
+            return "\n\n".join(text_blocks)
         return _json_dumps(payload)
     return str(payload)
 
@@ -244,11 +259,22 @@ def _normalize_extraction_result(value: Any) -> dict:
     if isinstance(decoded, Mapping):
         response = decoded.get("response")
         if isinstance(response, Mapping):
-            return dict(response)
-        return dict(decoded)
+            return {str(key): _unwrap_extraction_field(field) for key, field in response.items()}
+        return {str(key): _unwrap_extraction_field(field) for key, field in decoded.items()}
     raise DatabricksRuntimeError(
         "Databricks ai_extract result must decode to a JSON object or mapping."
     )
+
+
+def _unwrap_extraction_field(value: Any) -> Any:
+    decoded = _decode_variant(value)
+    if isinstance(decoded, Mapping):
+        if "value" in decoded:
+            return _unwrap_extraction_field(decoded.get("value"))
+        return {str(key): _unwrap_extraction_field(item) for key, item in decoded.items()}
+    if isinstance(decoded, Sequence) and not isinstance(decoded, (str, bytes, bytearray)):
+        return [_unwrap_extraction_field(item) for item in decoded]
+    return decoded
 
 
 def _coerce_optional_float(value: Any) -> Optional[float]:
