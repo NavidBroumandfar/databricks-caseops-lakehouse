@@ -9,6 +9,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Bronze%20%E2%86%92%20Silver%20%E2%86%92%20Gold-D4A017?style=flat-square)]()
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
 [![Tests](https://img.shields.io/badge/Tests-1%2C510%20passing-2EA043?style=flat-square)](./tests/)
+[![CI](https://github.com/NavidBroumandfar/databricks-caseops-lakehouse/actions/workflows/tests.yml/badge.svg)](https://github.com/NavidBroumandfar/databricks-caseops-lakehouse/actions/workflows/tests.yml)
 [![Handoff](https://img.shields.io/badge/Handoff-Producer--Side%20Prepared-6B7FD7?style=flat-square)](./docs/bedrock-handoff-contract.md)
 [![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
 
