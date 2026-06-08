@@ -45,7 +45,7 @@ what to update in the repo afterward.
 
 | Requirement | Check |
 |---|---|
-| Python 3.9+ | `.venv/bin/python --version` or `python3 --version` |
+| Python 3.10+ | `.venv/bin/python --version` or `python3 --version` |
 | `pydantic` v2 | `.venv/bin/python -m pip show pydantic` |
 | `mlflow` | `.venv/bin/python -m pip show mlflow` |
 
@@ -123,7 +123,7 @@ git-ignored).
 
 Before executing, confirm each of the following:
 
-- [ ] `.venv/bin/python --version` returns 3.9 or higher, or `python3 --version` if not using a virtual environment
+- [ ] `.venv/bin/python --version` returns 3.10 or higher, or `python3 --version` if not using a virtual environment
 - [ ] `.venv/bin/python -m pip show mlflow` shows mlflow is installed
 - [ ] `.venv/bin/python -m pip show pydantic` shows pydantic v2 is installed
 - [ ] `MLFLOW_TRACKING_URI`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` are set in the current shell (if targeting Databricks MLflow)

@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
 [![Architecture](https://img.shields.io/badge/Architecture-Bronze%20%E2%86%92%20Silver%20%E2%86%92%20Gold-D4A017?style=flat-square)]()
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
@@ -165,7 +165,7 @@ workspace credentials, and downstream Bedrock consumer.
 
 ## Local Setup and Verification
 
-Use Python 3.9+. The local shell may not expose `python`, so commands use `.venv/bin/python` after the virtual environment is created. If you do not use a virtual environment, replace `.venv/bin/python` with `python3`.
+Use Python 3.10+. The local shell may not expose `python`, so commands use `.venv/bin/python` after the virtual environment is created. If you do not use a virtual environment, replace `.venv/bin/python` with `python3`.
 
 ```bash
 python3 -m venv .venv
@@ -187,7 +187,7 @@ make audit
 
 ## Running the Bronze Demo
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+Requires Python 3.10+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
 
 ```bash
 # 1. Ingest the sample FDA warning letter → produces a Bronze JSON artifact
@@ -211,7 +211,7 @@ The evaluation script prints a parse quality summary and writes a JSON evaluatio
 
 ## Running the Silver Demo
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+Requires Python 3.10+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
 If you have already run the Bronze demo, skip the ingest step.
 
 ```bash
@@ -244,7 +244,7 @@ reference fixture showing a successful extraction result.
 
 ## Running the Gold Demo
 
-Requires Python 3.9+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
+Requires Python 3.10+ and `pydantic` (v2). No Databricks workspace needed. Install dependencies with [Local Setup and Verification](#local-setup-and-verification) first.
 If you have already run the Bronze and Silver demos, skip the ingest and extraction steps.
 
 ```bash
@@ -318,7 +318,7 @@ a successful classification and export-ready result.
 
 ## Running the Delivery Demo
 
-Requires Python 3.9+ and `pydantic` (v2). Run the full Gold Demo first to generate artifacts.
+Requires Python 3.10+ and `pydantic` (v2). Run the full Gold Demo first to generate artifacts.
 
 ```bash
 # 1–3. Run the Bronze, Silver, Gold demos (if not already done)
@@ -356,7 +356,7 @@ When `--delivery-dir` is omitted, baseline export behavior (v0.1.0) is fully pre
 
 ## Running the Review Queue
 
-Requires Python 3.9+ and `pydantic` (v2). Run the Gold Demo first to generate pipeline artifacts.
+Requires Python 3.10+ and `pydantic` (v2). Run the Gold Demo first to generate pipeline artifacts.
 
 ```bash
 # Run the Gold pipeline with full report, bundle, and review queue output
@@ -428,7 +428,7 @@ See `examples/expected_review_queue.json`, `examples/expected_review_decision.js
 
 ## Running Delivery Validation
 
-Requires Python 3.9+ and `pydantic` (v2). Run the Delivery Demo first to generate delivery artifacts.
+Requires Python 3.10+ and `pydantic` (v2). Run the Delivery Demo first to generate delivery artifacts.
 
 ```bash
 # Run delivery validation against the generated delivery artifacts
@@ -481,7 +481,7 @@ Phase 4 runtime smoke evidence and deployment scaffolding are documented in
 
 ## Running the Evaluation Layer
 
-Requires Python 3.9+ and `pydantic` (v2). Run the pipeline demos first to generate artifacts.
+Requires Python 3.10+ and `pydantic` (v2). Run the pipeline demos first to generate artifacts.
 
 ```bash
 # Run the full evaluation pass across all three layers
