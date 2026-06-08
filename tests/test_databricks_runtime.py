@@ -33,6 +33,14 @@ class FakeRow(dict):
         return dict(self)
 
 
+class JsonRenderedVariant:
+    def __init__(self, payload: str) -> None:
+        self.payload = payload
+
+    def __str__(self) -> str:
+        return self.payload
+
+
 class FakeSqlDataFrame:
     def __init__(self, rows: list[dict]) -> None:
         self._rows = [FakeRow(row) for row in rows]
@@ -171,6 +179,27 @@ def test_parse_runtime_adapter_extracts_v2_document_elements() -> None:
     assert result["parsed_text"] == (
         "FDA Warning Letter\n\nCorrective action requested within 15 days."
     )
+
+
+def test_parse_runtime_adapter_decodes_json_rendered_variant() -> None:
+    spark = FakeSpark(
+        sql_results=[
+            [
+                {
+                    "parsed_content": JsonRenderedVariant(
+                        '{"document":{"elements":[{"content":"FDA Warning Letter"},'
+                        '{"content":"Issuing office: CDER"}]}}'
+                    )
+                }
+            ]
+        ]
+    )
+
+    result = DatabricksAiParseRuntimeAdapter(spark).parse_volume_file(
+        "/Volumes/caseops_dev/raw/documents/fda/file.pdf"
+    )
+
+    assert result["parsed_text"] == "FDA Warning Letter\n\nIssuing office: CDER"
 
 
 def test_existing_parse_adapter_delegates_when_spark_is_injected() -> None:

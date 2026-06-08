@@ -236,6 +236,10 @@ def _extract_parse_text(payload: Any) -> str:
         if text_blocks:
             return "\n\n".join(text_blocks)
         return _json_dumps(payload)
+    try:
+        return _extract_parse_text(json.loads(str(payload)))
+    except (TypeError, json.JSONDecodeError):
+        pass
     return str(payload)
 
 
