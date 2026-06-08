@@ -74,10 +74,12 @@ When starting any task in this repository, always read files in this exact order
 
 Forward `ROADMAP.md` Phase 2 is complete after the June 2026 audit cleanup.
 Phase 2 is complete and included in `src/pipelines/databricks_runtime.py` as
-injectable AI Function adapters and Delta table I/O helpers. Forward `ROADMAP.md`
-Phase 4 is now active for productionization: Jobs/Workflows or Asset Bundle
-scaffolding, runtime resource validation, and repeatable workspace smoke
-evidence.
+injectable AI Function adapters and Delta table I/O helpers. Forward
+`ROADMAP.md` Phase 4 is complete for personal Databricks dev workspace smoke
+closeout as of 2026-06-08: run `phase4-smoke-20260608-dbx-ready` validated the
+capture plan, preflight, check-only path, write-permission preflight, all-stage
+append execution, delivery validation, and smoke-package validation through
+`ready_for_phase4_closeout`. This is not a staging/prod enterprise deployment.
 
 Phase 5 has started with explicit evaluation/governance hardening for
 multi-domain quality regression control: richer per-domain fixtures, baseline
@@ -88,10 +90,9 @@ runtime validation. The repo has a sanitized runtime evidence schema
 (`src/schemas/runtime_evidence.py`), a public-safe template
 (`examples/runtime_evidence_personal_databricks_template.json`), and
 `runtime_evidence_path` support in `validate_delivery_layer()`. A personal
-Databricks workspace run reached `validated` on 2026-06-07. Phase 4 execution
-builds on that base with deployment scaffolding and repeatable production-style
-smoke evidence requirements. This still does not add Bedrock consumer,
-retrieval, RAG, or agent runtime logic.
+Databricks workspace run reached `validated` on 2026-06-07. Phase 4 then closed
+the personal dev workspace smoke path on 2026-06-08. This still does not add
+Bedrock consumer, retrieval, RAG, or agent runtime logic.
 
 Key V1 completion boundaries:
 - No live Bedrock integration exists — downstream integration is V2+

@@ -10,7 +10,8 @@ It already has Bronze, Silver, and Gold artifacts; schema contracts; evaluation;
 contract-gated export; handoff reports; bundle validation; delivery-event
 preparation; Delta Share setup manifests; review queues; and governance monitoring.
 Runtime execution has moved beyond local-first behavior: Phase 2 adapter
-integration is complete, and Phase 4 productionization is active.
+integration is complete, and Phase 4 reached personal Databricks dev workspace
+smoke closeout on 2026-06-08.
 
 The key strategic conclusion from the audit:
 
@@ -110,7 +111,9 @@ Acceptance criteria:
 - Runtime adapters are covered by unit tests using mocks.
 
 Current status: runtime productionization scaffolding is in place for this phase
-(runner + bundle). Remaining work is repeatable workspace smoke evidence and periodic evidence package refresh.
+(runner + bundle), and the Phase 4 personal Databricks dev workspace smoke run
+proved the scaffold end to end. Remaining work is optional staging/prod
+promotion and periodic evidence package refresh.
 
 ## Phase 3 - Complete Runtime Handoff Validation
 
@@ -159,7 +162,8 @@ exposure.
 Goal: convert runtime capabilities into a reproducible deployment execution path
 that is deterministic, secret-free in source control, and evidence-driven.
 
-Status: active.
+Status: complete for personal Databricks dev workspace smoke closeout as of
+2026-06-08. Staging/prod enterprise deployment remains future operational work.
 
 1. Add runtime orchestration for Databricks execution.
    - Add Jobs/Workflows (or Asset Bundle equivalent) for Bronze, Silver,
@@ -183,6 +187,11 @@ Status: active.
      captured smoke evidence package without Databricks credentials and only
      reports `ready_for_phase4_closeout` when runtime evidence and C-2 delivery
      validation agree on the same provisioned `pipeline_run_id`.
+   - Closeout slice: run `phase4-smoke-20260608-dbx-ready` executed the
+     capture-plan, preflight, check-only, write-permission preflight, all-stage
+     append, delivery validation, and smoke-package validation sequence in a
+     personal Databricks dev workspace. The final smoke package reported
+     `ready_for_phase4_closeout`.
    - Current support slice: `src/pipelines/runtime_smoke_plan.py` generates a
      run-scoped capture plan with expected artifact paths, validation commands,
      and sanitization rules before the workspace smoke run. This plan is not
@@ -212,6 +221,8 @@ Acceptance criteria:
   evidence can be checked locally with `runtime_smoke_validation.py`.
 - No secret or workspace-identifying value is added to tracked files.
 - `docs/databricks-runtime-productionization.md` serves as the single source of truth for Phase 4 execution details.
+- Staging/prod enterprise smoke and the downstream Bedrock consumer adapter are
+  out of scope for this repo's Phase 4 closeout.
 
 ## Phase 5 - Strengthen Evaluation and Governance
 

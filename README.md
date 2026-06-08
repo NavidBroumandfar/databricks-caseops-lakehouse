@@ -113,13 +113,14 @@ All layers are governed by Unity Catalog. All transformations are traceable via 
 
 **Phase 2 (V2 — Hardening and Expansion)** added producer-side handoff preparation via Delta Sharing manifests and delivery events (Phase C), multi-domain pipeline expansion across three active document domains — FDA warning letters, CISA cybersecurity advisories, and incident reports (Phase D), and enterprise operational hardening: structured human review queue and reprocessing, multi-environment configuration separation, and governance monitoring (Phase E).
 
-**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally, was validated in a personal Databricks workspace, and Phase 3 runtime handoff validation reached `validated` with sanitized personal-workspace evidence on 2026-06-07. Total test coverage: **1,510 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, Phase 3 evidence validation, and Phase 4 runtime smoke support.
+**Current state**: Portfolio-safe and non-production. No enterprise deployment, no production credentials, no live Bedrock integration beyond the producer-side delivery preparation layer. The pipeline is fully functional locally, was validated in a personal Databricks workspace, Phase 3 runtime handoff validation reached `validated` with sanitized personal-workspace evidence on 2026-06-07, and Phase 4 reached `ready_for_phase4_closeout` with sanitized personal Databricks dev workspace smoke evidence on 2026-06-08. Total test coverage: **1,510 tests** across all pipeline stages, contract layers, export boundaries, delivery validation, multi-domain framework, operational hardening, runtime adapter scaffolding, Phase 3 evidence validation, and Phase 4 runtime smoke support.
 
-Phase 4 is now active. Runtime adapter wiring for `ai_parse_document`,
-`ai_extract`, and `ai_classify` and Delta table read/write support are implemented
-and locally test-covered. Ongoing Phase 4 work focuses on deployment scaffolding,
-runtime orchestration wiring, and repeatable workspace smoke-test evidence for
-Databricks execution.
+Phase 4 is closed for the personal Databricks dev workspace smoke scope. Runtime
+adapter wiring for `ai_parse_document`, `ai_extract`, and `ai_classify`, Delta
+table read/write support, Databricks bundle scaffolding, check-only preflight,
+write-permission preflight, delivery validation, and sanitized runtime smoke
+package validation are implemented and validated. This is not a staging/prod
+enterprise deployment and does not add Bedrock runtime behavior.
 
 For the full delivery history, phase-by-phase detail, and roadmap, see [`PROJECT_SPEC.md`](./PROJECT_SPEC.md) and [`docs/roadmap.md`](./docs/roadmap.md).
 
@@ -133,11 +134,12 @@ The audit found this repo is coherent as an upstream governed preparation layer:
 
 It does not implement Bedrock runtime behavior, retrieval, RAG, agent reasoning, escalation, or case-support workflows. Those belong in the downstream Bedrock CaseOps Control Tower.
 
-The next milestone is broader Databricks productionization: reproducible Jobs or
-Asset Bundles, runtime orchestration wiring, and documented workspace smoke tests
-beyond the one personal Phase 3 validation slice. See
+The next milestone is broader deployment hardening outside this personal
+workspace closeout: staging/prod Databricks promotion if needed, plus the
+downstream Bedrock-side consumer adapter for this repo's Gold export or Delta
+Share surface. See
 [`docs/databricks-runtime-productionization.md`](./docs/databricks-runtime-productionization.md)
-for the Phase 4 execution plan.
+for the Phase 4 execution details.
 
 ---
 

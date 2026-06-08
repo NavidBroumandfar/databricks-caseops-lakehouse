@@ -184,7 +184,7 @@ Jobs or notebooks to inject the active Spark session.
 
 Phase 2 implementation is complete for adapter wiring and Delta I/O helpers.
 
-## Databricks Runtime Productionization — Phase 4 (In Progress)
+## Databricks Runtime Productionization — Phase 4 (Personal Dev Smoke Complete)
 
 Phase 4 is the path from adapter-ready code to reproducible runtime execution.
 
@@ -200,12 +200,16 @@ Phase 4 is the path from adapter-ready code to reproducible runtime execution.
   - `caseops_<env>.bronze.parsed_documents`
   - `caseops_<env>.silver.extracted_records`
   - `caseops_<env>.gold.ai_ready_assets`
-- A repeatable workspace smoke-test runbook is required before claiming deployment-level runtime status.
 - `src/pipelines/runtime_smoke_plan.py` generates a run-scoped, local-safe
   capture plan and non-secret run context before workspace execution.
 - `src/pipelines/runtime_smoke_validation.py` validates sanitized captured
   smoke packages after workspace execution, and can optionally check those
   packages against the capture plan's run-scoped artifact paths.
+- A personal Databricks dev workspace smoke run reached
+  `ready_for_phase4_closeout` on 2026-06-08 after capture-plan preflight,
+  check-only, write-permission preflight, all-stage append, delivery validation,
+  and smoke-package validation. This is not a staging/prod enterprise
+  deployment.
 
 This repository intentionally remains without hardcoded URLs, credentials,
 activation links, or workspace identifiers. All runtime execution assumptions are

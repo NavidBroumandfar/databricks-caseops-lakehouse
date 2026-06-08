@@ -1,6 +1,6 @@
 # Databricks Runtime Productionization (Phase 4)
 
-> **Status**: Active (phase 4 implementation scaffold in place; runtime smoke workflow still requires workspace execution)
+> **Status**: Complete for personal Databricks dev workspace smoke closeout as of 2026-06-08 (`ready_for_phase4_closeout`)
 > **Scope**: Reproducible Databricks runtime execution for already implemented runtime adapters and Delta write/read paths
 > **Source authority**: [`README.md`](../README.md), [`PROJECT_SPEC.md`](../PROJECT_SPEC.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md)
 > **No-credentials rule**: This repository keeps workspace URLs, account IDs, tokens, and personal identifiers out of source control.
@@ -19,6 +19,27 @@ The boundary remains unchanged:
 - Runtime operation requires an external Databricks runtime context provided by operator deployment.
 
 ## 2) Current implementation status
+
+Phase 4 closeout was reached on 2026-06-08 for a personal Databricks dev
+workspace smoke run. The sanitized evidence package is kept under ignored
+`output/` paths and is not committed. Closeout scope is limited to the dev
+workspace smoke path; staging/prod enterprise deployment was not executed.
+
+Closeout evidence summary:
+
+- Run ID: `phase4-smoke-20260608-dbx-ready`
+- Environment: `dev`
+- Source commit used by the workspace run: `6e7bc1e`
+- Capture plan and local preflight: generated and passed before workspace
+  execution
+- Workspace sequence: check-only passed, write-permission preflight passed, and
+  all-stage append completed with `bronze=1`, `silver=1`, `gold=1`
+- Delivery surface: dev share manifest reached `provisioned`; delivery
+  validation reached `validated`
+- Smoke package validator: `runtime_smoke_validation.py` reported
+  `ready_for_phase4_closeout`
+- Sanitization: no workspace URLs, account IDs, activation links, tokens, or
+  personal identifiers are committed
 
 - `src/pipelines/databricks_runtime.py`
   - Runtime adapters implemented for:
@@ -331,7 +352,10 @@ artifact path matches the generated capture plan.
 - [x] Non-secret smoke run context added for deterministic run ID and artifact-path propagation.
 - [x] Local-safe smoke preflight validator added for plan/context consistency before workspace execution.
 - [x] Local-safe Phase 4 smoke package validator added for captured workspace evidence.
-- [ ] End-to-end workspace repeatable smoke check has been executed against staging/prod (pipeline remains scoped to dev/staging/prod by environment).
+- [x] End-to-end repeatable smoke check executed against a personal Databricks
+  dev workspace with sanitized evidence and `ready_for_phase4_closeout`.
+- [ ] Staging/prod enterprise deployment smoke has not been executed; the
+  pipeline remains environment-scoped for future dev/staging/prod promotion.
 - [x] No secrets or workspace-identifying values committed in scoped files.
 
 This document remains the single source of truth for Phase 4 execution detail.
