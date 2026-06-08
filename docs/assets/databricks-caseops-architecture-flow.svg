@@ -1,0 +1,121 @@
+<svg width="1200" height="640" viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Databricks CaseOps Lakehouse architecture flow</title>
+  <desc id="desc">A governed Databricks document intelligence pipeline that moves unstructured documents through raw storage, Bronze parsing, Silver extraction, Gold classification, evaluation, governance checks, and producer-side handoff preparation.</desc>
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="1200" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="0.58" stop-color="#121826"/>
+      <stop offset="1" stop-color="#1b2535"/>
+    </linearGradient>
+    <linearGradient id="databricks-red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6a55"/>
+      <stop offset="1" stop-color="#ff3621"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4c542"/>
+      <stop offset="1" stop-color="#d4a017"/>
+    </linearGradient>
+    <filter id="shadow" x="-12%" y="-18%" width="124%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#9aa7b8"/>
+    </marker>
+    <style>
+      .title { font: 700 34px Helvetica, Arial, sans-serif; fill: #f8fafc; }
+      .subtitle { font: 400 16px Helvetica, Arial, sans-serif; fill: #cbd5e1; }
+      .lane { font: 700 12px Helvetica, Arial, sans-serif; fill: #94a3b8; letter-spacing: 1.5px; }
+      .node-title { font: 700 17px Helvetica, Arial, sans-serif; fill: #f8fafc; }
+      .node-body { font: 400 13px Helvetica, Arial, sans-serif; fill: #cbd5e1; }
+      .caption { font: 400 13px Helvetica, Arial, sans-serif; fill: #94a3b8; }
+      .pill { font: 700 12px Helvetica, Arial, sans-serif; fill: #f8fafc; }
+      .small-dark { font: 700 12px Helvetica, Arial, sans-serif; fill: #111827; }
+      .line { stroke: #9aa7b8; stroke-width: 2.6; fill: none; marker-end: url(#arrow); }
+      .thin-line { stroke: #475569; stroke-width: 1.4; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="640" fill="url(#canvas)"/>
+  <rect x="0" y="0" width="1200" height="6" fill="url(#databricks-red)"/>
+
+  <text x="600" y="58" text-anchor="middle" class="title">Databricks CaseOps Lakehouse</text>
+  <text x="600" y="86" text-anchor="middle" class="subtitle">Governed upstream document intelligence and AI-ready asset preparation</text>
+
+  <text x="66" y="140" class="lane">BRONZE TO GOLD PIPELINE</text>
+
+  <g filter="url(#shadow)">
+    <rect x="56" y="166" width="176" height="122" rx="8" fill="#111827" stroke="#334155"/>
+    <text x="84" y="201" class="node-title">Raw Volume</text>
+    <text x="84" y="228" class="node-body">PDF, DOCX, TXT</text>
+    <text x="84" y="250" class="node-body">Immutable source</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="286" y="166" width="176" height="122" rx="8" fill="#181412" stroke="#a66a2d"/>
+    <text x="314" y="201" class="node-title">Bronze</text>
+    <text x="314" y="228" class="node-body">Parse text with</text>
+    <text x="314" y="250" class="node-body">ai_parse_document</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="516" y="166" width="176" height="122" rx="8" fill="#151a22" stroke="#64748b"/>
+    <text x="544" y="201" class="node-title">Silver</text>
+    <text x="544" y="228" class="node-body">Extract fields with</text>
+    <text x="544" y="250" class="node-body">ai_extract surfaces</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="746" y="166" width="176" height="122" rx="8" fill="#1d1a10" stroke="#d4a017"/>
+    <text x="774" y="201" class="node-title">Gold</text>
+    <text x="774" y="228" class="node-body">Classify and route</text>
+    <text x="774" y="250" class="node-body">Package AI asset</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="976" y="166" width="176" height="122" rx="8" fill="#161b22" stroke="#6b7fd7"/>
+    <text x="1004" y="201" class="node-title">Handoff Prep</text>
+    <text x="1004" y="228" class="node-body">JSON exports</text>
+    <text x="1004" y="250" class="node-body">Delta Share manifest</text>
+  </g>
+
+  <path d="M232 227 H272" class="line"/>
+  <path d="M462 227 H502" class="line"/>
+  <path d="M692 227 H732" class="line"/>
+  <path d="M922 227 H962" class="line"/>
+
+  <g filter="url(#shadow)">
+    <rect x="92" y="354" width="1016" height="134" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="124" y="389" class="node-title">Governance and Quality Fabric</text>
+    <text x="124" y="416" class="node-body">Unity Catalog lineage, schema versioning, MLflow evaluation, contract validation, review queue artifacts, handoff reports, and bundle integrity checks.</text>
+
+    <line x1="124" y1="434" x2="1076" y2="434" class="thin-line"/>
+
+    <rect x="124" y="452" width="150" height="24" rx="12" fill="#ff362128" stroke="#ff362150"/>
+    <text x="199" y="469" text-anchor="middle" class="pill">Unity Catalog</text>
+
+    <rect x="298" y="452" width="118" height="24" rx="12" fill="#0194e228" stroke="#0194e250"/>
+    <text x="357" y="469" text-anchor="middle" class="pill">MLflow</text>
+
+    <rect x="440" y="452" width="176" height="24" rx="12" fill="#2ea04328" stroke="#2ea04350"/>
+    <text x="528" y="469" text-anchor="middle" class="pill">Pydantic Contracts</text>
+
+    <rect x="640" y="452" width="140" height="24" rx="12" fill="#d4a01728" stroke="#d4a01750"/>
+    <text x="710" y="469" text-anchor="middle" class="pill">Review Queue</text>
+
+    <rect x="804" y="452" width="210" height="24" rx="12" fill="#6b7fd728" stroke="#6b7fd750"/>
+    <text x="909" y="469" text-anchor="middle" class="pill">Producer-Side Delivery</text>
+  </g>
+
+  <path d="M374 288 V336" class="line"/>
+  <path d="M604 288 V336" class="line"/>
+  <path d="M834 288 V336" class="line"/>
+  <path d="M1064 288 V336" class="line"/>
+
+  <g filter="url(#shadow)">
+    <rect x="214" y="538" width="772" height="68" rx="10" fill="#0b1220" stroke="#334155"/>
+    <circle cx="256" cy="572" r="18" fill="url(#databricks-red)"/>
+    <text x="256" y="577" text-anchor="middle" class="small-dark">DB</text>
+    <text x="292" y="566" class="caption">Boundary: this repository prepares governed Gold records and producer-side handoff artifacts.</text>
+    <text x="292" y="588" class="caption">Downstream Bedrock CaseOps owns retrieval, RAG, agent reasoning, escalation, and consumer runtime behavior.</text>
+  </g>
+</svg>

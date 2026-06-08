@@ -6,8 +6,10 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Databricks](https://img.shields.io/badge/Platform-Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)](https://www.databricks.com/)
+[![Architecture](https://img.shields.io/badge/Architecture-Bronze%20%E2%86%92%20Silver%20%E2%86%92%20Gold-D4A017?style=flat-square)]()
 [![MLflow](https://img.shields.io/badge/Evaluation-MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)](https://mlflow.org/)
 [![Tests](https://img.shields.io/badge/Tests-1%2C510%20passing-2EA043?style=flat-square)](./tests/)
+[![Handoff](https://img.shields.io/badge/Handoff-Producer--Side%20Prepared-6B7FD7?style=flat-square)](./docs/bedrock-handoff-contract.md)
 [![Status](https://img.shields.io/badge/Status-Portfolio%20%2F%20Non--Production-E67E22?style=flat-square)]()
 
 </div>
@@ -15,6 +17,18 @@
 <br/>
 
 > A Databricks-native governed document intelligence pipeline — the upstream preparation layer that converts unstructured enterprise documents into traceable, schema-validated AI-ready assets before downstream Bedrock retrieval and agent reasoning begins.
+
+![Databricks CaseOps architecture flow](docs/assets/databricks-caseops-architecture-flow.svg)
+
+**At a glance:** this project ingests public or enterprise documents, parses them through Databricks AI Function surfaces, validates structured extraction with Pydantic contracts, classifies/routes Gold records, evaluates every layer, and prepares a schema-versioned handoff payload for downstream Bedrock CaseOps.
+
+| Public status | Current state |
+|---|---|
+| Pipeline boundary | Upstream document preparation only: raw document in, contract-valid Gold record out |
+| Local verification | 1,510 tests passing with `.venv/bin/python -m pytest -q` |
+| Runtime validation | Personal Databricks dev workspace smoke closeout on 2026-06-08 |
+| Delivery posture | Producer-side Delta Sharing manifests and delivery events; no Bedrock consumer runtime |
+| Production posture | Portfolio-safe, non-production; no enterprise deployment, credentials, or private workspace identifiers |
 
 ---
 
@@ -69,21 +83,15 @@ The pipeline is designed for document-heavy operational and regulatory workflows
 
 ## Architecture Overview
 
-```
-Unity Catalog Volumes (raw)
-        │
-        ▼
-  Bronze Layer  ─── raw parsed text, source metadata, parse provenance
-        │
-        ▼
-  Silver Layer  ─── structured field extraction, schema-validated records
-        │
-        ▼
-  Gold Layer    ─── classified, routed, AI-ready assets
-        │
-        ▼
-  Downstream    ─── Bedrock retrieval index / agent context payloads
-```
+![Databricks CaseOps architecture flow](docs/assets/databricks-caseops-architecture-flow.svg)
+
+| Layer | Responsibility | Contract output |
+|---|---|---|
+| Raw Volume | Immutable source document storage in Unity Catalog | Source metadata and file provenance |
+| Bronze | Parse source content with `ai_parse_document` surfaces | Parsed text, parse status, source hash, lineage IDs |
+| Silver | Extract structured domain fields with `ai_extract` surfaces | Pydantic-validated domain records and validation status |
+| Gold | Classify, route, package, and gate export readiness | AI-ready payloads, quarantine outcomes, handoff artifacts |
+| Delivery | Prepare producer-side handoff for Bedrock CaseOps | JSON exports, batch reports, bundles, delivery events, Delta Share manifest |
 
 All layers are governed by Unity Catalog. All transformations are traceable via MLflow. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for full design detail.
 
@@ -140,6 +148,17 @@ downstream Bedrock-side consumer adapter for this repo's Gold export or Delta
 Share surface. See
 [`docs/databricks-runtime-productionization.md`](./docs/databricks-runtime-productionization.md)
 for the Phase 4 execution details.
+
+## Public Release Posture
+
+This repository is public-safe as a reference implementation. It does not
+include Databricks workspace URLs, account IDs, personal identifiers, PATs,
+tokens, customer data, generated runtime evidence, or committed local outputs.
+
+Another user can reuse the local pipeline, tests, contracts, Databricks runtime
+entrypoints, and Asset Bundle scaffold in their own workspace. They must provide
+their own Databricks environment, Unity Catalog resources, AI Function access,
+workspace credentials, and downstream Bedrock consumer.
 
 ---
 
