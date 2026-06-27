@@ -32,6 +32,12 @@
 | Delivery posture | Producer-side Delta Sharing manifests and delivery events; no Bedrock consumer runtime |
 | Production posture | Portfolio-safe, non-production; no enterprise deployment, credentials, or private workspace identifiers |
 
+**Public proof record:** this repository is also summarized on
+[navidbr.me/work/databricks-caseops-lakehouse](https://navidbr.me/work/databricks-caseops-lakehouse)
+as part of Navid's public NAVIDBR Applied AI Systems work record. The site
+keeps the same boundary: upstream source preparation, not an enterprise
+deployment or live downstream Bedrock runtime.
+
 ---
 
 ## What This Project Does
