@@ -8,7 +8,7 @@
 # in the evaluation scripts.
 
 # Required
-pydantic>=2.13.4,<3.0
+pydantic>=2.13.5,<3.0
 
 # Optional: MLflow logging for evaluation scripts (--mlflow flag)
 # mlflow>=2.0
